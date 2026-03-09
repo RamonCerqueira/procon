@@ -7,6 +7,7 @@ import { caseService } from '../services/caseService';
 import { DataTable } from '../../../design-system/components/DataTable';
 import { Button } from '../../../design-system/components/Button';
 import { Badge } from '../../../design-system/components/Badge';
+import { differenceInDays } from 'date-fns';
 
 export function CaseList() {
   const navigate = useNavigate();
@@ -65,6 +66,35 @@ export function CaseList() {
         const status = row.getValue('status') as string;
         // Map status to badge variants
         return <Badge variant="primary">{status}</Badge>;
+      },
+    },
+    {
+      id: 'deadline',
+      header: 'Prazo',
+      cell: ({ row }) => {
+        // Mock deadline for demonstration based on creation date or static date
+        const caseItem = row.original;
+        // In a real scenario, this comes from the backend. 
+        // We'll simulate a deadline 10 days from creation, and evaluate it
+        const deadlineDate = new Date(new Date(caseItem.createdAt).getTime() + (10 * 24 * 60 * 60 * 1000));
+        const daysLeft = differenceInDays(deadlineDate, new Date());
+        
+        let colorClass = "bg-green-100 text-green-800"; // No prazo (Verde)
+        let text = `${daysLeft} dias restantes`;
+        
+        if (daysLeft < 0) {
+          colorClass = "bg-red-100 text-red-800"; // Vencido (Vermelho)
+          text = `Vencido há ${Math.abs(daysLeft)} dias`;
+        } else if (daysLeft <= 3) {
+          colorClass = "bg-yellow-100 text-yellow-800"; // Vencendo (Amarelo)
+          text = `Vence em ${daysLeft} dias`;
+        }
+        
+        return (
+          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
+            {text}
+          </span>
+        );
       },
     },
     {

@@ -125,7 +125,7 @@ export function Login() {
 
           {/* Footer Info */}
           <div className="text-sm text-blue-200 flex justify-between items-center border-t border-white/10 pt-8">
-            <p>© 2024 Governo Municipal. Todos os direitos reservados.</p>
+            <p>© 2026 Governo Municipal. Todos os direitos reservados.</p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">Termos</a>
               <a href="#" className="hover:text-white transition-colors">Privacidade</a>

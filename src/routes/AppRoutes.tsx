@@ -17,6 +17,7 @@ const CaseForm = React.lazy(() => import('../modules/cases/pages/CaseForm').then
 const CaseDetails = React.lazy(() => import('../modules/cases/pages/CaseDetails').then(module => ({ default: module.CaseDetails })));
 const DocumentList = React.lazy(() => import('../modules/documents/pages/DocumentList').then(module => ({ default: module.DocumentList })));
 const DocumentUpload = React.lazy(() => import('../modules/documents/pages/DocumentUpload').then(module => ({ default: module.DocumentUpload })));
+const OfficialLetters = React.lazy(() => import('../modules/documents/pages/OfficialLetters').then(module => ({ default: module.OfficialLetters })));
 const OverindebtednessList = React.lazy(() => import('../modules/overindebtedness/pages/OverindebtednessList').then(module => ({ default: module.OverindebtednessList })));
 const OverindebtednessWizard = React.lazy(() => import('../modules/overindebtedness/pages/OverindebtednessWizard').then(module => ({ default: module.OverindebtednessWizard })));
 const PriceResearchList = React.lazy(() => import('../modules/price-research/pages/PriceResearchList').then(module => ({ default: module.PriceResearchList })));
@@ -38,6 +39,7 @@ const QueuePanel = React.lazy(() => import('../modules/attendance/pages/QueuePan
 const TicketKiosk = React.lazy(() => import('../modules/attendance/pages/TicketKiosk').then(module => ({ default: module.TicketKiosk })));
 const VirtualHearing = React.lazy(() => import('../modules/hearings/pages/VirtualHearing').then(module => ({ default: module.VirtualHearing })));
 const InspectionMobile = React.lazy(() => import('../modules/inspections/pages/InspectionMobile').then(module => ({ default: module.InspectionMobile })));
+const Ombudsman = React.lazy(() => import('../modules/public/Ombudsman').then(module => ({ default: module.Ombudsman })));
 
 // Loading Component
 const PageLoader = () => (
@@ -64,6 +66,7 @@ export function AppRoutes() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/portal/consumer" element={<ConsumerComplaint />} />
+        <Route path="/portal/ombudsman" element={<Ombudsman />} />
         <Route path="/portal/:type" element={<PublicServiceForm />} />
         
         {/* Public Attendance Routes (TV & Kiosk) */}
@@ -108,6 +111,7 @@ export function AppRoutes() {
           {/* Documents */}
           <Route path="/documents" element={<DocumentList />} />
           <Route path="/documents/upload" element={<DocumentUpload />} />
+          <Route path="/documents/letters" element={<OfficialLetters />} />
           
           {/* Overindebtedness */}
           <Route path="/overindebtedness" element={<OverindebtednessList />} />

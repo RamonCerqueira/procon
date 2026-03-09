@@ -20,25 +20,38 @@ export function LGPDBanner() {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg p-4 md:p-6 animate-in slide-in-from-bottom duration-500">
+    <div 
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg p-4 md:p-6 animate-in slide-in-from-bottom duration-500"
+      role="region"
+      aria-labelledby="lgpd-title"
+    >
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="bg-blue-100 p-2 rounded-full hidden md:block">
-            <Shield className="h-6 w-6 text-blue-600" />
+            <Shield className="h-6 w-6 text-blue-600" aria-hidden="true" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Sua privacidade é nossa prioridade</h3>
+            <h3 id="lgpd-title" className="text-lg font-bold text-gray-900 mb-1">Sua privacidade é nossa prioridade</h3>
             <p className="text-sm text-gray-600 leading-relaxed max-w-3xl">
               Nós utilizamos cookies e tecnologias similares para melhorar a sua experiência, analisar o tráfego e personalizar o conteúdo. 
-              Ao continuar navegando, você concorda com a nossa <a href="#" className="text-blue-600 underline hover:text-blue-800">Política de Privacidade</a> e o tratamento dos seus dados conforme a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
+              Ao continuar navegando, você concorda com a nossa <a href="#" className="text-blue-600 underline hover:text-blue-800" aria-label="Ver nossa Política de Privacidade">Política de Privacidade</a> e o tratamento dos seus dados conforme a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
             </p>
           </div>
         </div>
         <div className="flex gap-3 w-full md:w-auto">
-          <Button variant="outline" className="flex-1 md:flex-none" onClick={() => setIsVisible(false)}>
+          <Button 
+            variant="outline" 
+            className="flex-1 md:flex-none" 
+            onClick={() => setIsVisible(false)}
+            aria-label="Personalizar configurações de privacidade"
+          >
             Configurar
           </Button>
-          <Button className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white" onClick={handleAccept}>
+          <Button 
+            className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white" 
+            onClick={handleAccept}
+            aria-label="Aceitar todos os cookies e continuar navegando"
+          >
             Aceitar e Continuar
           </Button>
         </div>

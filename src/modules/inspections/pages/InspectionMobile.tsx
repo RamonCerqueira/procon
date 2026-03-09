@@ -61,21 +61,35 @@ export function InspectionMobile() {
         {/* Mobile Header */}
         <header className="bg-blue-700 text-white p-4 flex items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate(-1)} className="p-1 hover:bg-blue-600 rounded-full">
-              <ChevronLeft className="h-6 w-6" />
+            <button 
+              onClick={() => navigate(-1)} 
+              className="p-1 hover:bg-blue-600 rounded-full"
+              aria-label="Voltar para a página anterior"
+            >
+              <ChevronLeft className="h-6 w-6" aria-hidden="true" />
             </button>
             <div>
               <h1 className="font-bold text-lg leading-none">Fiscalização #492</h1>
               <p className="text-xs text-blue-200">Supermercado Preço Bom</p>
             </div>
           </div>
-          <button className="p-1 hover:bg-blue-600 rounded-full">
-            <MoreVertical className="h-6 w-6" />
+          <button 
+            className="p-1 hover:bg-blue-600 rounded-full"
+            aria-label="Mais opções"
+          >
+            <MoreVertical className="h-6 w-6" aria-hidden="true" />
           </button>
         </header>
 
         {/* Progress Bar */}
-        <div className="bg-gray-100 h-1 w-full">
+        <div 
+          className="bg-gray-100 h-1 w-full" 
+          role="progressbar" 
+          aria-valuenow={activeStep} 
+          aria-valuemin={0} 
+          aria-valuemax={3}
+          aria-label="Progresso da fiscalização"
+        >
           <div className="bg-green-500 h-1 transition-all" style={{ width: `${(activeStep / 3) * 100}%` }}></div>
         </div>
 
@@ -119,20 +133,27 @@ export function InspectionMobile() {
             <div className="grid grid-cols-3 gap-2 mb-3">
               {photos.map((photo, idx) => (
                 <div key={idx} className="aspect-square rounded-lg overflow-hidden relative group">
-                  <img src={photo} className="w-full h-full object-cover" alt="Evidência" />
+                  <img 
+                    src={photo} 
+                    className="w-full h-full object-cover" 
+                    alt={`Evidência fotográfica ${idx + 1}`} 
+                    loading="lazy"
+                  />
                   <button 
                     onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
                     className="absolute top-1 right-1 bg-black/50 p-1 rounded-full text-white"
+                    aria-label={`Remover evidência fotográfica ${idx + 1}`}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-3 w-3" aria-hidden="true" />
                   </button>
                 </div>
               ))}
               <button 
                 onClick={handleTakePhoto}
                 className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                aria-label="Tirar nova foto de evidência"
               >
-                <Camera className="h-6 w-6 mb-1" />
+                <Camera className="h-6 w-6 mb-1" aria-hidden="true" />
                 <span className="text-xs font-medium">Adicionar</span>
               </button>
             </div>

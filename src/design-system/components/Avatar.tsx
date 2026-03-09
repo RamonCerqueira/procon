@@ -25,15 +25,18 @@ export function Avatar({ src, alt, fallback, size = 'md', className }: AvatarPro
         sizes[size],
         className
       )}
+      role="img"
+      aria-label={alt || "Avatar do usuário"}
     >
       {src ? (
         <img
           className="aspect-square h-full w-full object-cover"
           src={src}
-          alt={alt}
+          alt={alt || ""}
+          aria-hidden="true"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-gray-500 font-medium">
+        <div className="flex h-full w-full items-center justify-center text-gray-500 font-medium" aria-hidden="true">
           {fallback ? fallback : <User className="h-1/2 w-1/2" />}
         </div>
       )}

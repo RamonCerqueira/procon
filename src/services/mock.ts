@@ -7,14 +7,49 @@ const mock = new MockAdapter(api, { delayResponse: 500 });
 
 export const setupMocks = () => {
   // Auth
-  mock.onPost('/auth/login').reply(200, {
-    token: 'fake-jwt-token',
-    user: {
-      id: 1,
-      name: 'Administrador',
-      email: 'admin@procon.pb.gov.br',
-      role: 'admin',
-    },
+  mock.onPost('/auth/login').reply((config) => {
+    const { email, password, type } = JSON.parse(config.data);
+    
+    if (type === 'server') {
+      if (email === 'servidor@procon.pb.gov.br' && password === 'procon2026') {
+        return [200, {
+          token: 'fake-jwt-token-server',
+          user: {
+            id: 101,
+            name: 'Carlos Servidor',
+            email: 'servidor@procon.pb.gov.br',
+            role: 'admin',
+          },
+        }];
+      }
+    } else if (type === 'citizen') {
+      if (email === 'cidadao@email.com' && password === 'cidadao2026') {
+        return [200, {
+          token: 'fake-jwt-token-citizen',
+          user: {
+            id: 202,
+            name: 'João Cidadão',
+            email: 'cidadao@email.com',
+            role: 'citizen',
+          },
+        }];
+      }
+    }
+
+    // Default legacy support for admin
+    if (email === 'admin@procon.pb.gov.br' && password === 'admin123') {
+      return [200, {
+        token: 'fake-jwt-token',
+        user: {
+          id: 1,
+          name: 'Administrador',
+          email: 'admin@procon.pb.gov.br',
+          role: 'admin',
+        },
+      }];
+    }
+
+    return [401, { message: 'Credenciais inválidas' }];
   });
 
   // Dashboard Stats

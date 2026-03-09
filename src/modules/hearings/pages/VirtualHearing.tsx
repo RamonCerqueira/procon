@@ -66,14 +66,17 @@ Nada mais havendo, encerra-se o termo.`);
             <img 
               src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=2069&auto=format&fit=crop" 
               className="w-full h-full object-cover"
-              alt="Conciliador" 
+              alt="Conciliadora Dra. Maria em vídeo" 
+              loading="lazy"
+              width="2069"
+              height="1379"
             />
             <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded text-white text-sm font-medium flex items-center gap-2">
-              <ShieldIcon className="h-4 w-4 text-blue-400" />
+              <ShieldIcon className="h-4 w-4 text-blue-400" aria-hidden="true" />
               Dra. Maria (Conciliadora PROCON)
             </div>
-            <div className="absolute top-4 right-4 bg-blue-600 p-1.5 rounded-full">
-              <Mic className="h-4 w-4 text-white" />
+            <div className="absolute top-4 right-4 bg-blue-600 p-1.5 rounded-full" aria-label="Microfone ativado para Dra. Maria">
+              <Mic className="h-4 w-4 text-white" aria-hidden="true" />
             </div>
           </div>
 
@@ -82,7 +85,10 @@ Nada mais havendo, encerra-se o termo.`);
             <img 
               src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1974&auto=format&fit=crop" 
               className="w-full h-full object-cover"
-              alt="Consumidor" 
+              alt="Consumidor João da Silva em vídeo" 
+              loading="lazy"
+              width="1974"
+              height="1316"
             />
             <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded text-white text-sm font-medium">
               João da Silva (Consumidor)
@@ -94,13 +100,16 @@ Nada mais havendo, encerra-se o termo.`);
             <img 
               src="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=1974&auto=format&fit=crop" 
               className="w-full h-full object-cover"
-              alt="Fornecedor" 
+              alt="Representante da Empresa X Ltda em vídeo" 
+              loading="lazy"
+              width="1974"
+              height="1316"
             />
             <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded text-white text-sm font-medium">
               Rep. Empresa X Ltda
             </div>
-            <div className="absolute top-4 right-4 bg-red-500/80 p-1.5 rounded-full">
-              <MicOff className="h-4 w-4 text-white" />
+            <div className="absolute top-4 right-4 bg-red-500/80 p-1.5 rounded-full" aria-label="Microfone desativado para Representante da Empresa X Ltda">
+              <MicOff className="h-4 w-4 text-white" aria-hidden="true" />
             </div>
           </div>
 

@@ -39,10 +39,15 @@ const Navbar = ({ highContrast, toggleHighContrast, increaseFontSize, decreaseFo
             <span className="sm:hidden">PMJP</span>
           </div>
           <div className="flex items-center gap-4">
-            <button onClick={decreaseFontSize} className="hover:underline">A-</button>
-            <button onClick={increaseFontSize} className="hover:underline">A+</button>
-            <button onClick={toggleHighContrast} className="flex items-center gap-1 hover:underline">
-              {highContrast ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
+            <button onClick={decreaseFontSize} className="hover:underline" aria-label="Diminuir tamanho da fonte">A-</button>
+            <button onClick={increaseFontSize} className="hover:underline" aria-label="Aumentar tamanho da fonte">A+</button>
+            <button 
+              onClick={toggleHighContrast} 
+              className="flex items-center gap-1 hover:underline"
+              aria-label={highContrast ? "Desativar alto contraste" : "Ativar alto contraste"}
+              aria-pressed={highContrast}
+            >
+              {highContrast ? <Sun className="h-3 w-3" aria-hidden="true" /> : <Moon className="h-3 w-3" aria-hidden="true" />}
               <span className="hidden sm:inline">Alto Contraste</span>
             </button>
             <a href="#conteudo" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-1/2 focus:-translate-x-1/2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-yellow-400 focus:text-black focus:font-bold focus:rounded-md hover:underline">
@@ -93,18 +98,20 @@ const Navbar = ({ highContrast, toggleHighContrast, increaseFontSize, decreaseFo
         <button 
           className="md:hidden p-2"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
+          aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
+          aria-expanded={isMenuOpen}
         >
-          {isMenuOpen ? <X /> : <Menu />}
+          {isMenuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
         </button>
       </div>
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 p-4 shadow-lg absolute w-full">
+        <div className="md:hidden bg-white border-t border-gray-100 p-4 shadow-lg absolute w-full" role="navigation" aria-label="Menu móvel">
           <nav className="flex flex-col gap-4">
-            <a href="#" className="text-gray-700 font-medium">Institucional</a>
-            <a href="#" className="text-gray-700 font-medium">Legislação</a>
-            <a href="#" className="text-gray-700 font-medium">Notícias</a>
+            <a href="#" className="text-gray-700 font-medium hover:text-blue-600">Institucional</a>
+            <a href="#" className="text-gray-700 font-medium hover:text-blue-600">Legislação</a>
+            <a href="#" className="text-gray-700 font-medium hover:text-blue-600">Notícias</a>
             <Button onClick={() => navigate('/login')} className="w-full justify-center">
               Acessar Sistema
             </Button>
@@ -117,15 +124,20 @@ const Navbar = ({ highContrast, toggleHighContrast, increaseFontSize, decreaseFo
 
 const Hero = ({ highContrast }: any) => {
   return (
-    <div className="relative bg-blue-900 text-white overflow-hidden">
+    <div className="relative bg-blue-900 text-white overflow-hidden min-h-[500px]">
       {/* Background Image & Gradient */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1577412647305-991150c7d163?q=80&w=2070&auto=format&fit=crop")' }}
-      ></div>
+      <img 
+        src="https://images.unsplash.com/photo-1577412647305-991150c7d163?q=80&w=2070&auto=format&fit=crop"
+        className="absolute inset-0 w-full h-full object-cover"
+        alt=""
+        aria-hidden="true"
+        fetchPriority="high"
+        width="2070"
+        height="1380"
+      />
       <div className={cn("absolute inset-0 opacity-90", highContrast ? "bg-black" : "bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900")}></div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32 flex flex-col items-center text-center">
+      <div id="conteudo" className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32 flex flex-col items-center text-center">
         <h1 className={cn("text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 animate-fade-in-up", highContrast ? "text-yellow-400" : "text-white")}>
           Como podemos ajudar você hoje?
         </h1>
@@ -135,7 +147,9 @@ const Hero = ({ highContrast }: any) => {
 
         {/* Search Bar */}
         <div className="w-full max-w-2xl relative animate-fade-in-up delay-200">
+          <label htmlFor="hero-search" className="sr-only">Pesquisar serviços</label>
           <input 
+            id="hero-search"
             type="text" 
             placeholder="Digite o serviço que procura (ex: Denúncia, Audiência, Pesquisa de Preço)..." 
             className={cn(
@@ -145,11 +159,14 @@ const Hero = ({ highContrast }: any) => {
                 : "bg-white focus:ring-blue-400/50 border-transparent"
             )}
           />
-          <button className={cn(
-            "absolute right-2 top-2 p-2 rounded-full transition-colors",
-            highContrast ? "bg-yellow-400 text-black hover:bg-yellow-500" : "bg-blue-600 text-white hover:bg-blue-700"
-          )}>
-            <Search className="h-6 w-6" />
+          <button 
+            className={cn(
+              "absolute right-2 top-2 p-2 rounded-full transition-colors",
+              highContrast ? "bg-yellow-400 text-black hover:bg-yellow-500" : "bg-blue-600 text-white hover:bg-blue-700"
+            )}
+            aria-label="Pesquisar"
+          >
+            <Search className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
 
