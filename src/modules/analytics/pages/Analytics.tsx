@@ -45,10 +45,10 @@ export function Analytics() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Atendimentos" value="2,350" icon={FileText} trend={{ value: 12, isPositive: true }} />
-        <StatCard title="Consumidores" value="1,203" icon={Users} trend={{ value: 5, isPositive: true }} />
-        <StatCard title="Fornecedores" value="450" icon={Store} trend={{ value: 2, isPositive: true }} />
-        <StatCard title="Taxa de Resolução" value="87%" icon={CheckCircle} trend={{ value: 4, isPositive: true }} />
+        <StatCard title="Total Atendimentos" value="2,350" icon={FileText} trend={{ value: 12, label: 'vs. período anterior' }} />
+        <StatCard title="Consumidores" value="1,203" icon={Users} trend={{ value: 5, label: 'vs. período anterior' }} />
+        <StatCard title="Fornecedores" value="450" icon={Store} trend={{ value: 2, label: 'vs. período anterior' }} />
+        <StatCard title="Taxa de Resolução" value="87%" icon={CheckCircle} trend={{ value: 4, label: 'vs. período anterior' }} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

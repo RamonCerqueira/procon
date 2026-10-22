@@ -82,7 +82,7 @@ export function CaseDetails() {
               Protocolo #{caseData.protocol}
             </h2>
             <Badge variant="primary">{caseData.status}</Badge>
-            <Badge variant={caseData.priority === 'Urgente' ? 'danger' : 'secondary'}>
+            <Badge variant={caseData.priority === 'urgent' ? 'danger' : 'secondary'}>
               {caseData.priority}
             </Badge>
           </div>
@@ -230,7 +230,7 @@ export function CaseDetails() {
                   </CardContent>
                   <div className="p-4 border-t bg-gray-50">
                     <form onSubmit={handleSendMessage} className="flex gap-2">
-                      <Button type="button" variant="ghost" size="icon">
+                      <Button type="button" variant="ghost" size="sm">
                         <Paperclip className="h-5 w-5 text-gray-500" />
                       </Button>
                       <Input
@@ -256,7 +256,7 @@ export function CaseDetails() {
                     <div className="text-center py-12 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
                       <FileText className="h-12 w-12 mx-auto text-gray-300 mb-2" />
                       <p>Nenhum documento anexado ainda.</p>
-                      <Button variant="link">Clique para fazer upload</Button>
+                      <Button variant="ghost">Clique para fazer upload</Button>
                     </div>
                   </CardContent>
                 </Card>
