@@ -3,9 +3,9 @@ import MockAdapter from 'axios-mock-adapter';
 import api from './api';
 
 // Create a mock adapter instance on the axios instance
-const mock = new MockAdapter(api, { delayResponse: 500 });
+// MockAdapter is instantiated inside setupMocks only when explicitly called
 
-export const setupMocks = () => {
+export const setupMocks = () => { const mock = new MockAdapter(api, { delayResponse: 500 });
   // Auth
   mock.onPost('/auth/login').reply(200, {
     token: 'fake-jwt-token',

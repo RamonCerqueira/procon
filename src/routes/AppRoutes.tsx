@@ -6,6 +6,7 @@ import {
   CirculationTax,
   DriverRegistry,
   FineManagement,
+  InfractionCatalog,
   InspectionManagement,
   PlateCheck,
   ReportsManagement,
@@ -33,6 +34,7 @@ export function AppRoutes() {
     <Route path="/drivers" element={<Protected><DriverRegistry/></Protected>}/>
     <Route path="/circulation-tax" element={<Protected><CirculationTax/></Protected>}/>
     <Route path="/fines" element={<Protected><FineManagement/></Protected>}/>
+    <Route path="/infraction-types" element={<Protected><InfractionCatalog/></Protected>}/>
     <Route path="/inspections" element={<Protected><InspectionManagement/></Protected>}/>
     <Route path="/reports" element={<Protected><ReportsManagement/></Protected>}/>
     <Route path="/users" element={<Protected><SystemAdministration/></Protected>}/>
