@@ -1,142 +1,252 @@
 from rest_framework import serializers
 from .models import (
-    Vehicle, Driver, Fine, InfractionType, VehicleInspection, SystemUser, SystemConfig,
-    Consumer, Supplier, Case, CaseMessage, Document,
-    ProconInspection, Overindebtedness, Hearing
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, Multa, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
+    Fiscalizacao, Superendividamento, Audiencia
 )
 
 
-class VehicleSerializer(serializers.ModelSerializer):
-    taxDue = serializers.IntegerField(source='tax_due', required=False, default=0)
+class VeiculoSerializer(serializers.ModelSerializer):
+    plate = serializers.CharField(source='placa')
+    make = serializers.CharField(source='marca')
+    model = serializers.CharField(source='modelo')
+    year = serializers.IntegerField(source='ano')
+    color = serializers.CharField(source='cor', required=False, default='Branco')
+    owner = serializers.CharField(source='proprietario')
+    driver = serializers.CharField(source='condutor', required=False, allow_blank=True, default='')
+    taxDue = serializers.IntegerField(source='imposto_devido', required=False, default=0)
+    district = serializers.CharField(source='distrito')
+    category = serializers.CharField(source='categoria')
+    legalStatus = serializers.CharField(source='situacao_legal', required=False, default='Regular')
 
     class Meta:
-        model = Vehicle
-        fields = ['plate', 'make', 'model', 'year', 'owner', 'driver', 'taxDue', 'district', 'category']
+        model = Veiculo
+        fields = ['plate', 'make', 'model', 'year', 'color', 'owner', 'driver', 'taxDue', 'district', 'category', 'legalStatus']
 
 
-class DriverSerializer(serializers.ModelSerializer):
-    id = serializers.CharField(source='code')
-    documentFile = serializers.JSONField(source='document_file', required=False, allow_null=True)
+class OcorrenciaVeicularSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='placa')
+    vehicleLabel = serializers.CharField(source='veiculo_descricao', required=False, allow_blank=True, default='')
+    owner = serializers.CharField(source='proprietario', required=False, allow_blank=True, default='')
+    recordCategory = serializers.CharField(source='categoria_registo', required=False, default='Ocorrência Policial / Fiscalização')
+    eventType = serializers.CharField(source='tipo_evento')
+    resultingStatus = serializers.CharField(source='situacao_resultante')
+    reason = serializers.CharField(source='motivo')
+    authority = serializers.CharField(source='autoridade_orgao', required=False, allow_blank=True, default='')
+    processNumber = serializers.CharField(source='numero_processo', required=False, allow_blank=True, default='')
+    location = serializers.CharField(source='local_deposito', required=False, allow_blank=True, default='')
+    date = serializers.CharField(source='data_evento')
+    notes = serializers.CharField(source='observacoes', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
 
     class Meta:
-        model = Driver
+        model = OcorrenciaVeicular
+        fields = [
+            'id', 'plate', 'vehicleLabel', 'owner', 'recordCategory',
+            'eventType', 'resultingStatus', 'reason', 'authority',
+            'processNumber', 'location', 'date', 'notes', 'createdAt'
+        ]
+
+
+class HistoricoProprietarioSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='placa')
+    vehicleLabel = serializers.CharField(source='veiculo_descricao', required=False, allow_blank=True, default='')
+    previousOwner = serializers.CharField(source='proprietario_anterior')
+    previousDocument = serializers.CharField(source='documento_anterior', required=False, allow_blank=True, default='')
+    newOwner = serializers.CharField(source='novo_proprietario')
+    newDocument = serializers.CharField(source='documento_novo', required=False, allow_blank=True, default='')
+    newDriver = serializers.CharField(source='novo_condutor', required=False, allow_blank=True, default='')
+    district = serializers.CharField(source='distrito', required=False, allow_blank=True, default='')
+    transferDate = serializers.CharField(source='data_transferencia')
+    reason = serializers.CharField(source='motivo', required=False, default='Compra e venda')
+    notes = serializers.CharField(source='observacoes', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = HistoricoProprietario
+        fields = [
+            'id', 'plate', 'vehicleLabel', 'previousOwner', 'previousDocument',
+            'newOwner', 'newDocument', 'newDriver', 'district',
+            'transferDate', 'reason', 'notes', 'createdAt'
+        ]
+
+
+class CondutorSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    name = serializers.CharField(source='nome')
+    document = serializers.CharField(source='documento')
+    documentFile = serializers.JSONField(source='arquivo_documento', required=False, allow_null=True)
+    license = serializers.CharField(source='carta')
+    category = serializers.CharField(source='categoria')
+    phone = serializers.CharField(source='telefone')
+    district = serializers.CharField(source='distrito')
+
+    class Meta:
+        model = Condutor
         fields = ['id', 'name', 'document', 'documentFile', 'license', 'category', 'phone', 'district', 'status']
 
 
-class FineSerializer(serializers.ModelSerializer):
-    id = serializers.CharField(source='code')
+class MultaSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='placa')
+    driver = serializers.CharField(source='condutor', required=False, allow_blank=True, default='')
+    infraction = serializers.CharField(source='infracao')
+    amount = serializers.IntegerField(source='valor')
+    date = serializers.CharField(source='data')
 
     class Meta:
-        model = Fine
+        model = Multa
         fields = ['id', 'plate', 'driver', 'infraction', 'amount', 'date', 'status']
 
 
-class InfractionTypeSerializer(serializers.ModelSerializer):
-    id = serializers.CharField(source='code')
+class TipoInfracaoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    name = serializers.CharField(source='nome')
+    amount = serializers.IntegerField(source='valor')
+    severity = serializers.CharField(source='gravidade', required=False, default='Média')
+    description = serializers.CharField(source='descricao', required=False, allow_blank=True, default='')
 
     class Meta:
-        model = InfractionType
+        model = TipoInfracao
         fields = ['id', 'name', 'amount', 'severity', 'description']
 
 
-class VehicleInspectionSerializer(serializers.ModelSerializer):
-    id = serializers.CharField(source='code')
+class InspecaoVeicularSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='placa')
+    reason = serializers.CharField(source='motivo')
+    office = serializers.CharField(source='delegacao')
+    date = serializers.CharField(source='data')
 
     class Meta:
-        model = VehicleInspection
+        model = InspecaoVeicular
         fields = ['id', 'plate', 'reason', 'office', 'date', 'status']
 
 
-class SystemUserSerializer(serializers.ModelSerializer):
+class UsuarioSistemaSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='nome')
+    role = serializers.CharField(source='perfil')
+    office = serializers.CharField(source='delegacao')
+
     class Meta:
-        model = SystemUser
+        model = UsuarioSistema
         fields = ['name', 'email', 'role', 'office', 'status']
 
 
-class SystemConfigSerializer(serializers.ModelSerializer):
+class ConfiguracaoSistemaSerializer(serializers.ModelSerializer):
+    institution = serializers.CharField(source='instituicao')
+    system = serializers.CharField(source='sistema')
+    currency = serializers.CharField(source='moeda')
+    office = serializers.CharField(source='delegacao')
+
     class Meta:
-        model = SystemConfig
+        model = ConfiguracaoSistema
         fields = ['institution', 'system', 'currency', 'office']
 
 
-class ConsumerSerializer(serializers.ModelSerializer):
-    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+class ConsumidorSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='nome')
+    phone = serializers.CharField(source='telefone')
+    address = serializers.CharField(source='endereco', required=False, allow_blank=True)
+    city = serializers.CharField(source='cidade', required=False, allow_blank=True)
+    state = serializers.CharField(source='estado', required=False, allow_blank=True)
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
 
     class Meta:
-        model = Consumer
+        model = Consumidor
         fields = ['id', 'name', 'cpf', 'email', 'phone', 'address', 'city', 'state', 'status', 'createdAt']
 
 
-class SupplierSerializer(serializers.ModelSerializer):
+class FornecedorSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='nome')
+    phone = serializers.CharField(source='telefone')
+    address = serializers.CharField(source='endereco', required=False, allow_blank=True)
+    city = serializers.CharField(source='cidade', required=False, allow_blank=True)
+    state = serializers.CharField(source='estado', required=False, allow_blank=True)
+    category = serializers.CharField(source='categoria', required=False, default='Geral')
+
     class Meta:
-        model = Supplier
+        model = Fornecedor
         fields = ['id', 'name', 'cnpj', 'email', 'phone', 'address', 'city', 'state', 'status', 'category']
 
 
-class CaseSerializer(serializers.ModelSerializer):
-    consumerId = serializers.IntegerField(source='consumer_id', required=False, allow_null=True)
-    consumerName = serializers.CharField(source='consumer_name', required=False, allow_blank=True)
-    supplierId = serializers.IntegerField(source='supplier_id', required=False, allow_null=True)
-    supplierName = serializers.CharField(source='supplier_name', required=False, allow_blank=True)
-    date = serializers.DateTimeField(source='created_at', read_only=True)
-    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
-    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
-    assignedTo = serializers.IntegerField(source='assigned_to', required=False, allow_null=True)
+class ProcessoSerializer(serializers.ModelSerializer):
+    protocol = serializers.CharField(source='protocolo', read_only=True)
+    consumerId = serializers.IntegerField(source='consumidor_id', required=False, allow_null=True)
+    consumerName = serializers.CharField(source='nome_consumidor', required=False, allow_blank=True)
+    supplierId = serializers.IntegerField(source='fornecedor_id', required=False, allow_null=True)
+    supplierName = serializers.CharField(source='nome_fornecedor', required=False, allow_blank=True)
+    priority = serializers.CharField(source='prioridade', required=False, default='Média')
+    subject = serializers.CharField(source='assunto')
+    description = serializers.CharField(source='descricao')
+    date = serializers.DateTimeField(source='criado_em', read_only=True)
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+    updatedAt = serializers.DateTimeField(source='atualizado_em', read_only=True)
+    assignedTo = serializers.IntegerField(source='responsavel_id', required=False, allow_null=True)
 
     class Meta:
-        model = Case
+        model = Processo
         fields = [
             'id', 'protocol', 'consumerId', 'consumerName', 'supplierId', 'supplierName',
             'status', 'priority', 'subject', 'description', 'date', 'createdAt', 'updatedAt', 'assignedTo'
         ]
-        read_only_fields = ['protocol', 'date', 'createdAt', 'updatedAt']
 
 
-class CaseMessageSerializer(serializers.ModelSerializer):
-    caseId = serializers.IntegerField(source='case_id', read_only=True)
-    senderId = serializers.IntegerField(source='sender_id', required=False, default=1)
-    senderName = serializers.CharField(source='sender_name', required=False, default='Administrador')
-    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
-    isInternal = serializers.BooleanField(source='is_internal', required=False, default=False)
+class MensagemProcessoSerializer(serializers.ModelSerializer):
+    caseId = serializers.IntegerField(source='processo_id', read_only=True)
+    senderId = serializers.IntegerField(source='remetente_id', required=False, default=1)
+    senderName = serializers.CharField(source='nome_remetente', required=False, default='Administrador')
+    content = serializers.CharField(source='conteudo')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+    isInternal = serializers.BooleanField(source='interna', required=False, default=False)
 
     class Meta:
-        model = CaseMessage
+        model = MensagemProcesso
         fields = ['id', 'caseId', 'senderId', 'senderName', 'content', 'createdAt', 'isInternal']
 
 
-class DocumentSerializer(serializers.ModelSerializer):
-    type = serializers.CharField(source='doc_type', required=False, default='PDF')
-    uploadedBy = serializers.CharField(source='uploaded_by', required=False, default='Administrador')
-    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+class DocumentoSerializer(serializers.ModelSerializer):
+    title = serializers.CharField(source='titulo')
+    type = serializers.CharField(source='tipo_documento', required=False, default='PDF')
+    size = serializers.CharField(source='tamanho', required=False, default='1.0 MB')
+    category = serializers.CharField(source='categoria', required=False, default='Comprovante')
+    uploadedBy = serializers.CharField(source='enviado_por', required=False, default='Administrador')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
 
     class Meta:
-        model = Document
+        model = Documento
         fields = ['id', 'title', 'type', 'size', 'category', 'uploadedBy', 'createdAt', 'url']
 
 
-class ProconInspectionSerializer(serializers.ModelSerializer):
-    supplierName = serializers.CharField(source='supplier_name')
+class FiscalizacaoSerializer(serializers.ModelSerializer):
+    supplierName = serializers.CharField(source='nome_fornecedor')
+    address = serializers.CharField(source='endereco')
+    result = serializers.CharField(source='resultado')
+    inspector = serializers.CharField(source='fiscal')
 
     class Meta:
-        model = ProconInspection
+        model = Fiscalizacao
         fields = ['id', 'supplierName', 'address', 'date', 'status', 'result', 'inspector']
 
 
-class OverindebtednessSerializer(serializers.ModelSerializer):
-    consumerName = serializers.CharField(source='consumer_name')
-    totalDebt = serializers.CharField(source='total_debt')
-    creditorsCount = serializers.IntegerField(source='creditors_count')
-    requestDate = serializers.DateTimeField(source='request_date')
+class SuperendividamentoSerializer(serializers.ModelSerializer):
+    consumerName = serializers.CharField(source='nome_consumidor')
+    totalDebt = serializers.CharField(source='divida_total')
+    creditorsCount = serializers.IntegerField(source='quantidade_credores')
+    requestDate = serializers.DateTimeField(source='data_solicitacao')
 
     class Meta:
-        model = Overindebtedness
+        model = Superendividamento
         fields = ['id', 'consumerName', 'totalDebt', 'creditorsCount', 'status', 'requestDate']
 
 
-class HearingSerializer(serializers.ModelSerializer):
-    caseProtocol = serializers.CharField(source='case_protocol')
+class AudienciaSerializer(serializers.ModelSerializer):
+    caseProtocol = serializers.CharField(source='protocolo_processo')
+    room = serializers.CharField(source='sala')
+    mediator = serializers.CharField(source='conciliador')
 
     class Meta:
-        model = Hearing
+        model = Audiencia
         fields = ['id', 'caseProtocol', 'date', 'room', 'mediator', 'status']
-

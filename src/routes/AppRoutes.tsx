@@ -8,11 +8,13 @@ import {
   FineManagement,
   InfractionCatalog,
   InspectionManagement,
+  OwnershipTransferAndHistory,
   PlateCheck,
   ReportsManagement,
   SystemAdministration,
   TransportDashboard,
   TransportLanding,
+  VehicleLegalStatusAndWriteOff,
   VehicleRegistry,
 } from '../modules/transport/TransportPortal';
 
@@ -31,6 +33,8 @@ export function AppRoutes() {
     <Route path="/plate-check" element={<PlateCheck/>}/>
     <Route path="/dashboard" element={<Protected><TransportDashboard/></Protected>}/>
     <Route path="/vehicles" element={<Protected><VehicleRegistry/></Protected>}/>
+    <Route path="/ownership-transfers" element={<Protected><OwnershipTransferAndHistory/></Protected>}/>
+    <Route path="/vehicle-occurrences" element={<Protected><VehicleLegalStatusAndWriteOff/></Protected>}/>
     <Route path="/drivers" element={<Protected><DriverRegistry/></Protected>}/>
     <Route path="/circulation-tax" element={<Protected><CirculationTax/></Protected>}/>
     <Route path="/fines" element={<Protected><FineManagement/></Protected>}/>

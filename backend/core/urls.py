@@ -31,6 +31,12 @@ urlpatterns = [
     path('infraction-types/', views.infraction_types_list),
     path('infraction-types/<str:code>', views.infraction_type_detail, name='infraction_type_detail'),
     path('infraction-types/<str:code>/', views.infraction_type_detail),
+    path('ownership-transfers', views.ownership_transfers_list, name='ownership_transfers_list'),
+    path('ownership-transfers/', views.ownership_transfers_list),
+    path('vehicle-occurrences', views.vehicle_occurrences_list, name='vehicle_occurrences_list'),
+    path('vehicle-occurrences/', views.vehicle_occurrences_list),
+    path('vehicle-occurrences/<str:code>', views.vehicle_occurrence_detail, name='vehicle_occurrence_detail'),
+    path('vehicle-occurrences/<str:code>/', views.vehicle_occurrence_detail),
 
     # Endpoints REST PROCON
     path('dashboard/stats', views.dashboard_stats, name='dashboard_stats'),

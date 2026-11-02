@@ -5,14 +5,14 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from ..models import SystemUser
+from ..models import UsuarioSistema
 from ..seed import ensure_seed_data
 
 
 class AuthController:
     """
     Controller responsável pelas regras de negócio de Autenticação e Sessão (Arquitetura MVC).
-    Comunica com os Models (SystemUser / User) no banco PostgreSQL 'procon'.
+    Comunica com o Model UsuarioSistema (tabela 'usuarios_sistema') no banco PostgreSQL 'procon'.
     """
 
     @staticmethod
@@ -36,38 +36,35 @@ class AuthController:
                 'data': {'error': 'A palavra-passe deve conter pelo menos 6 caracteres.'}
             }
 
-        # 1. Busca ou cria o registo no Model SystemUser (tabela system_users no banco procon)
-        sys_user = SystemUser.objects.filter(email__iexact=email).first()
-        if sys_user:
-            if sys_user.status.lower() in ('inativo', 'bloqueado', 'blocked', 'inactive'):
+        usuario = UsuarioSistema.objects.filter(email__iexact=email).first()
+        if usuario:
+            if usuario.status.lower() in ('inativo', 'bloqueado', 'blocked', 'inactive'):
                 return {
                     'success': False,
                     'status_code': status.HTTP_403_FORBIDDEN,
                     'data': {'error': 'Este utilizador encontra-se inativo ou bloqueado.'}
                 }
-            # Valida a senha ou atualiza o hash no banco procon
-            if sys_user.password:
-                password_ok = check_password(password, sys_user.password) or (password == sys_user.password)
+            if usuario.senha:
+                password_ok = check_password(password, usuario.senha) or (password == usuario.senha)
                 if not password_ok:
-                    sys_user.password = make_password(password)
+                    usuario.senha = make_password(password)
             else:
-                sys_user.password = make_password(password)
+                usuario.senha = make_password(password)
         else:
-            default_name = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
-            default_role = 'Administrador' if 'admin' in email else ('Atendimento' if user_type == 'server' else 'Cidadão')
-            sys_user = SystemUser.objects.create(
-                name=default_name,
+            nome_padrao = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
+            perfil_padrao = 'Administrador' if 'admin' in email else ('Atendimento' if user_type == 'server' else 'Cidadão')
+            usuario = UsuarioSistema.objects.create(
+                nome=nome_padrao,
                 email=email,
-                password=make_password(password),
-                role=default_role,
-                office='Direção Nacional',
+                senha=make_password(password),
+                perfil=perfil_padrao,
+                delegacao='Direção Nacional',
                 status='Ativo',
             )
 
-        sys_user.last_login = timezone.now()
-        sys_user.save()
+        usuario.ultimo_acesso = timezone.now()
+        usuario.save()
 
-        # 2. Sincroniza com o Model User do Django para emissão do token JWT
         django_user = User.objects.filter(email__iexact=email).first()
         if not django_user:
             base_username = email.split('@')[0][:30]
@@ -80,16 +77,14 @@ class AuthController:
                 username=username,
                 email=email,
                 password=password,
-                first_name=sys_user.name[:150]
+                first_name=usuario.nome[:150]
             )
         else:
-            # Verifica autenticação caso o utilizador Django já exista
             authed = authenticate(username=django_user.username, password=password)
             if not authed:
                 django_user.set_password(password)
                 django_user.save()
 
-        # 3. Gera o par de tokens JWT (Access + Refresh)
         refresh = RefreshToken.for_user(django_user)
 
         return {
@@ -99,12 +94,12 @@ class AuthController:
                 'token': str(refresh.access_token),
                 'refresh': str(refresh),
                 'user': {
-                    'id': sys_user.id,
-                    'name': sys_user.name,
-                    'email': sys_user.email,
-                    'role': sys_user.role,
-                    'office': sys_user.office,
-                    'status': sys_user.status,
+                    'id': usuario.id,
+                    'name': usuario.nome,
+                    'email': usuario.email,
+                    'role': usuario.perfil,
+                    'office': usuario.delegacao,
+                    'status': usuario.status,
                 }
             }
         }
@@ -122,19 +117,19 @@ class AuthController:
                 'data': {'error': 'Preencha nome, email válido e palavra-passe com no mínimo 6 caracteres.'}
             }
 
-        if SystemUser.objects.filter(email__iexact=email).exists():
+        if UsuarioSistema.objects.filter(email__iexact=email).exists():
             return {
                 'success': False,
                 'status_code': status.HTTP_409_CONFLICT,
                 'data': {'error': 'Já existe um utilizador registado com este email.'}
             }
 
-        SystemUser.objects.create(
-            name=name,
+        UsuarioSistema.objects.create(
+            nome=name,
             email=email,
-            password=make_password(password),
-            role=role,
-            office=office,
+            senha=make_password(password),
+            perfil=role,
+            delegacao=office,
             status='Ativo',
         )
         return AuthController.login(email=email, password=password)
@@ -147,17 +142,16 @@ class AuthController:
                 'status_code': status.HTTP_401_UNAUTHORIZED,
                 'data': {'error': 'Utilizador não autenticado.'}
             }
-        sys_user = SystemUser.objects.filter(email__iexact=user.email).first()
+        usuario = UsuarioSistema.objects.filter(email__iexact=user.email).first()
         return {
             'success': True,
             'status_code': status.HTTP_200_OK,
             'data': {
-                'id': sys_user.id if sys_user else user.id,
-                'name': sys_user.name if sys_user else (user.first_name or user.username),
+                'id': usuario.id if usuario else user.id,
+                'name': usuario.nome if usuario else (user.first_name or user.username),
                 'email': user.email,
-                'role': sys_user.role if sys_user else 'Administrador',
-                'office': sys_user.office if sys_user else 'Direção Nacional',
-                'status': sys_user.status if sys_user else 'Ativo',
+                'role': usuario.perfil if usuario else 'Administrador',
+                'office': usuario.delegacao if usuario else 'Direção Nacional',
+                'status': usuario.status if usuario else 'Ativo',
             }
         }
-

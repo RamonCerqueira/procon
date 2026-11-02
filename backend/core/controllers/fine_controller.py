@@ -2,37 +2,37 @@ import time
 from datetime import datetime
 from rest_framework import status
 
-from ..models import Fine, Vehicle
-from ..serializers import FineSerializer
+from ..models import Multa, Veiculo
+from ..serializers import MultaSerializer
 from ..seed import ensure_seed_data
 
 
 class FineController:
     """
     Controller responsável pelas regras de negócio de Multas e Infrações (Arquitetura MVC).
-    Persiste e atualiza autos de infração na tabela 'fines' do banco PostgreSQL 'procon'.
+    Persiste e atualiza autos de infração na tabela 'multas' do banco PostgreSQL 'procon'.
     """
 
     @staticmethod
     def list_fines() -> dict:
         ensure_seed_data()
-        qs = Fine.objects.all()
+        qs = Multa.objects.all()
         return {
             'success': True,
             'status_code': status.HTTP_200_OK,
-            'data': FineSerializer(qs, many=True).data
+            'data': MultaSerializer(qs, many=True).data
         }
 
     @staticmethod
     def create_fine(data: dict) -> dict:
         ensure_seed_data()
-        plate = str(data.get('plate') or '').strip().upper()
-        infraction = str(data.get('infraction') or '').strip()
-        date_str = str(data.get('date') or datetime.now().strftime('%Y-%m-%d')).strip()
-        fine_status = str(data.get('status') or 'Pendente').strip()
+        placa = str(data.get('plate') or data.get('placa') or '').strip().upper()
+        infracao = str(data.get('infraction') or data.get('infracao') or '').strip()
+        data_str = str(data.get('date') or data.get('data') or datetime.now().strftime('%Y-%m-%d')).strip()
+        status_multa = str(data.get('status') or 'Pendente').strip()
 
-        vehicle = Vehicle.objects.filter(plate__iexact=plate).first()
-        if not vehicle:
+        veiculo = Veiculo.objects.filter(placa__iexact=placa).first()
+        if not veiculo:
             return {
                 'success': False,
                 'status_code': status.HTTP_404_NOT_FOUND,
@@ -40,7 +40,7 @@ class FineController:
             }
 
         try:
-            amount = int(data.get('amount') or 0)
+            valor = int(data.get('amount') or data.get('valor') or 0)
         except (ValueError, TypeError):
             return {
                 'success': False,
@@ -48,48 +48,47 @@ class FineController:
                 'data': {'error': 'Informe um valor válido para a multa.'}
             }
 
-        driver_or_owner = str(data.get('driver') or vehicle.driver or vehicle.owner or '').strip()
-        code = str(data.get('id') or f"GB-{datetime.now().year}-{str(int(time.time() * 1000))[-5:]}").strip()
-        while Fine.objects.filter(code__iexact=code).exists():
-            code = f"GB-{datetime.now().year}-{str(int(time.time() * 1000))[-5:]}"
+        condutor_ou_dono = str(data.get('driver') or veiculo.condutor or veiculo.proprietario or '').strip()
+        codigo = str(data.get('id') or f"GB-{datetime.now().year}-{str(int(time.time() * 1000))[-5:]}").strip()
+        while Multa.objects.filter(codigo__iexact=codigo).exists():
+            codigo = f"GB-{datetime.now().year}-{str(int(time.time() * 1000))[-5:]}"
 
-        fine = Fine.objects.create(
-            code=code,
-            plate=vehicle.plate,
-            driver=driver_or_owner,
-            infraction=infraction,
-            amount=amount,
-            date=date_str,
-            status=fine_status,
+        multa = Multa.objects.create(
+            codigo=codigo,
+            placa=veiculo.placa,
+            condutor=condutor_ou_dono,
+            infracao=infracao,
+            valor=valor,
+            data=data_str,
+            status=status_multa,
         )
 
         return {
             'success': True,
             'status_code': status.HTTP_201_CREATED,
-            'data': FineSerializer(fine).data
+            'data': MultaSerializer(multa).data
         }
 
     @staticmethod
     def update_fine(code: str, data: dict) -> dict:
         ensure_seed_data()
         clean_code = (code or '').strip()
-        fine = Fine.objects.filter(code__iexact=clean_code).first()
-        if not fine:
+        multa = Multa.objects.filter(codigo__iexact=clean_code).first()
+        if not multa:
             return {
                 'success': False,
                 'status_code': status.HTTP_404_NOT_FOUND,
                 'data': {'error': 'Auto de infração não encontrado.'}
             }
         if 'status' in data:
-            fine.status = str(data.get('status') or fine.status).strip()
-        if 'amount' in data:
-            fine.amount = int(data.get('amount') or fine.amount)
-        if 'infraction' in data:
-            fine.infraction = str(data.get('infraction') or fine.infraction).strip()
-        fine.save()
+            multa.status = str(data.get('status') or multa.status).strip()
+        if 'amount' in data or 'valor' in data:
+            multa.valor = int(data.get('amount') or data.get('valor') or multa.valor)
+        if 'infraction' in data or 'infracao' in data:
+            multa.infracao = str(data.get('infraction') or data.get('infracao') or multa.infracao).strip()
+        multa.save()
         return {
             'success': True,
             'status_code': status.HTTP_200_OK,
-            'data': FineSerializer(fine).data
+            'data': MultaSerializer(multa).data
         }
-

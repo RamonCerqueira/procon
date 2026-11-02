@@ -1,22 +1,23 @@
 from django.contrib import admin
 from .models import (
-    Vehicle, Driver, Fine, VehicleInspection, SystemUser, SystemConfig,
-    Consumer, Supplier, Case, CaseMessage, Document,
-    ProconInspection, Overindebtedness, Hearing
+    Veiculo, HistoricoProprietario, Condutor, Multa, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
+    Fiscalizacao, Superendividamento, Audiencia
 )
 
-admin.site.register(Vehicle)
-admin.site.register(Driver)
-admin.site.register(Fine)
-admin.site.register(VehicleInspection)
-admin.site.register(SystemUser)
-admin.site.register(SystemConfig)
-admin.site.register(Consumer)
-admin.site.register(Supplier)
-admin.site.register(Case)
-admin.site.register(CaseMessage)
-admin.site.register(Document)
-admin.site.register(ProconInspection)
-admin.site.register(Overindebtedness)
-admin.site.register(Hearing)
-
+admin.site.register(Veiculo)
+admin.site.register(HistoricoProprietario)
+admin.site.register(Condutor)
+admin.site.register(Multa)
+admin.site.register(TipoInfracao)
+admin.site.register(InspecaoVeicular)
+admin.site.register(UsuarioSistema)
+admin.site.register(ConfiguracaoSistema)
+admin.site.register(Consumidor)
+admin.site.register(Fornecedor)
+admin.site.register(Processo)
+admin.site.register(MensagemProcesso)
+admin.site.register(Documento)
+admin.site.register(Fiscalizacao)
+admin.site.register(Superendividamento)
+admin.site.register(Audiencia)

@@ -3,159 +3,231 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from .models import (
-    Vehicle, Driver, Fine, InfractionType, VehicleInspection, SystemUser, SystemConfig,
-    Consumer, Supplier, Case, CaseMessage, Document,
-    ProconInspection, Overindebtedness, Hearing
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, Multa, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
+    Fiscalizacao, Superendividamento, Audiencia
 )
 
 
 def ensure_seed_data():
-    """Popula o banco de dados PostgreSQL 'procon' com os dados iniciais se estiver vazio."""
+    """Popula o banco de dados PostgreSQL 'procon' com os dados iniciais nas tabelas em português."""
     # 1. Utilizador Django padrão
     if not User.objects.filter(username='admin').exists():
         User.objects.create_superuser('admin', 'admin@procon.pb.gov.br', '123456')
 
-    # 2. SIGETRAN: Veículos
-    if not Vehicle.objects.exists():
-        seed_vehicles = [
+    # 2. SIGETRAN: Veículos (tabela 'veiculos')
+    if not Veiculo.objects.exists():
+        seed_veiculos = [
             {
-                'plate': 'GB-24-BC', 'make': 'Toyota', 'model': 'Corolla', 'year': 2018,
-                'owner': 'Mamadu Embaló', 'driver': 'Mamadu Embaló', 'tax_due': 41500,
-                'district': 'Bissau', 'category': 'Ligeiro particular'
+                'placa': 'GB-24-BC', 'marca': 'Toyota', 'modelo': 'Corolla', 'ano': 2018, 'cor': 'Prata',
+                'proprietario': 'Mamadu Embaló', 'condutor': 'Mamadu Embaló', 'imposto_devido': 41500,
+                'distrito': 'Bissau', 'categoria': 'Ligeiro particular'
             },
             {
-                'plate': 'GB-19-AA', 'make': 'Suzuki', 'model': 'Carry', 'year': 2020,
-                'owner': 'Adama Baldé', 'driver': 'Bacar Camará', 'tax_due': 0,
-                'district': 'Bafatá', 'category': 'Transporte misto'
+                'placa': 'GB-19-AA', 'marca': 'Suzuki', 'modelo': 'Carry', 'ano': 2020, 'cor': 'Branco',
+                'proprietario': 'Adama Baldé', 'condutor': 'Bacar Camará', 'imposto_devido': 0,
+                'distrito': 'Bafatá', 'categoria': 'Transporte misto'
             },
             {
-                'plate': 'GB-22-CD', 'make': 'Mercedes-Benz', 'model': 'Sprinter', 'year': 2017,
-                'owner': 'Transportes Cacheu', 'driver': 'Ibraima Sanhá', 'tax_due': 83000,
-                'district': 'Cacheu', 'category': 'Transporte colectivo'
+                'placa': 'GB-22-CD', 'marca': 'Mercedes-Benz', 'modelo': 'Sprinter', 'ano': 2017, 'cor': 'Azul',
+                'proprietario': 'Transportes Cacheu', 'condutor': 'Ibraima Sanhá', 'imposto_devido': 83000,
+                'distrito': 'Cacheu', 'categoria': 'Transporte colectivo'
             },
             {
-                'plate': 'GB-23-FA', 'make': 'Honda', 'model': 'Wave', 'year': 2022,
-                'owner': 'Naima Mané', 'driver': 'Naima Mané', 'tax_due': 0,
-                'district': 'Gabú', 'category': 'Motociclo'
-            },
-        ]
-        for v in seed_vehicles:
-            Vehicle.objects.create(**v)
-
-    # 3. SIGETRAN: Condutores
-    if not Driver.objects.exists():
-        seed_drivers = [
-            {
-                'code': 'D-001', 'name': 'Mamadu Embaló', 'document': '000000001',
-                'license': 'GB-C-10294', 'category': 'Ligeiros',
-                'phone': '+245 955 100 201', 'district': 'Bissau', 'status': 'Ativo'
-            },
-            {
-                'code': 'D-002', 'name': 'Bacar Camará', 'document': '000000002',
-                'license': 'GB-C-08142', 'category': 'Ligeiros e mercadorias',
-                'phone': '+245 966 200 142', 'district': 'Bafatá', 'status': 'Ativo'
-            },
-            {
-                'code': 'D-003', 'name': 'Ibraima Sanhá', 'document': '000000003',
-                'license': 'GB-D-07331', 'category': 'Pesados',
-                'phone': '+245 955 300 733', 'district': 'Cacheu', 'status': 'Ativo'
-            },
-            {
-                'code': 'D-004', 'name': 'Naima Mané', 'document': '000000004',
-                'license': 'GB-A-11620', 'category': 'Motociclos',
-                'phone': '+245 966 400 620', 'district': 'Gabú', 'status': 'Ativo'
+                'placa': 'GB-23-FA', 'marca': 'Honda', 'modelo': 'Wave', 'ano': 2022, 'cor': 'Vermelho',
+                'proprietario': 'Naima Mané', 'condutor': 'Naima Mané', 'imposto_devido': 0,
+                'distrito': 'Gabú', 'categoria': 'Motociclo'
             },
         ]
-        for d in seed_drivers:
-            Driver.objects.create(**d)
+        for v in seed_veiculos:
+            Veiculo.objects.create(**v)
 
-    # 4. SIGETRAN: Multas
-    if not Fine.objects.exists():
-        seed_fines = [
+    # 2b. SIGETRAN: Histórico de Proprietários (tabela 'historico_proprietarios')
+    if not HistoricoProprietario.objects.exists():
+        seed_historico = [
             {
-                'code': 'GB-2026-0014', 'plate': 'GB-24-BC', 'driver': 'Mamadu Embaló',
-                'infraction': 'Documentação em falta', 'amount': 25000,
-                'date': '2026-09-18', 'status': 'Pendente'
+                'codigo': 'TRF-2026-0001',
+                'placa': 'GB-24-BC',
+                'veiculo_descricao': 'Toyota Corolla (2018)',
+                'proprietario_anterior': 'Suleimane Djassi',
+                'documento_anterior': '000841920',
+                'novo_proprietario': 'Mamadu Embaló',
+                'documento_novo': '000000001',
+                'novo_condutor': 'Mamadu Embaló',
+                'distrito': 'Bissau',
+                'data_transferencia': '2026-03-14',
+                'motivo': 'Compra e venda',
+                'observacoes': 'Contrato de compra e venda reconhecido em cartório · Processo n.º 104/2026'
             },
             {
-                'code': 'GB-2026-0015', 'plate': 'GB-24-BC', 'driver': 'Mamadu Embaló',
-                'infraction': 'Estacionamento irregular', 'amount': 10000,
-                'date': '2026-09-20', 'status': 'Pendente'
-            },
-            {
-                'code': 'GB-2026-0016', 'plate': 'GB-22-CD', 'driver': 'Ibraima Sanhá',
-                'infraction': 'Documentação em falta', 'amount': 35000,
-                'date': '2026-09-21', 'status': 'Pendente'
+                'codigo': 'TRF-2026-0002',
+                'placa': 'GB-19-AA',
+                'veiculo_descricao': 'Suzuki Carry (2020)',
+                'proprietario_anterior': 'Comercial Bafatá Lda',
+                'documento_anterior': '500192837',
+                'novo_proprietario': 'Adama Baldé',
+                'documento_novo': '000492811',
+                'novo_condutor': 'Bacar Camará',
+                'distrito': 'Bafatá',
+                'data_transferencia': '2026-06-22',
+                'motivo': 'Compra e venda',
+                'observacoes': 'Transferência de titularidade na delegação regional de Bafatá'
             },
         ]
-        for f in seed_fines:
-            Fine.objects.create(**f)
+        for h in seed_historico:
+            HistoricoProprietario.objects.create(**h)
 
-    # 4b. SIGETRAN: Tabela de Infrações e Preços
-    if not InfractionType.objects.exists():
-        seed_infraction_types = [
-            {'code': 'INF-001', 'name': 'Documentação em falta', 'amount': 25000, 'severity': 'Grave', 'description': 'Condução sem documentos obrigatórios do veículo ou condutor'},
-            {'code': 'INF-002', 'name': 'Estacionamento irregular', 'amount': 10000, 'severity': 'Leve', 'description': 'Estacionamento em local proibido ou passeio público'},
-            {'code': 'INF-003', 'name': 'Excesso de velocidade', 'amount': 35000, 'severity': 'Gravíssima', 'description': 'Velocidade superior ao limite regulamentar da via'},
-            {'code': 'INF-004', 'name': 'Condução sem carta de condução', 'amount': 50000, 'severity': 'Gravíssima', 'description': 'Condutor não habilitado para a categoria do veículo'},
-            {'code': 'INF-005', 'name': 'Falta de inspeção periódica', 'amount': 20000, 'severity': 'Média', 'description': 'Inspeção técnica veicular vencida ou inexistente'},
-        ]
-        for it in seed_infraction_types:
-            InfractionType.objects.create(**it)
-
-    # 5. SIGETRAN: Inspeções Veiculares
-    if not VehicleInspection.objects.exists():
-        seed_inspections = [
+    # 2c. SIGETRAN: Ocorrências, Apreensões, Roubos e Baixa Definitiva (tabela 'ocorrencias_veiculares')
+    if not OcorrenciaVeicular.objects.exists():
+        seed_ocorrencias = [
             {
-                'code': 'ITV-0061', 'plate': 'GB-24-BC', 'reason': 'Inspeção periódica',
-                'office': 'Bissau', 'date': '2026-10-28', 'status': 'Agendada'
+                'codigo': 'OCO-2026-0001',
+                'placa': 'GB-22-CD',
+                'veiculo_descricao': 'Mercedes-Benz Sprinter (2017) · Azul',
+                'proprietario': 'Transportes Cacheu',
+                'categoria_registo': 'Ocorrência Policial / Fiscalização',
+                'tipo_evento': 'Apreensão de Veículo',
+                'situacao_resultante': 'Apreendido',
+                'motivo': 'Circulação com imposto em dívida e falta de inspeção técnica obrigatória',
+                'autoridade_orgao': 'Brigada de Trânsito · Cacheu',
+                'numero_processo': 'AUTO-APR-2026/089',
+                'local_deposito': 'Parque de Apreensões da Delegação Regional de Cacheu',
+                'data_evento': '2026-09-25',
+                'observacoes': 'Viatura retida até regularização fiscal e vistoria técnica.'
             },
             {
-                'code': 'ITV-0062', 'plate': 'GB-22-CD', 'reason': 'Verificação de segurança',
-                'office': 'Cacheu', 'date': '2026-10-30', 'status': 'Agendada'
+                'codigo': 'OCO-2026-0002',
+                'placa': 'GB-19-AA',
+                'veiculo_descricao': 'Suzuki Carry (2020) · Branco',
+                'proprietario': 'Adama Baldé',
+                'categoria_registo': 'Ocorrência Policial / Fiscalização',
+                'tipo_evento': 'Recuperação / Restituição',
+                'situacao_resultante': 'Recuperado',
+                'motivo': 'Veículo localizado após participação de furto e restituído ao legítimo proprietário',
+                'autoridade_orgao': 'Polícia de Ordem Pública · Bafatá',
+                'numero_processo': 'BO-REC-2026/142',
+                'local_deposito': 'Comissariado Regional de Bafatá',
+                'data_evento': '2026-10-04',
+                'observacoes': 'Auto de entrega e termo de restituição assinados pelo proprietário.'
             },
         ]
-        for i in seed_inspections:
-            VehicleInspection.objects.create(**i)
+        for oc in seed_ocorrencias:
+            OcorrenciaVeicular.objects.create(**oc)
 
-    # 6. SIGETRAN: Utilizadores e Configuração
-    if not SystemUser.objects.exists():
-        SystemUser.objects.create(
-            name='Administrador do sistema',
+    # 3. SIGETRAN: Condutores (tabela 'condutores')
+    if not Condutor.objects.exists():
+        seed_condutores = [
+            {
+                'codigo': 'D-001', 'nome': 'Mamadu Embaló', 'documento': '000000001',
+                'carta': 'GB-C-10294', 'categoria': 'Ligeiros',
+                'telefone': '+245 955 100 201', 'distrito': 'Bissau', 'status': 'Ativo'
+            },
+            {
+                'codigo': 'D-002', 'nome': 'Bacar Camará', 'documento': '000000002',
+                'carta': 'GB-C-08142', 'categoria': 'Ligeiros e mercadorias',
+                'telefone': '+245 966 200 142', 'distrito': 'Bafatá', 'status': 'Ativo'
+            },
+            {
+                'codigo': 'D-003', 'nome': 'Ibraima Sanhá', 'documento': '000000003',
+                'carta': 'GB-D-07331', 'categoria': 'Pesados',
+                'telefone': '+245 955 300 733', 'distrito': 'Cacheu', 'status': 'Ativo'
+            },
+            {
+                'codigo': 'D-004', 'nome': 'Naima Mané', 'documento': '000000004',
+                'carta': 'GB-A-11620', 'categoria': 'Motociclos',
+                'telefone': '+245 966 400 620', 'distrito': 'Gabú', 'status': 'Ativo'
+            },
+        ]
+        for d in seed_condutores:
+            Condutor.objects.create(**d)
+
+    # 4. SIGETRAN: Multas (tabela 'multas')
+    if not Multa.objects.exists():
+        seed_multas = [
+            {
+                'codigo': 'GB-2026-0014', 'placa': 'GB-24-BC', 'condutor': 'Mamadu Embaló',
+                'infracao': 'Documentação em falta', 'valor': 25000,
+                'data': '2026-09-18', 'status': 'Pendente'
+            },
+            {
+                'codigo': 'GB-2026-0015', 'placa': 'GB-24-BC', 'condutor': 'Mamadu Embaló',
+                'infracao': 'Estacionamento irregular', 'valor': 10000,
+                'data': '2026-09-20', 'status': 'Pendente'
+            },
+            {
+                'codigo': 'GB-2026-0016', 'placa': 'GB-22-CD', 'condutor': 'Ibraima Sanhá',
+                'infracao': 'Documentação em falta', 'valor': 35000,
+                'data': '2026-09-21', 'status': 'Pendente'
+            },
+        ]
+        for m in seed_multas:
+            Multa.objects.create(**m)
+
+    # 5. SIGETRAN: Tipos de Infração e Preços (tabela 'tipos_infracao')
+    if not TipoInfracao.objects.exists():
+        seed_tipos_infracao = [
+            {'codigo': 'INF-001', 'nome': 'Documentação em falta', 'valor': 25000, 'gravidade': 'Grave', 'descricao': 'Condução sem documentos obrigatórios do veículo ou condutor'},
+            {'codigo': 'INF-002', 'nome': 'Estacionamento irregular', 'valor': 10000, 'gravidade': 'Leve', 'descricao': 'Estacionamento em local proibido ou passeio público'},
+            {'codigo': 'INF-003', 'nome': 'Excesso de velocidade', 'valor': 35000, 'gravidade': 'Gravíssima', 'descricao': 'Velocidade superior ao limite regulamentar da via'},
+            {'codigo': 'INF-004', 'nome': 'Condução sem carta de condução', 'valor': 50000, 'gravidade': 'Gravíssima', 'descricao': 'Condutor não habilitado para a categoria do veículo'},
+            {'codigo': 'INF-005', 'nome': 'Falta de inspeção periódica', 'valor': 20000, 'gravidade': 'Média', 'descricao': 'Inspeção técnica veicular vencida ou inexistente'},
+        ]
+        for ti in seed_tipos_infracao:
+            TipoInfracao.objects.create(**ti)
+
+    # 6. SIGETRAN: Inspeções Veiculares (tabela 'inspecoes_veiculares')
+    if not InspecaoVeicular.objects.exists():
+        seed_inspecoes = [
+            {
+                'codigo': 'ITV-0061', 'placa': 'GB-24-BC', 'motivo': 'Inspeção periódica',
+                'delegacao': 'Bissau', 'data': '2026-10-28', 'status': 'Agendada'
+            },
+            {
+                'codigo': 'ITV-0062', 'placa': 'GB-22-CD', 'motivo': 'Verificação de segurança',
+                'delegacao': 'Cacheu', 'data': '2026-10-30', 'status': 'Agendada'
+            },
+        ]
+        for i in seed_inspecoes:
+            InspecaoVeicular.objects.create(**i)
+
+    # 7. SIGETRAN: Usuários e Configuração (tabelas 'usuarios_sistema' e 'configuracoes_sistema')
+    if not UsuarioSistema.objects.exists():
+        UsuarioSistema.objects.create(
+            nome='Administrador do sistema',
             email='admin@sigetran.gov.gw',
-            password=make_password('123456'),
-            role='Administrador',
-            office='Direção Nacional',
+            senha=make_password('123456'),
+            perfil='Administrador',
+            delegacao='Direção Nacional',
             status='Ativo'
         )
-        SystemUser.objects.create(
-            name='Agente de trânsito',
+        UsuarioSistema.objects.create(
+            nome='Agente de trânsito',
             email='agente@sigetran.gov.gw',
-            password=make_password('123456'),
-            role='Fiscalização',
-            office='Bissau',
+            senha=make_password('123456'),
+            perfil='Fiscalização',
+            delegacao='Bissau',
             status='Ativo'
         )
-        SystemUser.objects.create(
-            name='Administrador PROCON',
+        UsuarioSistema.objects.create(
+            nome='Administrador PROCON',
             email='admin@example.com',
-            password=make_password('123456'),
-            role='Administrador',
-            office='Sede Central',
+            senha=make_password('123456'),
+            perfil='Administrador',
+            delegacao='Sede Central',
             status='Ativo'
         )
 
-    if not SystemConfig.objects.exists():
-        SystemConfig.objects.create(
-            institution='Ministério dos Transportes · Guiné-Bissau',
-            system='SIGETRAN',
-            currency='Franco CFA (XOF)',
-            office='Bissau'
+    if not ConfiguracaoSistema.objects.exists():
+        ConfiguracaoSistema.objects.create(
+            instituicao='Ministério dos Transportes · Guiné-Bissau',
+            sistema='SIGETRAN',
+            moeda='Franco CFA (XOF)',
+            delegacao='Bissau'
         )
 
-    # 7. PROCON: Consumidores, Fornecedores, Processos, Documentos, Fiscalizações, Audiências
-    if not Consumer.objects.exists():
-        real_consumers = [
+    # 8. PROCON: Consumidores, Fornecedores, Processos, Documentos, Fiscalizações, Audiências
+    if not Consumidor.objects.exists():
+        consumidores_reais = [
             ('Ana Maria Silva', '123.456.789-00', 'ana.silva@email.com', '(83) 99999-1234'),
             ('João Pedro Santos', '234.567.890-11', 'joao.santos@email.com', '(83) 98888-5678'),
             ('Maria José Oliveira', '345.678.901-22', 'maria.oliveira@email.com', '(83) 97777-9012'),
@@ -167,20 +239,20 @@ def ensure_seed_data():
             ('Camila Rodrigues', '901.234.567-88', 'camila.rodrigues@email.com', '(83) 91111-3456'),
             ('Lucas Ferreira', '012.345.678-99', 'lucas.ferreira@email.com', '(83) 99999-7890'),
         ]
-        for idx, (name, cpf, email, phone) in enumerate(real_consumers):
-            Consumer.objects.create(
-                name=name,
+        for idx, (nome, cpf, email, telefone) in enumerate(consumidores_reais):
+            Consumidor.objects.create(
+                nome=nome,
                 cpf=cpf,
                 email=email,
-                phone=phone,
-                address=f'Av. Epitácio Pessoa, {1000 + idx * 50}',
-                city='João Pessoa',
-                state='PB',
+                telefone=telefone,
+                endereco=f'Av. Epitácio Pessoa, {1000 + idx * 50}',
+                cidade='João Pessoa',
+                estado='PB',
                 status='Ativo'
             )
 
-    if not Supplier.objects.exists():
-        real_suppliers = [
+    if not Fornecedor.objects.exists():
+        fornecedores_reais = [
             ('Magazine Luiza S/A', '47.960.950/0001-21', 'Varejo'),
             ('Casas Bahia Ltda', '33.041.260/0652-90', 'Varejo'),
             ('Carrefour Comércio e Indústria', '45.543.915/0001-81', 'Supermercado'),
@@ -192,24 +264,24 @@ def ensure_seed_data():
             ('Energisa Paraíba', '08.876.543/0001-22', 'Serviços Públicos'),
             ('Banco do Brasil S.A.', '00.000.000/0001-91', 'Bancário'),
         ]
-        for name, cnpj, category in real_suppliers:
-            slug = ''.join(ch for ch in name.lower() if ch.isalnum())
-            Supplier.objects.create(
-                name=name,
+        for nome, cnpj, categoria in fornecedores_reais:
+            slug = ''.join(ch for ch in nome.lower() if ch.isalnum())
+            Fornecedor.objects.create(
+                nome=nome,
                 cnpj=cnpj,
                 email=f'contato@{slug}.com.br',
-                phone='(83) 3222-0000',
-                address='Rua Duque de Caxias, 500 - Centro',
-                city='João Pessoa',
-                state='PB',
+                telefone='(83) 3222-0000',
+                endereco='Rua Duque de Caxias, 500 - Centro',
+                cidade='João Pessoa',
+                estado='PB',
                 status='Ativo',
-                category=category
+                categoria=categoria
             )
 
-    if not Case.objects.exists():
-        consumers = list(Consumer.objects.all())
-        suppliers = list(Supplier.objects.all())
-        subjects = [
+    if not Processo.objects.exists():
+        consumidores = list(Consumidor.objects.all())
+        fornecedores = list(Fornecedor.objects.all())
+        assuntos = [
             ('Cobrança indevida', 'Consumidor relata que recebeu uma fatura com valor acima do contratado.'),
             ('Produto com defeito', 'Produto apresentou defeito após 1 semana de uso e a loja se recusa a trocar.'),
             ('Atraso na entrega', 'Compra realizada pela internet não foi entregue no prazo estipulado.'),
@@ -217,79 +289,78 @@ def ensure_seed_data():
             ('Cancelamento de contrato', 'Solicitou cancelamento do serviço mas continua recebendo cobranças.'),
         ]
         statuses = ['Aberto', 'Em Andamento', 'Concluído']
-        priorities = ['Baixa', 'Média', 'Alta', 'Urgente']
-        for i, (subj, desc) in enumerate(subjects):
-            c = consumers[i % len(consumers)]
-            s = suppliers[i % len(suppliers)]
-            case_obj = Case.objects.create(
-                protocol=f'2026{str(i + 1).zfill(6)}',
-                consumer=c,
-                consumer_name=c.name,
-                supplier=s,
-                supplier_name=s.name,
+        prioridades = ['Baixa', 'Média', 'Alta', 'Urgente']
+        for i, (assunto, desc) in enumerate(assuntos):
+            c = consumidores[i % len(consumidores)]
+            f = fornecedores[i % len(fornecedores)]
+            proc = Processo.objects.create(
+                protocolo=f'2026{str(i + 1).zfill(6)}',
+                consumidor=c,
+                nome_consumidor=c.nome,
+                fornecedor=f,
+                nome_fornecedor=f.nome,
                 status=statuses[i % len(statuses)],
-                priority=priorities[i % len(priorities)],
-                subject=subj,
-                description=desc
+                prioridade=prioridades[i % len(prioridades)],
+                assunto=assunto,
+                descricao=desc
             )
             if i == 0:
-                CaseMessage.objects.create(
-                    case=case_obj,
-                    sender_id=1,
-                    sender_name='Administrador',
-                    content='Processo aberto. Aguardando manifestação do fornecedor no prazo legal de 10 dias.',
-                    is_internal=True
+                MensagemProcesso.objects.create(
+                    processo=proc,
+                    remetente_id=1,
+                    nome_remetente='Administrador',
+                    conteudo='Processo aberto. Aguardando manifestação do fornecedor no prazo legal de 10 dias.',
+                    interna=True
                 )
-                CaseMessage.objects.create(
-                    case=case_obj,
-                    sender_id=2,
-                    sender_name=s.name,
-                    content='Recebemos a reclamação e estamos analisando o caso internamente.',
-                    is_internal=False
+                MensagemProcesso.objects.create(
+                    processo=proc,
+                    remetente_id=2,
+                    nome_remetente=f.nome,
+                    conteudo='Recebemos a reclamação e estamos analisando o caso internamente.',
+                    interna=False
                 )
 
-    if not Document.objects.exists():
-        categories = ['Contrato', 'Fatura', 'Identidade', 'Procuração', 'Comprovante']
+    if not Documento.objects.exists():
+        categorias = ['Contrato', 'Fatura', 'Identidade', 'Procuração', 'Comprovante']
         for i in range(5):
-            Document.objects.create(
-                title=f'Documento_Processo_{2026001 + i}.pdf',
-                doc_type='PDF',
-                size=f'{1.2 + i * 0.5:.1f} MB',
-                category=categories[i % len(categories)],
-                uploaded_by='Administrador',
+            Documento.objects.create(
+                titulo=f'Documento_Processo_{2026001 + i}.pdf',
+                tipo_documento='PDF',
+                tamanho=f'{1.2 + i * 0.5:.1f} MB',
+                categoria=categorias[i % len(categorias)],
+                enviado_por='Administrador',
                 url='#'
             )
 
-    if not ProconInspection.objects.exists():
-        suppliers = list(Supplier.objects.all())
+    if not Fiscalizacao.objects.exists():
+        fornecedores = list(Fornecedor.objects.all())
         for i in range(5):
-            ProconInspection.objects.create(
-                supplier_name=suppliers[i % len(suppliers)].name,
-                address=f'Av. Epitácio Pessoa, {1000 + i * 50}',
-                date=timezone.now() - timedelta(days=i * 3),
+            Fiscalizacao.objects.create(
+                nome_fornecedor=fornecedores[i % len(fornecedores)].nome,
+                endereco=f'Av. Epitácio Pessoa, {1000 + i * 50}',
+                data=timezone.now() - timedelta(days=i * 3),
                 status=['Agendada', 'Realizada', 'Cancelada'][i % 3],
-                result=['Regular', 'Irregular', 'Pendente'][i % 3],
-                inspector='Fiscal João'
+                resultado=['Regular', 'Irregular', 'Pendente'][i % 3],
+                fiscal='Fiscal João'
             )
 
-    if not Overindebtedness.objects.exists():
-        consumers = list(Consumer.objects.all())
+    if not Superendividamento.objects.exists():
+        consumidores = list(Consumidor.objects.all())
         for i in range(5):
-            Overindebtedness.objects.create(
-                consumer_name=consumers[i % len(consumers)].name,
-                total_debt=f'{15000 + i * 4500:.2f}',
-                creditors_count=2 + (i % 4),
+            Superendividamento.objects.create(
+                nome_consumidor=consumidores[i % len(consumidores)].nome,
+                divida_total=f'{15000 + i * 4500:.2f}',
+                quantidade_credores=2 + (i % 4),
                 status=['Em Análise', 'Audiência Agendada', 'Acordo Realizado'][i % 3],
-                request_date=timezone.now() - timedelta(days=i * 5)
+                data_solicitacao=timezone.now() - timedelta(days=i * 5)
             )
 
-    if not Hearing.objects.exists():
+    if not Audiencia.objects.exists():
         for i in range(5):
-            Hearing.objects.create(
-                case_protocol=f'2026{str(i + 1).zfill(6)}',
-                date=timezone.now() + timedelta(days=i + 2),
-                room=f'Sala {(i % 3) + 1}',
-                mediator='Conciliadora Maria',
+            Audiencia.objects.create(
+                protocolo_processo=f'2026{str(i + 1).zfill(6)}',
+                data=timezone.now() + timedelta(days=i + 2),
+                sala=f'Sala {(i % 3) + 1}',
+                conciliador='Conciliadora Maria',
                 status='Agendada'
             )
-
