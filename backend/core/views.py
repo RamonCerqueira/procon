@@ -5,12 +5,12 @@ from rest_framework import status
 
 from .controllers import AuthController, VehicleController, DriverController, FineController, InfractionController, OwnershipController, VehicleStatusController
 from .models import (
-    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, Multa, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
 )
 from .serializers import (
-    VeiculoSerializer, OcorrenciaVeicularSerializer, HistoricoProprietarioSerializer, CondutorSerializer, MultaSerializer, TipoInfracaoSerializer,
+    VeiculoSerializer, OcorrenciaVeicularSerializer, HistoricoProprietarioSerializer, CondutorSerializer, RegistoCartaConducaoSerializer, ExameCondutorSerializer, MultaSerializer, RecursoMultaSerializer, AgenteFiscalizadorSerializer, TipoInfracaoSerializer,
     InspecaoVeicularSerializer, UsuarioSistemaSerializer, ConfiguracaoSistemaSerializer,
     ConsumidorSerializer, FornecedorSerializer, ProcessoSerializer,
     MensagemProcessoSerializer, DocumentoSerializer, FiscalizacaoSerializer,
@@ -179,10 +179,77 @@ def sigetran_state(request, key):
                             'telefone': item.get('phone', ''),
                             'distrito': item.get('district', ''),
                             'status': item.get('status', 'Ativo'),
+                            'data_emissao': item.get('issueDate', '2024-01-15') or '2024-01-15',
+                            'data_validade': item.get('expiryDate', '2029-01-15') or '2029-01-15',
+                            'pontuacao': int(item.get('points', 20) if item.get('points') is not None else 20),
+                            'restricoes_medicas': item.get('medicalRestrictions', 'Sem restrições') or 'Sem restrições',
                         }
                     )
                 Condutor.objects.exclude(codigo__in=codigos).delete()
             return Response(CondutorSerializer(Condutor.objects.all(), many=True).data)
+
+    elif key == 'driver-license-records':
+        if request.method == 'GET':
+            items = RegistoCartaConducao.objects.all()
+            return Response(RegistoCartaConducaoSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    RegistoCartaConducao.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'condutor_codigo': item.get('driverId', ''),
+                            'condutor_nome': item.get('driverName', ''),
+                            'carta': item.get('license', ''),
+                            'tipo_registo': item.get('recordType', 'Emissão'),
+                            'detalhe_acao': item.get('actionDetail', ''),
+                            'categoria': item.get('category', '') or '',
+                            'data_emissao': item.get('issueDate', '') or '',
+                            'data_validade': item.get('expiryDate', '') or '',
+                            'pontos_delta': int(item.get('pointsDelta') or 0),
+                            'motivo_observacoes': item.get('notes', '') or '',
+                        }
+                    )
+                RegistoCartaConducao.objects.exclude(codigo__in=codigos).delete()
+            return Response(RegistoCartaConducaoSerializer(RegistoCartaConducao.objects.all(), many=True).data)
+
+    elif key == 'driver-exams':
+        if request.method == 'GET':
+            items = ExameCondutor.objects.all()
+            return Response(ExameCondutorSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    ExameCondutor.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'condutor_codigo': item.get('driverId', ''),
+                            'condutor_nome': item.get('driverName', ''),
+                            'carta': item.get('license', '') or '',
+                            'categoria_pretendida': item.get('targetCategory', 'B') or 'B',
+                            'tipo_exame': item.get('examType', 'Exame Médico de Aptidão Física'),
+                            'resultado': item.get('result', 'Apto'),
+                            'entidade_medica': item.get('medicalEntity', '') or '',
+                            'numero_atestado': item.get('certificateNumber', '') or '',
+                            'restricoes': item.get('restrictions', 'Sem restrições') or 'Sem restrições',
+                            'data_exame': item.get('examDate', ''),
+                            'validade_exame': item.get('expiryDate', '') or '',
+                        }
+                    )
+                ExameCondutor.objects.exclude(codigo__in=codigos).delete()
+            return Response(ExameCondutorSerializer(ExameCondutor.objects.all(), many=True).data)
 
     elif key == 'fines':
         if request.method == 'GET':
@@ -203,13 +270,79 @@ def sigetran_state(request, key):
                             'placa': item.get('plate', ''),
                             'condutor': item.get('driver', '') or '',
                             'infracao': item.get('infraction', ''),
+                            'gravidade': item.get('severity', 'Média') or 'Média',
                             'valor': int(item.get('amount') or 0),
                             'data': item.get('date', ''),
                             'status': item.get('status', 'Pendente'),
+                            'agente_nome': item.get('agentName', 'Subinspetor Braima Baldé') or 'Subinspetor Braima Baldé',
+                            'agente_matricula': item.get('agentBadge', 'AG-BT-104') or 'AG-BT-104',
+                            'local_infracao': item.get('location', 'Bissau') or 'Bissau',
+                            'arquivo_prova': item.get('evidenceFile'),
+                            'descricao_prova': item.get('evidenceDescription', '') or '',
+                            'comprovativo_pagamento': item.get('paymentReceipt', '') or '',
+                            'data_pagamento': item.get('paymentDate', '') or '',
+                            'metodo_pagamento': item.get('paymentMethod', '') or '',
+                            'bloqueio_administrativo': bool(item.get('administrativeBlock', False)),
+                            'motivo_bloqueio': item.get('blockReason', '') or '',
                         }
                     )
                 Multa.objects.exclude(codigo__in=codigos).delete()
             return Response(MultaSerializer(Multa.objects.all(), many=True).data)
+
+    elif key == 'fine-appeals':
+        if request.method == 'GET':
+            items = RecursoMulta.objects.all()
+            return Response(RecursoMultaSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    RecursoMulta.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'auto_codigo': item.get('fineId', ''),
+                            'placa': item.get('plate', ''),
+                            'recorrente': item.get('appellant', ''),
+                            'fundamentacao': item.get('grounds', ''),
+                            'data_submissao': item.get('submissionDate', ''),
+                            'decisao': item.get('decision', 'Em análise'),
+                            'parecer_autoridade': item.get('authorityNotes', '') or '',
+                        }
+                    )
+                RecursoMulta.objects.exclude(codigo__in=codigos).delete()
+            return Response(RecursoMultaSerializer(RecursoMulta.objects.all(), many=True).data)
+
+    elif key == 'inspection-agents':
+        if request.method == 'GET':
+            items = AgenteFiscalizador.objects.all()
+            return Response(AgenteFiscalizadorSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    AgenteFiscalizador.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'nome': item.get('name', ''),
+                            'corporacao': item.get('corps', 'Brigada Nacional de Trânsito'),
+                            'posto_patente': item.get('rank', 'Subinspetor de Trânsito'),
+                            'delegacao': item.get('office', 'Bissau'),
+                            'telefone': item.get('phone', '') or '',
+                            'status': item.get('status', 'Ativo'),
+                        }
+                    )
+                AgenteFiscalizador.objects.exclude(codigo__in=codigos).delete()
+            return Response(AgenteFiscalizadorSerializer(AgenteFiscalizador.objects.all(), many=True).data)
 
     elif key == 'infraction-types':
         if request.method == 'GET':
@@ -352,6 +485,43 @@ def driver_detail(request, code):
 
 
 @api_view(['GET', 'POST'])
+def driver_license_records_list(request):
+    if request.method == 'GET':
+        result = DriverController.list_license_records(
+            driver_id=request.GET.get('driverId', ''),
+            record_type=request.GET.get('recordType', ''),
+            search=request.GET.get('search', '')
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = DriverController.create_license_record(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def driver_license_record_detail(request, code):
+    result = DriverController.delete_license_record(code)
+    return Response(status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def driver_exams_list(request):
+    if request.method == 'GET':
+        result = DriverController.list_driver_exams(
+            driver_id=request.GET.get('driverId', ''),
+            search=request.GET.get('search', '')
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = DriverController.create_driver_exam(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def driver_exam_detail(request, code):
+    result = DriverController.delete_driver_exam(code)
+    return Response(status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
 def fines_list(request):
     if request.method == 'GET':
         result = FineController.list_fines()
@@ -364,6 +534,36 @@ def fines_list(request):
 def fine_detail(request, code):
     result = FineController.update_fine(code, request.data)
     return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def fine_appeals_list(request):
+    if request.method == 'GET':
+        result = FineController.list_appeals()
+        return Response(result['data'], status=result['status_code'])
+    result = FineController.create_appeal(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['PUT', 'PATCH'])
+def fine_appeal_detail(request, code):
+    result = FineController.update_appeal(code, request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def inspection_agents_list(request):
+    if request.method == 'GET':
+        result = FineController.list_agents()
+        return Response(result['data'], status=result['status_code'])
+    result = FineController.create_agent(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def inspection_agent_detail(request, code):
+    result = FineController.delete_agent(code)
+    return Response(status=result['status_code'])
 
 
 @api_view(['GET', 'POST'])

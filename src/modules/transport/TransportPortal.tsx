@@ -7,8 +7,12 @@ import { useAuthStore } from '../../store/authStore';
 type Vehicle = { plate: string; make: string; model: string; year: number; color?: string; owner: string; driver: string; taxDue: number; district: string; category: string; legalStatus?: string };
 type VehicleOccurrence = { id: string; plate: string; vehicleLabel?: string; owner?: string; recordCategory?: string; eventType: string; resultingStatus: string; reason: string; authority?: string; processNumber?: string; location?: string; date: string; notes?: string };
 type OwnershipTransfer = { id: string; plate: string; vehicleLabel?: string; previousOwner: string; previousDocument?: string; newOwner: string; newDocument?: string; newDriver?: string; district?: string; transferDate: string; reason: string; notes?: string };
-type Driver = { id: string; name: string; document: string; documentFile?: { name: string; dataUrl: string }; license: string; category: string; phone: string; district: string; status: string };
-type Fine = { id: string; plate: string; driver: string; infraction: string; amount: number; date: string; status: 'Pendente' | 'Pago' };
+type Driver = { id: string; name: string; document: string; documentFile?: { name: string; dataUrl: string }; license: string; category: string; phone: string; district: string; status: string; issueDate?: string; expiryDate?: string; points?: number; medicalRestrictions?: string };
+type DriverLicenseRecord = { id: string; driverId: string; driverName: string; license: string; recordType: string; actionDetail: string; category?: string; issueDate?: string; expiryDate?: string; pointsDelta?: number; notes?: string };
+type DriverExam = { id: string; driverId: string; driverName: string; license?: string; targetCategory: string; examType: string; result: string; medicalEntity?: string; certificateNumber?: string; restrictions?: string; examDate: string; expiryDate?: string };
+type Fine = { id: string; plate: string; driver: string; infraction: string; severity?: string; amount: number; date: string; status: 'Pendente' | 'Pago' | 'Anulado'; agentName?: string; agentBadge?: string; location?: string; evidenceFile?: { name: string; dataUrl: string }; evidenceDescription?: string; paymentReceipt?: string; paymentDate?: string; paymentMethod?: string; administrativeBlock?: boolean; blockReason?: string };
+type FineAppeal = { id: string; fineId: string; plate: string; appellant: string; reason: string; defenseArguments: string; attachmentFile?: { name: string; dataUrl: string }; appealDate: string; status: string; decisionNotes?: string };
+type InspectionAgent = { id: string; name: string; badge: string; unit: string; district: string; phone?: string; status: string };
 type InfractionTypeItem = { id: string; name: string; amount: number; severity: string; description?: string };
 type Inspection = { id: string; plate: string; reason: string; office: string; date: string; status: string };
 
@@ -27,15 +31,32 @@ const seedVehicleOccurrences: VehicleOccurrence[] = [
   {id:'OCO-2026-0002',plate:'GB-19-AA',vehicleLabel:'Suzuki Carry (2020) · Branco',owner:'Adama Baldé',recordCategory:'Ocorrência Policial / Fiscalização',eventType:'Recuperação / Restituição',resultingStatus:'Recuperado',reason:'Veículo localizado após participação de furto e restituído ao legítimo proprietário',authority:'Polícia de Ordem Pública · Bafatá',processNumber:'BO-REC-2026/142',location:'Comissariado Regional de Bafatá',date:'2026-10-04',notes:'Auto de entrega e termo de restituição assinados pelo proprietário.'},
 ];
 const seedDrivers: Driver[] = [
-  {id:'D-001',name:'Mamadu Embaló',document:'000000001',license:'GB-C-10294',category:'Ligeiros',phone:'+245 955 100 201',district:'Bissau',status:'Ativo'},
-  {id:'D-002',name:'Bacar Camará',document:'000000002',license:'GB-C-08142',category:'Ligeiros e mercadorias',phone:'+245 966 200 142',district:'Bafatá',status:'Ativo'},
-  {id:'D-003',name:'Ibraima Sanhá',document:'000000003',license:'GB-D-07331',category:'Pesados',phone:'+245 955 300 733',district:'Cacheu',status:'Ativo'},
-  {id:'D-004',name:'Naima Mané',document:'000000004',license:'GB-A-11620',category:'Motociclos',phone:'+245 966 400 620',district:'Gabú',status:'Ativo'},
+  {id:'D-001',name:'Mamadu Embaló',document:'000000001',license:'GB-C-10294',category:'B · Ligeiros',phone:'+245 955 100 201',district:'Bissau',status:'Ativo',issueDate:'2023-04-10',expiryDate:'2028-04-10',points:13,medicalRestrictions:'Sem restrições'},
+  {id:'D-002',name:'Bacar Camará',document:'000000002',license:'GB-C-08142',category:'B, C · Ligeiros e Mercadorias',phone:'+245 966 200 142',district:'Bafatá',status:'Ativo',issueDate:'2021-08-22',expiryDate:'2026-08-22',points:20,medicalRestrictions:'Uso obrigatório de lentes corretivas'},
+  {id:'D-003',name:'Ibraima Sanhá',document:'000000003',license:'GB-D-07331',category:'C, D, E · Pesados e Passageiros',phone:'+245 955 300 733',district:'Cacheu',status:'Ativo',issueDate:'2020-11-05',expiryDate:'2025-11-05',points:15,medicalRestrictions:'Avaliação psicotécnica periódica (Cat. D/E)'},
+  {id:'D-004',name:'Naima Mané',document:'000000004',license:'GB-A-11620',category:'A · Motociclos',phone:'+245 966 400 620',district:'Gabú',status:'Ativo',issueDate:'2024-02-18',expiryDate:'2029-02-18',points:20,medicalRestrictions:'Sem restrições'},
+];
+const seedDriverLicenseRecords: DriverLicenseRecord[] = [
+  {id:'RCC-2026-0001',driverId:'D-001',driverName:'Mamadu Embaló',license:'GB-C-10294',recordType:'Emissão',actionDetail:'1.ª Emissão Definitiva de Carta de Condução',category:'B · Ligeiros',issueDate:'2023-04-10',expiryDate:'2028-04-10',pointsDelta:0,notes:'Aprovação em exame teórico e prático na Delegação de Bissau'},
+  {id:'RCC-2026-0002',driverId:'D-002',driverName:'Bacar Camará',license:'GB-C-08142',recordType:'Categoria',actionDetail:'Averbamento / Adição de Categoria C (Pesados de Mercadorias)',category:'B, C · Ligeiros e Mercadorias',issueDate:'2024-05-12',expiryDate:'2029-05-12',pointsDelta:0,notes:'Exame prático de pesados concluído com aproveitamento em Bafatá'},
+  {id:'RCC-2026-0003',driverId:'D-003',driverName:'Ibraima Sanhá',license:'GB-D-07331',recordType:'Renovação',actionDetail:'Renovação Periódica de Carta Profissional (Cat. D/E)',category:'C, D, E · Pesados e Passageiros',issueDate:'2025-11-05',expiryDate:'2030-11-05',pointsDelta:0,notes:'Apresentado atestado médico e certificado de aptidão psicológica'},
+];
+const seedDriverExams: DriverExam[] = [
+  {id:'EXM-2026-0001',driverId:'D-002',driverName:'Bacar Camará',license:'GB-C-08142',targetCategory:'B, C',examType:'Exame Médico de Aptidão Física',result:'Apto com restrições',medicalEntity:'Hospital Regional de Bafatá · Junta Médica',certificateNumber:'ATM-2026-0419',restrictions:'Uso obrigatório de lentes corretivas',examDate:'2026-02-14',expiryDate:'2029-02-14'},
+  {id:'EXM-2026-0002',driverId:'D-003',driverName:'Ibraima Sanhá',license:'GB-D-07331',targetCategory:'C, D, E',examType:'Exame Médico e Psicológico Completo',result:'Apto',medicalEntity:'Centro Nacional de Medicina Rodoviária · Bissau',certificateNumber:'PSICO-2026-0882',restrictions:'Sem restrições · Apto para transporte coletivo de passageiros',examDate:'2026-05-20',expiryDate:'2028-05-20'},
 ];
 const seedFines: Fine[] = [
-  {id:'GB-2026-0014',plate:'GB-24-BC',driver:'Mamadu Embaló',infraction:'Documentação em falta',amount:25000,date:'2026-09-18',status:'Pendente'},
-  {id:'GB-2026-0015',plate:'GB-24-BC',driver:'Mamadu Embaló',infraction:'Estacionamento irregular',amount:10000,date:'2026-09-20',status:'Pendente'},
-  {id:'GB-2026-0016',plate:'GB-22-CD',driver:'Ibraima Sanhá',infraction:'Documentação em falta',amount:35000,date:'2026-09-21',status:'Pendente'},
+  {id:'GB-2026-0014',plate:'GB-24-BC',driver:'Mamadu Embaló',infraction:'Documentação em falta',severity:'Grave',amount:25000,date:'2026-09-18',status:'Pendente',agentName:'Subcomissário Malam Bacai',agentBadge:'AG-GB-0104',location:'Av. Amílcar Cabral · Bissau',evidenceDescription:'Verificação presencial em posto de fiscalização; condutor sem livrete da viatura.'},
+  {id:'GB-2026-0015',plate:'GB-24-BC',driver:'Mamadu Embaló',infraction:'Estacionamento irregular',severity:'Leve',amount:10000,date:'2026-09-20',status:'Pago',agentName:'Subcomissário Malam Bacai',agentBadge:'AG-GB-0104',location:'Praça dos Heróis Nacionais · Bissau',evidenceDescription:'Fotografia da viatura estacionada sobre o passeio pedonal.',paymentReceipt:'REC-DGV-2026-00918',paymentDate:'2026-09-22',paymentMethod:'Referência Bancária / Tesouraria'},
+  {id:'GB-2026-0016',plate:'GB-22-CD',driver:'Ibraima Sanhá',infraction:'Excesso de velocidade',severity:'Gravíssima',amount:35000,date:'2026-09-21',status:'Pendente',agentName:'Chefe de Posto Ansumane Mané',agentBadge:'AG-GB-0315',location:'Estrada Nacional N2 · Cacheu',evidenceDescription:'Registo cinemómetro radar portátil (98 km/h em zona de 60 km/h).',administrativeBlock:true,blockReason:'Bloqueio administrativo preventivo por infração gravíssima não regularizada e reincidência (Art. 142.º do Código da Estrada).'},
+];
+const seedFineAppeals: FineAppeal[] = [
+  {id:'REC-2026-0001',fineId:'GB-2026-0014',plate:'GB-24-BC',appellant:'Mamadu Embaló',reason:'Apresentação posterior de documento válido à data da fiscalização',defenseArguments:'O livrete encontrava-se em renovação na Delegação de Bissau, conforme protocolo anexado.',appealDate:'2026-09-25',status:'Em análise',decisionNotes:'Aguardando parecer jurídico da Comissão Técnica de Contraordenações.'},
+];
+const seedInspectionAgents: InspectionAgent[] = [
+  {id:'AGT-001',name:'Subcomissário Malam Bacai',badge:'AG-GB-0104',unit:'Brigada Nacional de Trânsito · Setor Autónomo',district:'Bissau',phone:'+245 955 810 104',status:'Ativo'},
+  {id:'AGT-002',name:'Agente Principal Fátima Djú',badge:'AG-GB-0219',unit:'Destacamento Regional de Fiscalização Rodoviária',district:'Bafatá',phone:'+245 966 820 219',status:'Ativo'},
+  {id:'AGT-003',name:'Chefe de Posto Ansumane Mané',badge:'AG-GB-0315',unit:'Posto de Controlo Rodoviário de São Domingos',district:'Cacheu',phone:'+245 955 830 315',status:'Ativo'},
 ];
 const seedInfractionTypes: InfractionTypeItem[] = [
   {id:'INF-001',name:'Documentação em falta',amount:25000,severity:'Grave',description:'Condução sem documentos obrigatórios do veículo ou condutor'},
@@ -55,8 +76,30 @@ function useSaved<T>(key:string, initial:T) {
   return [data,(next:T|((prev:T)=>T))=>{setData(prev=>{const value=typeof next==='function'?(next as (prev:T)=>T)(prev):next;try{localStorage.setItem(`sigetran:${key}`,JSON.stringify(value));}catch{/* storage unavailable */}api.put(`/state/${key}`,value).catch(()=>{/* ignore */});return value;});}] as const;
 }
 
-const menu:{path:string;label:string;icon:LucideIcon}[]=[
-  {path:'/dashboard',label:'Painel de gestão',icon:Activity},{path:'/vehicles',label:'Veículos e matrículas',icon:CarFront},{path:'/ownership-transfers',label:'Transferência e histórico',icon:ArrowRight},{path:'/vehicle-occurrences',label:'Apreensões, roubos e baixas',icon:ShieldCheck},{path:'/drivers',label:'Condutores e cartas',icon:Users},{path:'/plate-check',label:'Consulta de matrícula',icon:Search},{path:'/circulation-tax',label:'Imposto de Circulação',icon:Banknote},{path:'/fines',label:'Multas e infrações',icon:ClipboardList},{path:'/infraction-types',label:'Tabela de infrações',icon:AlertTriangle},{path:'/inspections',label:'Inspeções veiculares',icon:ClipboardCheck},{path:'/reports',label:'Relatórios nacionais',icon:FileBarChart2},{path:'/users',label:'Utilizadores',icon:UserRoundCog},{path:'/settings',label:'Configuração',icon:Settings},
+const driverSubmenus:{path:string;label:string;shortLabel:string}[]=[
+  {path:'/drivers',label:'Cadastro completo de condutores',shortLabel:'Cadastro completo'},
+  {path:'/drivers/license-issue',label:'Emissão de carta de condução',shortLabel:'Emissão de carta'},
+  {path:'/drivers/categories',label:'Categorias de habilitação (A, B, C, D, E)',shortLabel:'Categorias (A-E)'},
+  {path:'/drivers/renewals',label:'Renovação e validade da carta',shortLabel:'Renovação e validade'},
+  {path:'/drivers/suspensions',label:'Suspensão e cassação da habilitação',shortLabel:'Suspensão e cassação'},
+  {path:'/drivers/infractions-history',label:'Histórico de infrações',shortLabel:'Histórico de infrações'},
+  {path:'/drivers/points',label:'Pontuação do condutor',shortLabel:'Pontuação'},
+  {path:'/drivers/exams',label:'Histórico de exames médicos e psicológicos',shortLabel:'Exames médicos/psicológicos'},
+];
+const fineSubmenus:{path:string;label:string;shortLabel:string}[]=[
+  {path:'/infraction-types',label:'Catálogo nacional de infrações',shortLabel:'Catálogo de infrações'},
+  {path:'/fines/severity',label:'Classificação por gravidade',shortLabel:'Gravidade'},
+  {path:'/fines/amounts',label:'Valor da multa',shortLabel:'Valor da multa'},
+  {path:'/fines',label:'Emissão de auto de infração',shortLabel:'Emissão de auto'},
+  {path:'/fines/evidence',label:'Fotografias e provas',shortLabel:'Fotografias e provas'},
+  {path:'/fines/agents',label:'Identificação do agente fiscalizador',shortLabel:'Agente fiscalizador'},
+  {path:'/fines/payments',label:'Pagamento e comprovativos',shortLabel:'Pagamentos e comprovativos'},
+  {path:'/fines/appeals',label:'Recursos e contestações',shortLabel:'Recursos e contestações'},
+  {path:'/fines/recidivism',label:'Histórico de reincidência',shortLabel:'Reincidência'},
+  {path:'/fines/administrative-blocks',label:'Bloqueio administrativo',shortLabel:'Bloqueio administrativo'},
+];
+const menu:{path:string;label:string;icon:LucideIcon;children?:{path:string;label:string}[]}[]=[
+  {path:'/dashboard',label:'Painel de gestão',icon:Activity},{path:'/vehicles',label:'Veículos e matrículas',icon:CarFront},{path:'/ownership-transfers',label:'Transferência e histórico',icon:ArrowRight},{path:'/vehicle-occurrences',label:'Apreensões, roubos e baixas',icon:ShieldCheck},{path:'/drivers',label:'Gestão de condutores',icon:Users,children:driverSubmenus},{path:'/plate-check',label:'Consulta de matrícula',icon:Search},{path:'/circulation-tax',label:'Imposto de Circulação',icon:Banknote},{path:'/fines',label:'Gestão de multas e infrações',icon:ClipboardList,children:fineSubmenus},{path:'/inspections',label:'Inspeções veiculares',icon:ClipboardCheck},{path:'/reports',label:'Relatórios nacionais',icon:FileBarChart2},{path:'/users',label:'Utilizadores',icon:UserRoundCog},{path:'/settings',label:'Configuração',icon:Settings},
 ];
 const inputClass='w-full border border-[#d5d1c2] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#009E49] focus:ring-2 focus:ring-[#009E49]/15';
 const primaryClass='inline-flex items-center justify-center gap-2 bg-[#006B35] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#00552b] disabled:cursor-not-allowed disabled:opacity-50';
@@ -69,14 +112,14 @@ function Shell({children}:{children:ReactNode}) {
   return <div className="min-h-screen bg-[#f4f3ed] text-[#202820]"><div className="flex h-1.5"><div className="w-1/3 bg-[#CE1126]"/><div className="w-1/3 bg-[#FCD116]"/><div className="w-1/3 bg-[#009E49]"/></div>
     <div className="border-b border-[#dcd9cc] bg-[#eeede5] px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[.16em] text-[#4b5549] md:px-8">República da Guiné-Bissau <span className="mx-2 text-[#CE1126]">|</span> Serviço Público Digital <span className="float-right hidden font-normal tracking-normal sm:block">Ambiente de demonstração</span></div>
     <div className="lg:flex"><aside className="w-full bg-[#173d2b] text-white lg:min-h-[calc(100vh-29px)] lg:w-[264px]"><div className="border-b border-white/15 px-5 py-6"><div className="flex items-center gap-3"><div className="relative grid h-12 w-12 place-items-center border border-[#FCD116]/60 bg-[#214c36] text-sm font-black tracking-wider text-[#FCD116]"><span className="absolute inset-1 border border-[#FCD116]/30"/>GB</div><div><b className="block text-[13px] uppercase tracking-[.1em]">Ministério dos<br/>Transportes</b><span className="mt-1 block text-[10px] uppercase tracking-[.14em] text-[#bdcdbf]">Administração Nacional</span></div></div><div className="mt-5 border-l-2 border-[#FCD116] pl-3"><div className="text-[10px] uppercase tracking-[.14em] text-[#bdcdbf]">Plataforma</div><div className="mt-0.5 font-semibold tracking-wide">SIGETRAN</div></div></div>
-      <div className="px-4 pt-5 text-[10px] font-semibold uppercase tracking-[.17em] text-[#9fb7a4]">Gestão e serviços</div><nav className="grid grid-cols-2 gap-1 p-3 sm:grid-cols-3 lg:block lg:space-y-1">{menu.map((item,index)=><Link key={item.path} to={item.path} className={`relative flex min-w-0 items-center gap-2 px-2 py-3 text-[12px] transition lg:gap-3 lg:px-3 lg:text-[13px] ${pathname===item.path?'bg-[#f4f3ed] font-semibold text-[#173d2b]':'text-[#d8e2d9] hover:bg-white/10 hover:text-white'}`}>{pathname===item.path&&<span className="absolute bottom-0 left-0 top-0 w-[3px] bg-[#FCD116]"/>}<item.icon size={17} className="shrink-0"/><span className="leading-4">{item.label}</span>{index===3&&<span className="ml-auto hidden rounded bg-[#FCD116]/20 px-1.5 py-0.5 text-[9px] uppercase text-[#FCD116] lg:inline">rápido</span>}</Link>)}</nav>
+      <div className="px-4 pt-5 text-[10px] font-semibold uppercase tracking-[.17em] text-[#9fb7a4]">Gestão e serviços</div><nav className="grid grid-cols-2 gap-1 p-3 sm:grid-cols-3 lg:block lg:space-y-1">{menu.map((item)=>{const hasChildren=Boolean(item.children);const isActive=hasChildren?item.children!.some(c=>pathname===c.path)||pathname.startsWith(item.path):pathname===item.path;return <div key={item.path}><Link to={item.path} className={`relative flex min-w-0 items-center gap-2 px-2 py-3 text-[12px] transition lg:gap-3 lg:px-3 lg:text-[13px] ${isActive&&!hasChildren?'bg-[#f4f3ed] font-semibold text-[#173d2b]':isActive&&hasChildren?'bg-[#214c36] font-semibold text-[#FCD116]':'text-[#d8e2d9] hover:bg-white/10 hover:text-white'}`}>{isActive&&<span className="absolute bottom-0 left-0 top-0 w-[3px] bg-[#FCD116]"/>}<item.icon size={17} className="shrink-0"/><span className="leading-4">{item.label}</span>{hasChildren&&<span className="ml-auto text-[10px] text-[#FCD116]">▾</span>}</Link>{hasChildren&&<div className="col-span-2 mt-1 space-y-0.5 border-l border-[#FCD116]/40 bg-[#123122] py-1.5 pl-3 pr-2 sm:col-span-3 lg:ml-4">{item.children!.map(sub=>{const subActive=pathname===sub.path;return <Link key={sub.path} to={sub.path} className={`block rounded-sm px-2.5 py-1.5 text-[11px] leading-4 transition ${subActive?'bg-[#f4f3ed] font-bold text-[#173d2b]':'text-[#c8d8cb] hover:bg-white/10 hover:text-white'}`}>{sub.label}</Link>;})}</div>}</div>;})}</nav>
       <div className="mx-4 my-5 hidden border-t border-white/15 pt-4 text-[11px] leading-5 text-[#c4d2c6] md:block"><div className="mb-2 flex items-center gap-2 font-semibold uppercase tracking-wider text-[#FCD116]"><ShieldCheck size={14}/> Ambiente demonstrativo</div>Dados e pagamentos simulados, armazenados apenas neste navegador.</div><div className="hidden border-t border-white/15 px-5 py-4 text-[10px] text-[#9fb7a4] md:block">Bissau · Guiné-Bissau<br/>SIGETRAN · Versão de demonstração</div>
     </aside><main className="min-w-0 flex-1"><header className="flex min-h-[76px] items-center justify-between border-b border-[#dcd9cc] bg-white px-5 md:px-9"><div><div className="text-[10px] font-semibold uppercase tracking-[.15em] text-[#52644f]">Sistema Integrado de Gestão de Trânsito</div><div className="mt-1 text-xs text-[#737a70]">Ministério dos Transportes <span className="mx-1">/</span> Administração Central</div></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><div className="text-xs font-semibold">Administrador do sistema</div><div className="text-[10px] text-[#737a70]">Direção Nacional · Bissau</div></div><div className="hidden h-9 w-9 place-items-center border border-[#d5d1c2] bg-[#f4f3ed] text-xs font-bold text-[#173d2b] sm:grid">AD</div><button title="Sair do sistema" onClick={()=>{logout();navigate('/');}} className="flex items-center gap-2 border border-[#d5d1c2] px-3 py-2 text-xs font-semibold hover:bg-[#f4f3ed]"><LogOut size={15}/>Sair</button></div></header><div className="mx-auto max-w-[1500px] p-5 md:p-9">{children}<p className="mt-10 border-t border-[#d8d5c9] pt-4 text-[11px] text-[#72776e]">SIGETRAN · Protótipo sem backend · Valores em Franco CFA (XOF) · Regras e tabelas legais carecem de validação oficial.</p></div></main></div>
   </div>;
 }
 function Title({eyebrow,title,description,icon:Icon}:{eyebrow:string;title:string;description:string;icon:LucideIcon}){return <div className="mb-7 flex items-start gap-4 border-b border-[#d8d5c9] pb-5"><div className="grid h-12 w-12 shrink-0 place-items-center border border-[#d5d1c2] bg-white text-[#009E49]"><Icon size={22}/></div><div><div className="text-[10px] font-bold uppercase tracking-[.17em] text-[#836300]">{eyebrow}</div><h1 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#1c3024] md:text-[30px]">{title}</h1><p className="mt-1 text-sm text-[#697168]">{description}</p></div></div>;}
 function Stat({label,value,detail,icon:Icon}:{label:string;value:string;detail:string;icon:LucideIcon}){return <div className="border border-[#dcd9cc] border-t-[3px] border-t-[#009E49] bg-white p-5"><div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[.08em] text-[#697168]"><span>{label}</span><Icon size={18} className="text-[#009E49]"/></div><div className="mt-3 font-serif text-[30px] font-bold text-[#1c3024]">{value}</div><div className="mt-1 text-xs text-[#737a70]">{detail}</div></div>;}
-function Status({value}:{value:string}){const positive=['Em dia','Pago','Concluída','Ativo','Regular','Recuperado'].includes(value);const cancelled=['Cancelado / Baixa Definitiva','Baixa Definitiva','Cancelamento de Matrícula'].includes(value);return <span className={`inline-flex whitespace-nowrap border px-2 py-1 text-[11px] font-semibold ${positive?'border-[#009E49]/30 bg-[#009E49]/10 text-[#006B35]':cancelled?'border-[#4b5549]/40 bg-[#4b5549]/15 text-[#202820]':'border-[#CE1126]/25 bg-[#CE1126]/10 text-[#9f1a2b]'}`}>{value}</span>;}
+function Status({value}:{value:string}){const positive=['Em dia','Pago','Concluída','Ativo','Regular','Recuperado','Válida','Apto','Apto com restrições','Deferido','Leve','Sem bloqueio'].includes(value);const cancelled=['Cancelado / Baixa Definitiva','Baixa Definitiva','Cancelamento de Matrícula','Cassado','Inapto','Anulado','Indeferido'].includes(value);return <span className={`inline-flex whitespace-nowrap border px-2 py-1 text-[11px] font-semibold ${positive?'border-[#009E49]/30 bg-[#009E49]/10 text-[#006B35]':cancelled?'border-[#4b5549]/40 bg-[#4b5549]/15 text-[#202820]':'border-[#CE1126]/25 bg-[#CE1126]/10 text-[#9f1a2b]'}`}>{value}</span>;}
 function Field({label,name,type='text',required=true,defaultValue,placeholder}:{label:string;name:string;type?:string;required?:boolean;defaultValue?:string;placeholder?:string}){return <label className="block text-xs font-semibold text-[#4b5549]">{label}<input className={`mt-1.5 ${inputClass}`} type={type} name={name} required={required} defaultValue={defaultValue} placeholder={placeholder}/></label>;}
 function Panel({title,children,action}:{title:string;children:ReactNode;action?:ReactNode}){return <section className="border border-[#dcd9cc] bg-white p-5"><div className="mb-4 flex items-center justify-between border-b border-[#e9e6dc] pb-3"><h2 className="font-serif text-lg font-bold text-[#1c3024]">{title}</h2>{action}</div>{children}</section>;}
 function Drawer({title,children,onClose}:{title:string;children:ReactNode;onClose:()=>void}){const [visible,setVisible]=useState(false);useEffect(()=>{const frame=requestAnimationFrame(()=>setVisible(true));return()=>cancelAnimationFrame(frame);},[]);const close=()=>{setVisible(false);window.setTimeout(onClose,250);};useEffect(()=>{const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape')close();};window.addEventListener('keydown',onKeyDown);window.addEventListener('sigetran:drawer-close',close);return()=>{window.removeEventListener('keydown',onKeyDown);window.removeEventListener('sigetran:drawer-close',close);};},[]);return <div className="fixed inset-0 z-50 flex justify-end" role="presentation"><button aria-label="Fechar painel" onClick={close} className={`absolute inset-0 bg-[#10251a]/55 transition-opacity duration-300 ease-out motion-reduce:transition-none ${visible?'opacity-100':'opacity-0'}`}/><section role="dialog" aria-modal="true" aria-label={title} className={`relative flex h-full w-full max-w-2xl flex-col border-l-4 border-[#CE1126] bg-[#f8f7f2] shadow-2xl transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none ${visible?'translate-x-0 opacity-100':'translate-x-full opacity-0'}`}><header className="flex items-center justify-between border-b border-[#dcd9cc] bg-white px-5 py-4"><div><div className="text-[10px] font-bold uppercase tracking-[.16em] text-[#836300]">Novo registo</div><h2 className="mt-1 font-serif text-xl font-bold text-[#1c3024]">{title}</h2></div><button type="button" onClick={close} aria-label="Fechar" className="grid h-10 w-10 place-items-center border border-[#d5d1c2] text-[#26372b] hover:bg-[#f3f1e8]"><X size={18}/></button></header><div className="flex-1 overflow-y-auto p-5">{children}</div></section></div>;}
@@ -473,20 +516,896 @@ export function VehicleLegalStatusAndWriteOff(){
   </Shell>;
 }
 
-export function DriverRegistry(){const [drivers,setDrivers]=useSaved('drivers',seedDrivers);const [open,setOpen]=useState(false);const [editing,setEditing]=useState<Driver|null>(null);const [documentError,setDocumentError]=useState('');function openCreate(){setEditing(null);setDocumentError('');setOpen(true);}function openEdit(driver:Driver){setEditing(driver);setDocumentError('');setOpen(true);}function closeDrawer(){setOpen(false);setEditing(null);setDocumentError('');}async function handleDelete(id:string){try{await api.delete(`/drivers/${encodeURIComponent(id)}`);}catch{/* ignore */}setDrivers(rows=>rows.filter(d=>d.id!==id));}async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const form=e.currentTarget;const f=new FormData(form);const file=f.get('documentFile') as File|null;if(file&&file.size>1_000_000){setDocumentError('O ficheiro deve ter no máximo 1 MB para armazenamento local.');return;}try{let docFile=editing?.documentFile;if(file&&file.size>0){const dataUrl=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error('Não foi possível ler o documento.'));reader.readAsDataURL(file);});docFile={name:file.name,dataUrl};}const payload={id:editing?editing.id:`D-${String(Date.now()).slice(-5)}`,name:String(f.get('name')),document:String(f.get('document')),license:String(f.get('license')),category:String(f.get('category')),phone:String(f.get('phone')),district:String(f.get('district')),status:String(f.get('status')||editing?.status||'Ativo'),documentFile:docFile};if(editing){const res=await api.put<Driver>(`/drivers/${encodeURIComponent(editing.id)}`,payload);setDrivers(rows=>rows.map(d=>d.id===editing.id?res.data:d));}else{const res=await api.post<Driver>('/drivers',payload);setDrivers([res.data,...drivers]);}form.reset();setDocumentError('');window.dispatchEvent(new Event('sigetran:drawer-close'));}catch(err:any){setDocumentError(err?.response?.data?.error||'Não foi possível guardar os dados do condutor.');}}
-  return <Shell><Title eyebrow="Registo nacional" title="Condutores e cartas" description="Cadastro de titulares, habilitações, contacto e delegação de registo." icon={Users}/><div className="mb-4 flex justify-end"><button onClick={()=>open?closeDrawer():openCreate()} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Cadastrar condutor'}</button></div>{open&&<Drawer title={editing?`Editar condutor (${editing.id})`:'Identificação do condutor'} onClose={closeDrawer}><form key={editing?.id||'new'} onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><Field label="Nome completo" name="name" defaultValue={editing?.name}/><Field label="N.º de identificação" name="document" defaultValue={editing?.document}/><Field label="N.º da carta" name="license" defaultValue={editing?.license}/><Field label="Categorias habilitadas" name="category" defaultValue={editing?.category}/><Field label="Telefone" name="phone" defaultValue={editing?.phone}/><Field label="Distrito" name="district" defaultValue={editing?.district}/><label className="block text-xs font-semibold text-[#4b5549]">Estado<select name="status" defaultValue={editing?.status||'Ativo'} className={`mt-1.5 ${inputClass}`}><option value="Ativo">Ativo</option><option value="Suspenso">Suspenso</option><option value="Inativo">Inativo</option></select></label><label className="block text-xs font-semibold text-[#4b5549]">Documento comprobatório (PDF ou imagem){editing?' (opcional)':''}<input type="file" name="documentFile" accept=".pdf,.jpg,.jpeg,.png" required={!editing} className={`mt-1.5 ${inputClass} file:mr-3 file:border-0 file:bg-[#173d2b] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white`}/></label><p className="text-[11px] leading-4 text-[#737a70] sm:col-span-2 lg:col-span-3">Ficheiro até 1 MB. {editing?'Deixe em branco para manter o documento atual.':'O campo “N.º de identificação” continua a registar o número do documento.'}</p>{documentError&&<p role="alert" className="text-sm text-[#9f1a2b] sm:col-span-2 lg:col-span-3">{documentError}</p>}<div className="flex items-end"><button className={primaryClass}>{editing?'Salvar alterações':'Guardar condutor'}</button></div></form></Drawer>}<div className="mt-5 overflow-x-auto border border-[#dcd9cc] bg-white p-4"><table className="w-full text-left text-sm"><thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]"><tr>{['Código','Condutor','Identificação','Documento','Carta / categorias','Contacto','Distrito','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr></thead><tbody>{drivers.map(d=><tr key={d.id} className="border-b border-[#f0eee7]"><td className="px-3 py-3">{d.id}</td><td className="whitespace-nowrap px-3 py-3 font-semibold">{d.name}</td><td className="px-3 py-3">{d.document}</td><td className="px-3 py-3">{d.documentFile?<a href={d.documentFile.dataUrl} download={d.documentFile.name} className="font-semibold text-[#006B35] underline">{d.documentFile.name}</a>:'—'}</td><td className="px-3 py-3">{d.license}<span className="block text-[11px] text-[#737a70]">{d.category}</span></td><td className="px-3 py-3">{d.phone}</td><td className="px-3 py-3">{d.district}</td><td className="px-3 py-3"><Status value={d.status}/></td><td className="whitespace-nowrap px-3 py-3"><div className="flex items-center gap-3"><button type="button" onClick={()=>openEdit(d)} className="text-xs font-semibold text-[#006B35] hover:underline">Editar</button><button type="button" onClick={()=>handleDelete(d.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Excluir</button></div></td></tr>)}</tbody></table></div></Shell>;
+function DriverSubmenuBar(){const {pathname}=useLocation();return <div className="mb-6 flex flex-wrap gap-1.5 border-b border-[#dcd9cc] pb-4">{driverSubmenus.map(sub=>{const active=pathname===sub.path;return <Link key={sub.path} to={sub.path} className={`border px-3 py-1.5 text-xs font-semibold transition ${active?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-white text-[#26372b] hover:border-[#009E49] hover:bg-[#f4f3ed]'}`}>{sub.label}</Link>;})}</div>;}
+
+export function DriverRegistry(){const [drivers,setDrivers]=useSaved('drivers',seedDrivers);const [open,setOpen]=useState(false);const [editing,setEditing]=useState<Driver|null>(null);const [documentError,setDocumentError]=useState('');const [query,setQuery]=useState('');const filteredDrivers=drivers.filter(d=>[d.id,d.name,d.document,d.license,d.category,d.district,d.status].join(' ').toLowerCase().includes(query.toLowerCase()));function openCreate(){setEditing(null);setDocumentError('');setOpen(true);}function openEdit(driver:Driver){setEditing(driver);setDocumentError('');setOpen(true);}function closeDrawer(){setOpen(false);setEditing(null);setDocumentError('');}async function handleDelete(id:string){if(!window.confirm(`Deseja realmente excluir o condutor ${id}?`))return;try{await api.delete(`/drivers/${encodeURIComponent(id)}`);}catch{/* ignore */}setDrivers(rows=>rows.filter(d=>d.id!==id));}async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const form=e.currentTarget;const f=new FormData(form);const file=f.get('documentFile') as File|null;if(file&&file.size>1_000_000){setDocumentError('O ficheiro deve ter no máximo 1 MB para armazenamento local.');return;}try{let docFile=editing?.documentFile;if(file&&file.size>0){const dataUrl=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error('Não foi possível ler o documento.'));reader.readAsDataURL(file);});docFile={name:file.name,dataUrl};}const payload={id:editing?editing.id:`D-${String(Date.now()).slice(-5)}`,name:String(f.get('name')),document:String(f.get('document')),license:String(f.get('license')),category:String(f.get('category')),phone:String(f.get('phone')),district:String(f.get('district')),status:String(f.get('status')||editing?.status||'Ativo'),issueDate:String(f.get('issueDate')||'2024-01-15'),expiryDate:String(f.get('expiryDate')||'2029-01-15'),points:Number(f.get('points')??20),medicalRestrictions:String(f.get('medicalRestrictions')||'Sem restrições'),documentFile:docFile};if(editing){const res=await api.put<Driver>(`/drivers/${encodeURIComponent(editing.id)}`,payload);setDrivers(rows=>rows.map(d=>d.id===editing.id?res.data:d));}else{const res=await api.post<Driver>('/drivers',payload);setDrivers([res.data,...drivers]);}form.reset();setDocumentError('');window.dispatchEvent(new Event('sigetran:drawer-close'));}catch(err:any){setDocumentError(err?.response?.data?.error||'Não foi possível guardar os dados do condutor.');}}
+  return <Shell><Title eyebrow="Gestão de condutores · Submenu 1" title="Cadastro completo de condutores" description="Registo nacional de condutores, documentos de identificação, cartas de condução, categorias (A, B, C, D, E), validade e pontuação." icon={Users}/><DriverSubmenuBar/><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3"><Search size={16} className="text-[#737a70]"/><input aria-label="Pesquisar condutor" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Pesquisar por nome, carta, documento ou categoria" className="w-full py-2 text-sm outline-none"/></label><button onClick={()=>open?closeDrawer():openCreate()} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Cadastrar condutor'}</button></div>{open&&<Drawer title={editing?`Editar condutor (${editing.id})`:'Cadastro completo do condutor'} onClose={closeDrawer}><form key={editing?.id||'new'} onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><Field label="Nome completo" name="name" defaultValue={editing?.name}/><Field label="N.º de identificação / BI" name="document" defaultValue={editing?.document}/><Field label="N.º da carta de condução" name="license" defaultValue={editing?.license} placeholder="Ex.: GB-B-10294"/><label className="block text-xs font-semibold text-[#4b5549]">Categorias habilitadas (A, B, C, D, E)<select name="category" defaultValue={editing?.category||'B · Ligeiros'} className={`mt-1.5 ${inputClass}`}><option value="A · Motociclos">A · Motociclos</option><option value="B · Ligeiros">B · Ligeiros</option><option value="A, B · Motociclos e Ligeiros">A, B · Motociclos e Ligeiros</option><option value="B, C · Ligeiros e Mercadorias">B, C · Ligeiros e Mercadorias</option><option value="C · Pesados de Mercadorias">C · Pesados de Mercadorias</option><option value="D · Pesados de Passageiros">D · Pesados de Passageiros</option><option value="C, D, E · Pesados e Passageiros">C, D, E · Pesados e Passageiros</option><option value="A, B, C, D, E · Todas as Categorias">A, B, C, D, E · Todas as Categorias</option></select></label><Field label="Data de emissão da carta" name="issueDate" type="date" defaultValue={editing?.issueDate||new Date().toISOString().slice(0,10)}/><Field label="Data de validade da carta" name="expiryDate" type="date" defaultValue={editing?.expiryDate||'2031-01-15'}/><Field label="Pontuação atual (0 a 20)" name="points" type="number" defaultValue={String(editing?.points??20)}/><Field label="Telefone" name="phone" defaultValue={editing?.phone}/><Field label="Distrito" name="district" defaultValue={editing?.district}/><label className="block text-xs font-semibold text-[#4b5549]">Estado da habilitação<select name="status" defaultValue={editing?.status||'Ativo'} className={`mt-1.5 ${inputClass}`}><option value="Ativo">Ativo</option><option value="Suspenso">Suspenso</option><option value="Cassado">Cassado</option><option value="Inativo">Inativo</option></select></label><div className="sm:col-span-2"><Field label="Restrições médicas / averbamentos (opcional)" name="medicalRestrictions" required={false} defaultValue={editing?.medicalRestrictions||'Sem restrições'} placeholder="Ex.: Uso obrigatório de lentes corretivas"/></div><label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2 lg:col-span-3">Documento comprobatório (PDF ou imagem){editing?' (opcional)':''}<input type="file" name="documentFile" accept=".pdf,.jpg,.jpeg,.png" required={!editing} className={`mt-1.5 ${inputClass} file:mr-3 file:border-0 file:bg-[#173d2b] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white`}/></label><p className="text-[11px] leading-4 text-[#737a70] sm:col-span-2 lg:col-span-3">Ficheiro até 1 MB. {editing?'Deixe em branco para manter o documento atual.':'O campo “N.º de identificação” continua a registar o número do documento.'}</p>{documentError&&<p role="alert" className="text-sm text-[#9f1a2b] sm:col-span-2 lg:col-span-3">{documentError}</p>}<div className="flex items-end"><button className={primaryClass}>{editing?'Salvar alterações':'Guardar condutor'}</button></div></form></Drawer>}<div className="mt-5 overflow-x-auto border border-[#dcd9cc] bg-white p-4"><table className="w-full text-left text-sm"><thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]"><tr>{['Código','Condutor','Identificação / Doc.','Carta / Categorias','Emissão e Validade','Pontuação','Distrito','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr></thead><tbody>{filteredDrivers.map(d=><tr key={d.id} className="border-b border-[#f0eee7]"><td className="px-3 py-3 font-mono text-xs">{d.id}</td><td className="whitespace-nowrap px-3 py-3 font-semibold">{d.name}<span className="block text-[11px] font-normal text-[#737a70]">{d.phone}</span></td><td className="px-3 py-3">{d.document}{d.documentFile&&<span className="block text-[11px]"><a href={d.documentFile.dataUrl} download={d.documentFile.name} className="font-semibold text-[#006B35] underline">{d.documentFile.name}</a></span>}</td><td className="px-3 py-3 font-semibold">{d.license}<span className="block text-[11px] font-normal text-[#006B35]">{d.category}</span></td><td className="whitespace-nowrap px-3 py-3 text-xs"><div>Emissão: {d.issueDate||'2024-01-15'}</div><div className="font-semibold text-[#4b5549]">Validade: {d.expiryDate||'2029-01-15'}</div></td><td className="px-3 py-3"><span className={`inline-flex border px-2 py-0.5 text-xs font-bold ${(d.points??20)>=12?'border-[#009E49]/30 bg-[#009E49]/10 text-[#006B35]':'border-[#CE1126]/30 bg-[#CE1126]/10 text-[#9f1a2b]'}`}>{d.points??20} pts</span></td><td className="px-3 py-3">{d.district}</td><td className="px-3 py-3"><Status value={d.status}/></td><td className="whitespace-nowrap px-3 py-3"><div className="flex items-center gap-3"><button type="button" onClick={()=>openEdit(d)} className="text-xs font-semibold text-[#006B35] hover:underline">Editar</button><button type="button" onClick={()=>handleDelete(d.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Excluir</button></div></td></tr>)}</tbody></table></div></Shell>;
+}
+
+export function DriverLicenseIssuePage(){
+  const [drivers,setDrivers]=useSaved('drivers',seedDrivers);
+  const [records,setRecords]=useSaved('driver-license-records',seedDriverLicenseRecords);
+  const [open,setOpen]=useState(false);
+  const [selectedDriverId,setSelectedDriverId]=useState('');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const selectedDriver=drivers.find(d=>d.id===selectedDriverId)||drivers[0];
+  const issueRecords=records.filter(r=>r.recordType==='Emissão');
+
+  async function submitIssue(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const driverId=String(f.get('driverId')||selectedDriver?.id||'');
+    if(!driverId){setError('Selecione um condutor.');return;}
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<{record:DriverLicenseRecord;driver:Driver}>('/driver-license-records',{
+        driverId,
+        recordType:'Emissão',
+        actionDetail:String(f.get('actionDetail')||'1.ª Emissão Definitiva'),
+        license:String(f.get('license')||'').trim(),
+        category:String(f.get('category')||'B · Ligeiros'),
+        issueDate:String(f.get('issueDate')||new Date().toISOString().slice(0,10)),
+        expiryDate:String(f.get('expiryDate')||'2031-11-02'),
+        notes:String(f.get('notes')||'').trim(),
+      });
+      setRecords([res.data.record,...records]);
+      setDrivers(rows=>rows.map(d=>d.id===res.data.driver.id?res.data.driver:d));
+      setSuccessMsg(`Carta de condução ${res.data.driver.license} emitida com sucesso para ${res.data.driver.name}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível registar a emissão da carta.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de condutores · Submenu 2" title="Emissão de carta de condução" description="Emissão de 1.ª via definitiva, 2.ª via por extravio/dano, conversão de carta estrangeira e licença provisória." icon={Users}/>
+    <DriverSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Cartas emitidas" value={String(drivers.length)} detail="Condutores habilitados na base" icon={Users}/>
+      <Stat label="Registos de emissão" value={String(issueRecords.length)} detail="Processos de 1.ª e 2.ª via" icon={ClipboardCheck}/>
+      <Stat label="Cartas ativas" value={String(drivers.filter(d=>d.status==='Ativo').length)} detail="Regulares para condução" icon={ShieldCheck}/>
+    </div>
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Emitir carta de condução'}</button>
+    </div>
+    {open&&<Drawer title="Emissão de carta de condução" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitIssue} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Condutor
+          <select name="driverId" value={selectedDriver?.id||''} onChange={e=>setSelectedDriverId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {drivers.map(d=><option key={d.id} value={d.id}>{d.name} · Doc.: {d.document} · Carta atual: {d.license}</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Modalidade de emissão
+          <select name="actionDetail" className={`mt-1.5 ${inputClass}`}>
+            <option value="1.ª Emissão Definitiva de Carta de Condução">1.ª Emissão Definitiva de Carta de Condução</option>
+            <option value="2.ª Via por Extravio ou Deterioração">2.ª Via por Extravio ou Deterioração</option>
+            <option value="Conversão de Carta de Condução Estrangeira">Conversão de Carta de Condução Estrangeira</option>
+            <option value="Emissão de Licença Especial / Internacional">Emissão de Licença Especial / Internacional</option>
+          </select>
+        </label>
+        <Field label="N.º da Carta a emitir" name="license" defaultValue={selectedDriver?.license||`GB-B-${String(Date.now()).slice(-5)}`}/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Categoria(s) habilitada(s)
+          <select name="category" defaultValue={selectedDriver?.category||'B · Ligeiros'} className={`mt-1.5 ${inputClass}`}>
+            <option value="A · Motociclos">A · Motociclos</option>
+            <option value="B · Ligeiros">B · Ligeiros</option>
+            <option value="A, B · Motociclos e Ligeiros">A, B · Motociclos e Ligeiros</option>
+            <option value="B, C · Ligeiros e Mercadorias">B, C · Ligeiros e Mercadorias</option>
+            <option value="C · Pesados de Mercadorias">C · Pesados de Mercadorias</option>
+            <option value="D · Pesados de Passageiros">D · Pesados de Passageiros</option>
+            <option value="C, D, E · Pesados e Passageiros">C, D, E · Pesados e Passageiros</option>
+          </select>
+        </label>
+        <Field label="Data de emissão" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Data de validade" name="expiryDate" type="date" defaultValue="2031-11-02"/>
+        <div className="sm:col-span-2">
+          <Field label="Observações / Pauta de exame / Delegação emissora" name="notes" required={false} placeholder="Ex.: Aprovado em exame prático na Escola de Condução de Bissau"/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Confirmar emissão da carta</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Histórico de Emissões de Cartas de Condução</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Ref.ª','Condutor','N.º da Carta','Modalidade','Categoria(s)','Emissão','Validade','Observações'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {issueRecords.map(r=><tr key={r.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{r.id}</td>
+            <td className="px-3 py-3 font-semibold">{r.driverName}</td>
+            <td className="px-3 py-3 font-semibold text-[#006B35]">{r.license}</td>
+            <td className="px-3 py-3">{r.actionDetail}</td>
+            <td className="px-3 py-3">{r.category}</td>
+            <td className="px-3 py-3">{r.issueDate}</td>
+            <td className="px-3 py-3 font-semibold">{r.expiryDate}</td>
+            <td className="px-3 py-3 text-xs text-[#737a70]">{r.notes||'—'}</td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function DriverCategoriesPage(){
+  const [drivers,setDrivers]=useSaved('drivers',seedDrivers);
+  const [records,setRecords]=useSaved('driver-license-records',seedDriverLicenseRecords);
+  const [open,setOpen]=useState(false);
+  const [selectedDriverId,setSelectedDriverId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const selectedDriver=drivers.find(d=>d.id===selectedDriverId)||drivers[0];
+
+  const categoriesSpec=[
+    {code:'A',title:'Categoria A · Motociclos e Ciclomotores',vehicles:'Motociclos de cilindrada superior a 50 cm³, triciclos e ciclomotores.',minAge:'18 anos (16 anos para subcategoria A1)',validity:'5 anos',exam:'Exame médico + prova teórica e prática em motociclo'},
+    {code:'B',title:'Categoria B · Automóveis Ligeiros',vehicles:'Veículos automóveis ligeiros de passageiros (até 9 lugares) e mistos/mercadorias até 3.500 kg de peso bruto.',minAge:'18 anos',validity:'5 anos',exam:'Exame médico + prova teórica e prática em veículo ligeiro'},
+    {code:'C',title:'Categoria C · Pesados de Mercadorias',vehicles:'Automóveis pesados de mercadorias com peso bruto superior a 3.500 kg e tratores rodoviários.',minAge:'21 anos (habilitação prévia na Cat. B)',validity:'5 anos (3 anos após os 60 anos)',exam:'Exame médico + avaliação psicológica + prova prática de pesados'},
+    {code:'D',title:'Categoria D · Pesados de Passageiros',vehicles:'Automóveis pesados utilizados no transporte coletivo de passageiros com mais de 8 lugares além do condutor.',minAge:'21 anos (habilitação prévia na Cat. B ou C)',validity:'5 anos (exige exame médico e psicológico)',exam:'Exame médico + avaliação psicotécnica obrigatória + prova prática'},
+    {code:'E',title:'Categoria E · Reboques e Articulados (BE, CE, DE)',vehicles:'Conjuntos de veículos acoplados cujo veículo trator pertença às categorias B, C ou D com reboque > 750 kg.',minAge:'21 anos',validity:'Conforme a categoria do veículo trator',exam:'Exame médico + avaliação psicológica + prova de manobra de acoplados'},
+  ];
+
+  async function submitCategoryChange(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const driverId=String(f.get('driverId')||selectedDriver?.id||'');
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<{record:DriverLicenseRecord;driver:Driver}>('/driver-license-records',{
+        driverId,
+        recordType:'Categoria',
+        actionDetail:String(f.get('actionDetail')||'Averbamento de Nova Categoria'),
+        category:String(f.get('category')||'B, C · Ligeiros e Mercadorias'),
+        issueDate:String(f.get('issueDate')||new Date().toISOString().slice(0,10)),
+        expiryDate:selectedDriver?.expiryDate||'2029-05-12',
+        notes:String(f.get('notes')||'').trim(),
+      });
+      setRecords([res.data.record,...records]);
+      setDrivers(rows=>rows.map(d=>d.id===res.data.driver.id?res.data.driver:d));
+      setSuccessMsg(`Categoria atualizada para "${res.data.driver.category}" no condutor ${res.data.driver.name}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível atualizar a categoria.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de condutores · Submenu 3" title="Categorias de habilitação (A, B, C, D, E)" description="Quadro regulamentar das categorias de condução (A, B, C, D, E), requisitos técnicos e averbamento/progressão de categoria por condutor." icon={Users}/>
+    <DriverSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Averbar / alterar categoria de condutor'}</button>
+    </div>
+    <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      {categoriesSpec.map(cat=>{
+        const count=drivers.filter(d=>d.category.toUpperCase().includes(cat.code)).length;
+        return <div key={cat.code} className="flex flex-col justify-between border border-[#dcd9cc] border-t-4 border-t-[#009E49] bg-white p-4">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="grid h-9 w-9 place-items-center bg-[#173d2b] font-serif text-lg font-bold text-[#FCD116]">{cat.code}</span>
+              <span className="border border-[#009E49]/30 bg-[#009E49]/10 px-2 py-0.5 text-xs font-bold text-[#006B35]">{count} condutor(es)</span>
+            </div>
+            <h3 className="mt-3 font-serif text-base font-bold text-[#1c3024]">{cat.title}</h3>
+            <p className="mt-1.5 text-xs leading-5 text-[#697168]">{cat.vehicles}</p>
+          </div>
+          <div className="mt-4 space-y-1 border-t border-[#f0eee7] pt-3 text-[11px] text-[#4b5549]">
+            <div><b>Idade mínima:</b> {cat.minAge}</div>
+            <div><b>Validade padrão:</b> {cat.validity}</div>
+            <div><b>Exigência:</b> {cat.exam}</div>
+          </div>
+        </div>;
+      })}
+    </div>
+    {open&&<Drawer title="Averbamento / Alteração de Categoria (A, B, C, D, E)" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitCategoryChange} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Condutor
+          <select name="driverId" value={selectedDriver?.id||''} onChange={e=>setSelectedDriverId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {drivers.map(d=><option key={d.id} value={d.id}>{d.name} · Carta: {d.license} · Atual: {d.category}</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Natureza da alteração
+          <select name="actionDetail" className={`mt-1.5 ${inputClass}`}>
+            <option value="Adição / Averbamento de Categoria">Adição / Averbamento de Categoria</option>
+            <option value="Progressão para Categoria Pesados (C / D / E)">Progressão para Categoria Pesados (C / D / E)</option>
+            <option value="Restrição / Reclassificação de Categoria">Restrição / Reclassificação de Categoria</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Nova(s) Categoria(s) Habilitada(s)
+          <select name="category" defaultValue={selectedDriver?.category||'B, C · Ligeiros e Mercadorias'} className={`mt-1.5 ${inputClass}`}>
+            <option value="A · Motociclos">A · Motociclos</option>
+            <option value="B · Ligeiros">B · Ligeiros</option>
+            <option value="A, B · Motociclos e Ligeiros">A, B · Motociclos e Ligeiros</option>
+            <option value="B, C · Ligeiros e Mercadorias">B, C · Ligeiros e Mercadorias</option>
+            <option value="C · Pesados de Mercadorias">C · Pesados de Mercadorias</option>
+            <option value="D · Pesados de Passageiros">D · Pesados de Passageiros</option>
+            <option value="C, D, E · Pesados e Passageiros">C, D, E · Pesados e Passageiros</option>
+            <option value="A, B, C, D, E · Todas as Categorias">A, B, C, D, E · Todas as Categorias</option>
+          </select>
+        </label>
+        <Field label="Data do averbamento" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Observações / N.º da Pauta de Exame" name="notes" required={false} placeholder="Ex.: Exame prático de pesados aprovado"/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Guardar alteração de categoria</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Condutores por Categoria de Habilitação</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Código','Condutor','N.º da Carta','Categorias Habilitadas (A, B, C, D, E)','Restrições / Averbamentos','Distrito','Estado'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {drivers.map(d=><tr key={d.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{d.id}</td>
+            <td className="px-3 py-3 font-semibold">{d.name}</td>
+            <td className="px-3 py-3 font-semibold">{d.license}</td>
+            <td className="px-3 py-3"><span className="border border-[#009E49]/30 bg-[#009E49]/10 px-2.5 py-1 text-xs font-bold text-[#006B35]">{d.category}</span></td>
+            <td className="px-3 py-3 text-xs text-[#697168]">{d.medicalRestrictions||'Sem restrições'}</td>
+            <td className="px-3 py-3">{d.district}</td>
+            <td className="px-3 py-3"><Status value={d.status}/></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function DriverRenewalPage(){
+  const [drivers,setDrivers]=useSaved('drivers',seedDrivers);
+  const [records,setRecords]=useSaved('driver-license-records',seedDriverLicenseRecords);
+  const [open,setOpen]=useState(false);
+  const [selectedDriverId,setSelectedDriverId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const today='2026-11-02';
+  const selectedDriver=drivers.find(d=>d.id===selectedDriverId)||drivers[0];
+  const renewalRecords=records.filter(r=>r.recordType==='Renovação');
+
+  const expiredCount=drivers.filter(d=>(d.expiryDate||'2029-01-01')<today).length;
+  const validCount=drivers.length-expiredCount;
+
+  async function submitRenewal(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const driverId=String(f.get('driverId')||selectedDriver?.id||'');
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<{record:DriverLicenseRecord;driver:Driver}>('/driver-license-records',{
+        driverId,
+        recordType:'Renovação',
+        actionDetail:String(f.get('actionDetail')||'Renovação Periódica de Carta de Condução'),
+        issueDate:String(f.get('issueDate')||today),
+        expiryDate:String(f.get('expiryDate')||'2031-11-02'),
+        notes:String(f.get('notes')||'').trim(),
+      });
+      setRecords([res.data.record,...records]);
+      setDrivers(rows=>rows.map(d=>d.id===res.data.driver.id?res.data.driver:d));
+      setSuccessMsg(`Carta ${res.data.driver.license} de ${res.data.driver.name} renovada até ${res.data.driver.expiryDate}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível renovar a carta.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de condutores · Submenu 4" title="Renovação e validade da carta" description="Controlo de prazos de validade das cartas de condução, alerta de cartas vencidas e registo de renovações periódicas." icon={ClipboardCheck}/>
+    <DriverSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Cartas dentro da validade" value={String(validCount)} detail="Vigentes na data atual" icon={Check}/>
+      <Stat label="Cartas vencidas / a renovar" value={String(expiredCount)} detail="Exigem renovação imediata" icon={AlertTriangle}/>
+      <Stat label="Renovações processadas" value={String(renewalRecords.length)} detail="Histórico de renovações" icon={ClipboardCheck}/>
+    </div>
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Renovar carta de condução'}</button>
+    </div>
+    {open&&<Drawer title="Renovação de Carta de Condução" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitRenewal} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Condutor
+          <select name="driverId" value={selectedDriver?.id||''} onChange={e=>setSelectedDriverId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {drivers.map(d=><option key={d.id} value={d.id}>{d.name} · Carta: {d.license} · Validade atual: {d.expiryDate||'2029-01-15'}</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Tipo de renovação
+          <select name="actionDetail" className={`mt-1.5 ${inputClass}`}>
+            <option value="Renovação Periódica Quinquenal (5 anos)">Renovação Periódica Quinquenal (5 anos)</option>
+            <option value="Renovação de Carta Profissional (Cat. C, D, E)">Renovação de Carta Profissional (Cat. C, D, E)</option>
+            <option value="Renovação com Reavaliação Médica">Renovação com Reavaliação Médica</option>
+          </select>
+        </label>
+        <Field label="Data da renovação" name="issueDate" type="date" defaultValue={today}/>
+        <Field label="Nova data de validade" name="expiryDate" type="date" defaultValue="2031-11-02"/>
+        <Field label="Observações / Atestado médico apresentado" name="notes" required={false} placeholder="Ex.: Atestado médico válido e taxa de renovação liquidada"/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Confirmar renovação e atualizar validade</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Situação de Validade por Condutor</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Condutor','N.º da Carta','Categoria','Última Emissão','Data de Validade','Situação da Validade','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {drivers.map(d=>{
+            const exp=d.expiryDate||'2029-01-15';
+            const isExpired=exp<today;
+            return <tr key={d.id} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-semibold">{d.name}</td>
+              <td className="px-3 py-3 font-semibold">{d.license}</td>
+              <td className="px-3 py-3">{d.category}</td>
+              <td className="px-3 py-3">{d.issueDate||'2024-01-15'}</td>
+              <td className="px-3 py-3 font-semibold">{exp}</td>
+              <td className="px-3 py-3"><Status value={isExpired?'Vencida':'Válida'}/></td>
+              <td className="px-3 py-3"><button type="button" onClick={()=>{setSelectedDriverId(d.id);setOpen(true);}} className="text-xs font-semibold text-[#006B35] hover:underline">Renovar carta</button></td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function DriverSuspensionPage(){
+  const [drivers,setDrivers]=useSaved('drivers',seedDrivers);
+  const [records,setRecords]=useSaved('driver-license-records',seedDriverLicenseRecords);
+  const [open,setOpen]=useState(false);
+  const [selectedDriverId,setSelectedDriverId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const selectedDriver=drivers.find(d=>d.id===selectedDriverId)||drivers[0];
+  const suspensionRecords=records.filter(r=>r.recordType==='Suspensão / Cassação');
+
+  async function submitSanction(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const driverId=String(f.get('driverId')||selectedDriver?.id||'');
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<{record:DriverLicenseRecord;driver:Driver}>('/driver-license-records',{
+        driverId,
+        recordType:'Suspensão / Cassação',
+        actionDetail:String(f.get('actionDetail')||'Suspensão Temporária (90 dias)'),
+        issueDate:String(f.get('issueDate')||new Date().toISOString().slice(0,10)),
+        expiryDate:String(f.get('expiryDate')||''),
+        notes:String(f.get('notes')||'').trim(),
+      });
+      setRecords([res.data.record,...records]);
+      setDrivers(rows=>rows.map(d=>d.id===res.data.driver.id?res.data.driver:d));
+      setSuccessMsg(`Medida "${res.data.record.actionDetail}" aplicada ao condutor ${res.data.driver.name} (Estado atual: ${res.data.driver.status}).`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível registar a medida administrativa.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de condutores · Submenu 5" title="Suspensão e cassação da habilitação" description="Registo de sanções acessórias de inibição de conduzir (suspensão temporária), cassação definitiva da carta e reabilitação legal." icon={AlertTriangle}/>
+    <DriverSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Condutores ativos" value={String(drivers.filter(d=>d.status==='Ativo').length)} detail="Habilitação regular" icon={Check}/>
+      <Stat label="Habilitações suspensas" value={String(drivers.filter(d=>d.status==='Suspenso').length)} detail="Inibição temporária de conduzir" icon={AlertTriangle}/>
+      <Stat label="Habilitações cassadas" value={String(drivers.filter(d=>d.status==='Cassado').length)} detail="Perda definitiva do título" icon={ShieldCheck}/>
+    </div>
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className="inline-flex items-center justify-center gap-2 bg-[#9f1a2b] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#7f1422]"><AlertTriangle size={16}/>{open?'Fechar formulário':'Registar suspensão / cassação / reabilitação'}</button>
+    </div>
+    {open&&<Drawer title="Suspensão, Cassação ou Reabilitação de Carta" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitSanction} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Condutor
+          <select name="driverId" value={selectedDriver?.id||''} onChange={e=>setSelectedDriverId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {drivers.map(d=><option key={d.id} value={d.id}>{d.name} · Carta: {d.license} · Estado atual: {d.status}</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Tipo de medida administrativa / judicial
+          <select name="actionDetail" className={`mt-1.5 ${inputClass}`}>
+            <option value="Suspensão Temporária da Habilitação (30 dias)">Suspensão Temporária da Habilitação (30 dias)</option>
+            <option value="Suspensão Temporária da Habilitação (90 dias)">Suspensão Temporária da Habilitação (90 dias)</option>
+            <option value="Suspensão Temporária da Habilitação (180 dias)">Suspensão Temporária da Habilitação (180 dias)</option>
+            <option value="Cassação Definitiva da Carta de Condução">Cassação Definitiva da Carta de Condução (Perda total de pontos / Crime rodoviário)</option>
+            <option value="Reabilitação / Levantamento de Suspensão (Ativo)">Reabilitação / Levantamento de Suspensão (Restaura para Ativo)</option>
+          </select>
+        </label>
+        <Field label="Data de início da medida" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Termo previsto da suspensão (se aplicável)" name="expiryDate" type="date" required={false}/>
+        <div className="sm:col-span-2">
+          <Field label="Fundamentação legal / N.º do Processo Administrativo" name="notes" placeholder="Ex.: Processo contraordenacional n.º 412/2026 · Reincidência em infração gravíssima"/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className="inline-flex items-center justify-center gap-2 bg-[#9f1a2b] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#7f1422]">Aplicar medida e atualizar estado do condutor</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Estado das Habilitações e Processos de Suspensão / Cassação</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Condutor','Carta','Categoria','Pontuação','Estado da Habilitação','Última Ocorrência / Processo'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {drivers.map(d=>{
+            const lastRec=suspensionRecords.find(r=>r.driverId===d.id);
+            return <tr key={d.id} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-semibold">{d.name}</td>
+              <td className="px-3 py-3 font-semibold">{d.license}</td>
+              <td className="px-3 py-3">{d.category}</td>
+              <td className="px-3 py-3 font-bold">{d.points??20} pts</td>
+              <td className="px-3 py-3"><Status value={d.status}/></td>
+              <td className="px-3 py-3 text-xs text-[#697168]">{lastRec?`${lastRec.actionDetail} (${lastRec.issueDate}) · ${lastRec.notes||''}`:'Sem processos de suspensão ou cassação'}</td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function DriverInfractionsHistoryPage(){
+  const [drivers]=useSaved('drivers',seedDrivers);
+  const [fines]=useSaved('fines',seedFines);
+  const [infractionTypes]=useSaved('infraction-types',seedInfractionTypes);
+  const [driverFilter,setDriverFilter]=useState('');
+  const [search,setSearch]=useState('');
+
+  const severityPoints:Record<string,number>={Leve:2,Média:4,Grave:5,Gravíssima:7};
+
+  const enrichedFines=useMemo(()=>{
+    return fines.map(f=>{
+      const it=infractionTypes.find(t=>t.name.toLowerCase()===f.infraction.toLowerCase());
+      const severity=it?.severity||'Média';
+      const pointsLost=severityPoints[severity]||4;
+      const drv=drivers.find(d=>d.name.toLowerCase()===(f.driver||'').toLowerCase());
+      return {...f,severity,pointsLost,driverLicense:drv?.license||'—',driverId:drv?.id||''};
+    }).filter(f=>{
+      if(driverFilter&&f.driver.toLowerCase()!==driverFilter.toLowerCase())return false;
+      if(!search.trim())return true;
+      const q=search.toLowerCase();
+      return [f.id,f.plate,f.driver,f.infraction,f.severity].join(' ').toLowerCase().includes(q);
+    });
+  },[fines,infractionTypes,drivers,driverFilter,search]);
+
+  return <Shell>
+    <Title eyebrow="Gestão de condutores · Submenu 6" title="Histórico de infrações do condutor" description="Consulta consolidada de autos de infração por condutor, gravidade, perda de pontos e situação de pagamento." icon={ClipboardList}/>
+    <DriverSubmenuBar/>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <select aria-label="Filtrar por condutor" value={driverFilter} onChange={e=>setDriverFilter(e.target.value)} className="border border-[#d5d1c2] bg-white px-3 py-2.5 text-sm outline-none">
+          <option value="">Todos os condutores</option>
+          {drivers.map(d=><option key={d.id} value={d.name}>{d.name} · Carta: {d.license}</option>)}
+        </select>
+        <label className="flex items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+          <Search size={16} className="text-[#737a70]"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar auto, matrícula ou infração" className="w-64 py-2 text-sm outline-none"/>
+        </label>
+      </div>
+      <Link to="/fines" className={secondaryClass}><ClipboardList size={16}/> Registar novo auto de infração</Link>
+    </div>
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º do Auto','Data','Condutor / Carta','Matrícula','Infração','Gravidade',' Impacto na Pontuação','Valor (XOF)','Estado'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {enrichedFines.map(f=><tr key={f.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{f.id}</td>
+            <td className="px-3 py-3">{f.date}</td>
+            <td className="px-3 py-3 font-semibold">{f.driver}<span className="block text-[11px] font-normal text-[#737a70]">Carta: {f.driverLicense}</span></td>
+            <td className="px-3 py-3 font-semibold">{f.plate}</td>
+            <td className="px-3 py-3">{f.infraction}</td>
+            <td className="px-3 py-3"><Status value={f.severity}/></td>
+            <td className="px-3 py-3 font-bold text-[#9f1a2b]">-{f.pointsLost} pontos</td>
+            <td className="px-3 py-3 font-semibold">{currency(f.amount)}</td>
+            <td className="px-3 py-3"><Status value={f.status}/></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function DriverPointsPage(){
+  const [drivers,setDrivers]=useSaved('drivers',seedDrivers);
+  const [records,setRecords]=useSaved('driver-license-records',seedDriverLicenseRecords);
+  const [open,setOpen]=useState(false);
+  const [selectedDriverId,setSelectedDriverId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const selectedDriver=drivers.find(d=>d.id===selectedDriverId)||drivers[0];
+
+  async function submitPoints(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const driverId=String(f.get('driverId')||selectedDriver?.id||'');
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<{record:DriverLicenseRecord;driver:Driver}>('/driver-license-records',{
+        driverId,
+        recordType:'Pontuação',
+        actionDetail:String(f.get('actionDetail')||'Dedução por Infração Rodoviária'),
+        pointsDelta:Number(f.get('pointsDelta')||0),
+        issueDate:String(f.get('issueDate')||new Date().toISOString().slice(0,10)),
+        notes:String(f.get('notes')||'').trim(),
+      });
+      setRecords([res.data.record,...records]);
+      setDrivers(rows=>rows.map(d=>d.id===res.data.driver.id?res.data.driver:d));
+      setSuccessMsg(`Pontuação de ${res.data.driver.name} atualizada para ${res.data.driver.points} pontos.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível atualizar a pontuação.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de condutores · Submenu 7" title="Pontuação do condutor" description="Controlo de saldo de pontos da carta por condutor (máximo 20 pontos), perda de pontos por infração e reabilitação por curso de segurança rodoviária." icon={Activity}/>
+    <DriverSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-4">
+      <div className="border border-[#dcd9cc] bg-white p-4 text-xs"><div className="font-bold uppercase text-[#006B35]">Infração Leve</div><div className="mt-1 font-serif text-xl font-bold">-2 pontos</div><div className="mt-1 text-[#737a70]">Ex.: Estacionamento irregular</div></div>
+      <div className="border border-[#dcd9cc] bg-white p-4 text-xs"><div className="font-bold uppercase text-[#836300]">Infração Média</div><div className="mt-1 font-serif text-xl font-bold">-4 pontos</div><div className="mt-1 text-[#737a70]">Ex.: Falta de inspeção periódica</div></div>
+      <div className="border border-[#dcd9cc] bg-white p-4 text-xs"><div className="font-bold uppercase text-[#9f1a2b]">Infração Grave</div><div className="mt-1 font-serif text-xl font-bold">-5 pontos</div><div className="mt-1 text-[#737a70]">Ex.: Documentação em falta</div></div>
+      <div className="border border-[#dcd9cc] bg-white p-4 text-xs"><div className="font-bold uppercase text-[#CE1126]">Infração Gravíssima</div><div className="mt-1 font-serif text-xl font-bold">-7 pontos</div><div className="mt-1 text-[#737a70]">Ex.: Excesso de velocidade / Álcool</div></div>
+    </div>
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Lançar dedução ou reciclagem de pontos'}</button>
+    </div>
+    {open&&<Drawer title="Atualização de Pontuação do Condutor" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitPoints} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Condutor
+          <select name="driverId" value={selectedDriver?.id||''} onChange={e=>setSelectedDriverId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {drivers.map(d=><option key={d.id} value={d.id}>{d.name} · Carta: {d.license} · Saldo atual: {d.points??20} pontos</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Motivo da movimentação
+          <select name="actionDetail" className={`mt-1.5 ${inputClass}`}>
+            <option value="Dedução por Infração Leve (-2 pts)">Dedução por Infração Leve (-2 pts)</option>
+            <option value="Dedução por Infração Média (-4 pts)">Dedução por Infração Média (-4 pts)</option>
+            <option value="Dedução por Infração Grave (-5 pts)">Dedução por Infração Grave (-5 pts)</option>
+            <option value="Dedução por Infração Gravíssima (-7 pts)">Dedução por Infração Gravíssima (-7 pts)</option>
+            <option value="Recuperação de Pontos (Curso de Reciclagem)">Recuperação de Pontos (Curso de Reciclagem +5 pts)</option>
+            <option value="Bonificação por 3 anos sem infrações (+3 pts)">Bonificação por 3 anos sem infrações (+3 pts)</option>
+          </select>
+        </label>
+        <Field label="Variação de pontos (ex.: -5 ou +5)" name="pointsDelta" type="number" defaultValue="-4"/>
+        <Field label="Data do lançamento" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Observações / N.º do Auto ou Certificado" name="notes" required={false} placeholder="Ex.: Auto GB-2026-0014 ou Certificado de Reciclagem"/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Confirmar atualização de pontos</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Saldo de Pontos por Condutor</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Condutor','N.º da Carta','Categoria','Saldo de Pontos (Máx. 20)','Nível / Alerta','Estado da Carta'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {drivers.map(d=>{
+            const pts=d.points??20;
+            const pct=Math.max(5,Math.min(100,(pts/20)*100));
+            return <tr key={d.id} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-semibold">{d.name}</td>
+              <td className="px-3 py-3 font-semibold">{d.license}</td>
+              <td className="px-3 py-3">{d.category}</td>
+              <td className="px-3 py-3 w-64">
+                <div className="mb-1 flex justify-between text-xs font-bold"><span>{pts} / 20 pontos</span></div>
+                <div className="h-2.5 bg-[#eeede5]"><div className={`h-full ${pts>=12?'bg-[#009E49]':pts>=6?'bg-[#FCD116]':'bg-[#CE1126]'}`} style={{width:`${pct}%`}}/></div>
+              </td>
+              <td className="px-3 py-3"><Status value={pts>=12?'Regular':pts>=6?'Atenção · Reciclagem':'Crítico · Risco de Cassação'}/></td>
+              <td className="px-3 py-3"><Status value={d.status}/></td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function DriverExamsPage(){
+  const [drivers,setDrivers]=useSaved('drivers',seedDrivers);
+  const [exams,setExams]=useSaved('driver-exams',seedDriverExams);
+  const [open,setOpen]=useState(false);
+  const [selectedDriverId,setSelectedDriverId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const selectedDriver=drivers.find(d=>d.id===selectedDriverId)||drivers[0];
+
+  async function submitExam(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const driverId=String(f.get('driverId')||selectedDriver?.id||'');
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<{exam:DriverExam;driver:Driver}>('/driver-exams',{
+        driverId,
+        targetCategory:String(f.get('targetCategory')||selectedDriver?.category||'B'),
+        examType:String(f.get('examType')||'Exame Médico de Aptidão Física'),
+        result:String(f.get('result')||'Apto'),
+        medicalEntity:String(f.get('medicalEntity')||'').trim(),
+        certificateNumber:String(f.get('certificateNumber')||'').trim(),
+        restrictions:String(f.get('restrictions')||'Sem restrições').trim(),
+        examDate:String(f.get('examDate')||new Date().toISOString().slice(0,10)),
+        expiryDate:String(f.get('expiryDate')||'2029-11-02'),
+      });
+      setExams([res.data.exam,...exams]);
+      setDrivers(rows=>rows.map(d=>d.id===res.data.driver.id?res.data.driver:d));
+      setSuccessMsg(`Exame (${res.data.exam.examType}) registado com sucesso para ${res.data.driver.name}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível registar o exame.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm(`Deseja remover o exame ${id}?`))return;
+    try{await api.delete(`/driver-exams/${encodeURIComponent(id)}`);}catch{/* ignore */}
+    setExams(rows=>rows.filter(r=>r.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de condutores · Submenu 8" title="Histórico de exames médicos e psicológicos" description="Registo de inspeções médicas de aptidão física, avaliações psicológicas (psicotécnicos para categorias C, D, E) e restrições obrigatórias na carta." icon={ClipboardCheck}/>
+    <DriverSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Exames realizados" value={String(exams.length)} detail="Médicos e psicológicos" icon={ClipboardCheck}/>
+      <Stat label="Condutores aptos" value={String(exams.filter(e=>e.result.startsWith('Apto')).length)} detail="Laudos favoráveis" icon={Check}/>
+      <Stat label="Com restrições médicas" value={String(drivers.filter(d=>d.medicalRestrictions&&d.medicalRestrictions!=='Sem restrições').length)} detail="Lentes / avaliação periódica" icon={AlertTriangle}/>
+    </div>
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Registar exame médico / psicológico'}</button>
+    </div>
+    {open&&<Drawer title="Registo de Exame Médico e Psicológico" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitExam} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Condutor avaliado
+          <select name="driverId" value={selectedDriver?.id||''} onChange={e=>setSelectedDriverId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {drivers.map(d=><option key={d.id} value={d.id}>{d.name} · Carta: {d.license} · Cat.: {d.category}</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Tipo de avaliação
+          <select name="examType" className={`mt-1.5 ${inputClass}`}>
+            <option value="Exame Médico de Aptidão Física">Exame Médico de Aptidão Física</option>
+            <option value="Avaliação Psicológica (Psicotécnico)">Avaliação Psicológica (Psicotécnico)</option>
+            <option value="Exame Médico e Psicológico Completo">Exame Médico e Psicológico Completo</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Resultado do laudo
+          <select name="result" className={`mt-1.5 ${inputClass}`}>
+            <option value="Apto">Apto</option>
+            <option value="Apto com restrições">Apto com restrições</option>
+            <option value="Inapto temporário">Inapto temporário</option>
+            <option value="Inapto">Inapto</option>
+          </select>
+        </label>
+        <Field label="Categoria avaliada (A, B, C, D, E)" name="targetCategory" defaultValue={selectedDriver?.category||'B'}/>
+        <Field label="Centro médico / Junta médica / Psicólogo" name="medicalEntity" defaultValue="Centro Nacional de Medicina Rodoviária · Bissau"/>
+        <Field label="N.º do atestado / certificado médico" name="certificateNumber" placeholder="Ex.: ATM-2026-0912"/>
+        <Field label="Data de realização do exame" name="examDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Validade do exame" name="expiryDate" type="date" defaultValue="2029-11-02"/>
+        <div className="sm:col-span-2">
+          <Field label="Restrições médicas ou psicológicas a averbar na carta" name="restrictions" defaultValue="Sem restrições" placeholder="Ex.: Uso obrigatório de lentes corretivas / Proibido conduzir à noite"/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Guardar exame no histórico do condutor</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Histórico de Exames Médicos e Psicológicos</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Código','Data','Condutor / Carta','Tipo de Exame','Cat.','Resultado','Entidade / N.º Atestado','Restrições / Validade','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {exams.map(ex=><tr key={ex.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{ex.id}</td>
+            <td className="px-3 py-3">{ex.examDate}</td>
+            <td className="px-3 py-3 font-semibold">{ex.driverName}<span className="block text-[11px] font-normal text-[#737a70]">Carta: {ex.license||'—'}</span></td>
+            <td className="px-3 py-3 font-medium">{ex.examType}</td>
+            <td className="px-3 py-3 font-bold text-[#006B35]">{ex.targetCategory}</td>
+            <td className="px-3 py-3"><Status value={ex.result}/></td>
+            <td className="px-3 py-3 text-xs">{ex.medicalEntity||'—'}{ex.certificateNumber&&<span className="block text-[11px] text-[#006B35]">Laudo: {ex.certificateNumber}</span>}</td>
+            <td className="px-3 py-3 text-xs">{ex.restrictions||'Sem restrições'}{ex.expiryDate&&<span className="block text-[11px] text-[#737a70]">Válido até: {ex.expiryDate}</span>}</td>
+            <td className="px-3 py-3"><button type="button" onClick={()=>handleDelete(ex.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
 }
 
 export function CirculationTax(){const [vehicles,setVehicles]=useSaved('vehicles',seedVehicles);const [message,setMessage]=useState('');function pay(plate:string){setVehicles(rows=>rows.map(v=>v.plate===plate?{...v,taxDue:0}:v));setMessage(`Pagamento de demonstração registado para ${plate}.`);}return <Shell><Title eyebrow="Receita e regularização" title="Imposto de Circulação" description="Acompanhe obrigações simuladas por matrícula e registe pagamentos de demonstração." icon={Banknote}/><div className="mb-5 border-l-2 border-[#FCD116] bg-[#f5f2e7] p-4 text-sm leading-6"><b>Nomenclatura local:</b> Imposto de Circulação de Veículos, Motocicletas e Embarcações. A incidência depende da categoria; o valor anual divulgado para viaturas particulares foi 41.500 XOF. Esta tela não calcula imposto legal nem substitui uma guia da DGCI.</div>{message&&<div role="status" className="mb-4 border border-[#009E49]/30 bg-[#009E49]/10 p-3 text-sm text-[#006B35]">{message}</div>}<div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4"><table className="w-full text-left text-sm"><thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]"><tr>{['Matrícula','Titular','Categoria','Período','Valor demonstrativo','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr></thead><tbody>{vehicles.map(v=><tr key={v.plate} className="border-b border-[#f0eee7]"><td className="px-3 py-3 font-semibold">{v.plate}</td><td className="px-3 py-3">{v.owner}</td><td className="px-3 py-3">{v.category}</td><td className="px-3 py-3">2026</td><td className="px-3 py-3">{currency(v.taxDue)}</td><td className="px-3 py-3"><Status value={v.taxDue?'Pendente':'Pago'}/></td><td className="px-3 py-3"><button onClick={()=>pay(v.plate)} disabled={!v.taxDue} className={secondaryClass}><Check size={14}/> Simular pagamento</button></td></tr>)}</tbody></table></div></Shell>;}
 
-export function FineManagement(){const [vehicles]=useSaved('vehicles',seedVehicles);const [fines,setFines]=useSaved('fines',seedFines);const [infractionTypes]=useSaved('infraction-types',seedInfractionTypes);const [open,setOpen]=useState(false);const [plateQuery,setPlateQuery]=useState('');const [showSuggestions,setShowSuggestions]=useState(false);const [selectedInfraction,setSelectedInfraction]=useState('');const [fineAmount,setFineAmount]=useState('');const [fineError,setFineError]=useState('');useEffect(()=>{if(open&&!selectedInfraction&&infractionTypes.length>0){setSelectedInfraction(infractionTypes[0].name);setFineAmount(String(infractionTypes[0].amount));}},[open,selectedInfraction,infractionTypes]);function handleInfractionChange(name:string){setSelectedInfraction(name);const found=infractionTypes.find(it=>it.name===name);if(found){setFineAmount(String(found.amount));}}const matchedVehicles=useMemo(()=>{const q=plateQuery.trim().toLowerCase();return q?vehicles.filter(v=>v.plate.toLowerCase().includes(q)||v.owner.toLowerCase().includes(q)||(v.driver||'').toLowerCase().includes(q)):vehicles;},[vehicles,plateQuery]);const selectedVehicle=useMemo(()=>vehicles.find(v=>v.plate.toUpperCase()===plateQuery.trim().toUpperCase()),[vehicles,plateQuery]);async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const formEl=e.currentTarget;const f=new FormData(formEl);const vehicle=selectedVehicle||vehicles.find(v=>v.plate.toUpperCase()===String(f.get('plate')||'').trim().toUpperCase());if(!vehicle){setFineError('Selecione um veículo válido da lista sugestiva.');return;}try{setFineError('');const payload={id:`GB-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,plate:vehicle.plate,driver:vehicle.driver||vehicle.owner,infraction:selectedInfraction||String(f.get('infraction')),amount:Number(fineAmount||f.get('amount')),date:String(f.get('date')),status:'Pendente' as const};const res=await api.post<Fine>('/fines',payload);setFines([res.data,...fines]);setPlateQuery('');formEl.reset();window.dispatchEvent(new Event('sigetran:drawer-close'));}catch(err:any){setFineError(err?.response?.data?.error||'Não foi possível emitir o auto de infração.');}}async function payFine(id:string){try{await api.put(`/fines/${encodeURIComponent(id)}`,{status:'Pago'});}catch{/* ignore */}setFines(rows=>rows.map(row=>row.id===id?{...row,status:'Pago'}:row));}
-  return <Shell><Title eyebrow="Fiscalização rodoviária" title="Multas e infrações" description="Emita autos simulados, vincule matrícula e condutor, e acompanhe pagamentos." icon={ClipboardList}/><div className="mb-4 flex flex-wrap justify-end gap-2"><Link to="/infraction-types" className={secondaryClass}><AlertTriangle size={16}/> Tabela de infrações e preços</Link><button onClick={()=>{const next=!open;setOpen(next);setFineError('');if(next&&infractionTypes.length>0){setSelectedInfraction(infractionTypes[0].name);setFineAmount(String(infractionTypes[0].amount));}}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Registar auto de infração'}</button></div>{open&&<Drawer title="Novo auto de infração" onClose={()=>{setOpen(false);setFineError('');}}><form onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="relative"><label className="block text-xs font-semibold">Veículo<input name="plate" value={plateQuery} onFocus={()=>setShowSuggestions(true)} onBlur={()=>setTimeout(()=>setShowSuggestions(false),180)} onChange={e=>{setPlateQuery(e.target.value.toUpperCase());setShowSuggestions(true);setFineError('');}} placeholder="Digite a placa (ex.: GB-24-BC)" autoComplete="off" required className={`mt-1.5 ${inputClass}`}/></label>{selectedVehicle&&<div className="mt-1 text-[11px] font-semibold text-[#006B35]">Dono: {selectedVehicle.owner}{selectedVehicle.driver&&selectedVehicle.driver!==selectedVehicle.owner?` · Condutor: ${selectedVehicle.driver}`:''}</div>}{showSuggestions&&matchedVehicles.length>0&&<ul role="listbox" className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto border border-[#dcd9cc] bg-white shadow-lg">{matchedVehicles.map(v=><li key={v.plate} role="option" aria-selected={selectedVehicle?.plate===v.plate} onMouseDown={e=>{e.preventDefault();setPlateQuery(v.plate);setShowSuggestions(false);setFineError('');}} className="cursor-pointer border-b border-[#f0eee7] px-3 py-2 text-xs last:border-b-0 hover:bg-[#009E49]/10"><div className="flex items-center justify-between font-bold text-[#1c3024]"><span>{v.plate}</span><span className="text-[10px] font-normal text-[#737a70]">{v.make} {v.model}</span></div><div className="mt-0.5 text-[11px] text-[#006B35]">Dono: <b>{v.owner}</b></div></li>)}</ul>}</div><label className="block text-xs font-semibold">Infração<select name="infraction" value={selectedInfraction} onChange={e=>handleInfractionChange(e.target.value)} className={`mt-1.5 ${inputClass}`}>{infractionTypes.map(it=><option key={it.id} value={it.name}>{it.name} ({currency(it.amount)})</option>)}</select></label><label className="block text-xs font-semibold text-[#4b5549]">Valor (XOF)<input name="amount" type="number" required value={fineAmount} onChange={e=>setFineAmount(e.target.value)} className={`mt-1.5 ${inputClass}`}/></label><Field label="Data" name="date" type="date" defaultValue={new Date().toISOString().slice(0,10)}/><div className="flex items-end"><button className={primaryClass}>Emitir auto</button></div></form>{fineError&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{fineError}</p>}<p className="mt-3 text-[11px] text-[#7a4c00]">O valor é preenchido automaticamente de acordo com a infração selecionada. Pode gerir as infrações e preços em <Link to="/infraction-types" className="font-semibold underline">Tabela de infrações</Link>.</p></Drawer>}<div className="mt-5 overflow-x-auto border border-[#dcd9cc] bg-white p-4"><table className="w-full text-left text-sm"><thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]"><tr>{['N.º do auto','Data','Matrícula','Condutor','Infração','Valor','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr></thead><tbody>{fines.map(f=><tr key={f.id} className="border-b border-[#f0eee7]"><td className="px-3 py-3">{f.id}</td><td className="px-3 py-3">{f.date}</td><td className="px-3 py-3 font-semibold">{f.plate}</td><td className="px-3 py-3">{f.driver||'—'}</td><td className="px-3 py-3">{f.infraction}</td><td className="px-3 py-3">{currency(f.amount)}</td><td className="px-3 py-3"><Status value={f.status}/></td><td className="px-3 py-3"><button disabled={f.status==='Pago'} onClick={()=>payFine(f.id)} className={secondaryClass}>Registar pagamento</button></td></tr>)}</tbody></table></div></Shell>;}
+function FineSubmenuBar(){const {pathname}=useLocation();return <div className="mb-6 flex flex-wrap gap-1.5 border-b border-[#dcd9cc] pb-4">{fineSubmenus.map(sub=>{const active=pathname===sub.path;return <Link key={sub.path} to={sub.path} className={`border px-3 py-1.5 text-xs font-semibold transition ${active?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-white text-[#26372b] hover:border-[#009E49] hover:bg-[#f4f3ed]'}`}>{sub.label}</Link>;})}</div>;}
+
+export function FineManagement(){
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [fines,setFines]=useSaved('fines',seedFines);
+  const [infractionTypes]=useSaved('infraction-types',seedInfractionTypes);
+  const [agents]=useSaved('inspection-agents',seedInspectionAgents);
+  const [open,setOpen]=useState(false);
+  const [plateQuery,setPlateQuery]=useState('');
+  const [showSuggestions,setShowSuggestions]=useState(false);
+  const [selectedInfraction,setSelectedInfraction]=useState('');
+  const [selectedSeverity,setSelectedSeverity]=useState('Grave');
+  const [fineAmount,setFineAmount]=useState('');
+  const [fineError,setFineError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+
+  useEffect(()=>{
+    if(open&&!selectedInfraction&&infractionTypes.length>0){
+      setSelectedInfraction(infractionTypes[0].name);
+      setFineAmount(String(infractionTypes[0].amount));
+      setSelectedSeverity(infractionTypes[0].severity||'Grave');
+    }
+  },[open,selectedInfraction,infractionTypes]);
+
+  function handleInfractionChange(name:string){
+    setSelectedInfraction(name);
+    const found=infractionTypes.find(it=>it.name===name);
+    if(found){
+      setFineAmount(String(found.amount));
+      setSelectedSeverity(found.severity||'Média');
+    }
+  }
+
+  const matchedVehicles=useMemo(()=>{
+    const q=plateQuery.trim().toLowerCase();
+    return q?vehicles.filter(v=>v.plate.toLowerCase().includes(q)||v.owner.toLowerCase().includes(q)||(v.driver||'').toLowerCase().includes(q)):vehicles;
+  },[vehicles,plateQuery]);
+
+  const selectedVehicle=useMemo(()=>vehicles.find(v=>v.plate.toUpperCase()===plateQuery.trim().toUpperCase()),[vehicles,plateQuery]);
+
+  async function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const vehicle=selectedVehicle||vehicles.find(v=>v.plate.toUpperCase()===String(f.get('plate')||'').trim().toUpperCase());
+    if(!vehicle){setFineError('Selecione um veículo válido da lista sugestiva.');return;}
+    const agentBadgeVal=String(f.get('agentBadge')||'');
+    const chosenAgent=agents.find(a=>a.badge===agentBadgeVal);
+    try{
+      setFineError('');setSuccessMsg('');
+      const payload:Fine={
+        id:`GB-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`,
+        plate:vehicle.plate,
+        driver:vehicle.driver||vehicle.owner,
+        infraction:selectedInfraction||String(f.get('infraction')),
+        severity:selectedSeverity,
+        amount:Number(fineAmount||f.get('amount')),
+        date:String(f.get('date')),
+        status:'Pendente',
+        agentName:chosenAgent?chosenAgent.name:String(f.get('agentName')||'Subcomissário Malam Bacai'),
+        agentBadge:chosenAgent?chosenAgent.badge:agentBadgeVal||'AG-GB-0104',
+        location:String(f.get('location')||'Av. Amílcar Cabral · Bissau').trim(),
+        evidenceDescription:String(f.get('evidenceDescription')||'').trim(),
+      };
+      const res=await api.post<Fine>('/fines',payload);
+      setFines([res.data,...fines]);
+      setSuccessMsg(`Auto de infração ${res.data.id} emitido com sucesso para a matrícula ${res.data.plate}.`);
+      setPlateQuery('');
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setFineError(err?.response?.data?.error||'Não foi possível emitir o auto de infração.');
+    }
+  }
+
+  async function payFine(id:string){
+    const receipt=`REC-DGV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`;
+    const today=new Date().toISOString().slice(0,10);
+    try{await api.put(`/fines/${encodeURIComponent(id)}`,{status:'Pago',paymentReceipt:receipt,paymentDate:today,paymentMethod:'Tesouraria / Guia de Pagamento'});}catch{/* ignore */}
+    setFines(rows=>rows.map(row=>row.id===id?{...row,status:'Pago',paymentReceipt:receipt,paymentDate:today,paymentMethod:'Tesouraria / Guia de Pagamento'}:row));
+    setSuccessMsg(`Pagamento do auto ${id} registado com comprovativo ${receipt}.`);
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 4" title="Emissão de auto de infração" description="Emita autos de infração oficiais, vincule matrícula, condutor, gravidade, valor da coima, local e agente autuante." icon={ClipboardList}/>
+    <FineSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-4 flex flex-wrap justify-end gap-2">
+      <Link to="/infraction-types" className={secondaryClass}><AlertTriangle size={16}/> Catálogo nacional de infrações</Link>
+      <Link to="/fines/evidence" className={secondaryClass}><ClipboardCheck size={16}/> Fotografias e provas</Link>
+      <button onClick={()=>{const next=!open;setOpen(next);setFineError('');if(next&&infractionTypes.length>0){setSelectedInfraction(infractionTypes[0].name);setFineAmount(String(infractionTypes[0].amount));setSelectedSeverity(infractionTypes[0].severity||'Grave');}}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Emitir novo auto de infração'}</button>
+    </div>
+    {open&&<Drawer title="Novo auto de infração" onClose={()=>{setOpen(false);setFineError('');}}>
+      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+        <div className="relative sm:col-span-2">
+          <label className="block text-xs font-semibold">Veículo (Matrícula / Proprietário)
+            <input name="plate" value={plateQuery} onFocus={()=>setShowSuggestions(true)} onBlur={()=>setTimeout(()=>setShowSuggestions(false),180)} onChange={e=>{setPlateQuery(e.target.value.toUpperCase());setShowSuggestions(true);setFineError('');}} placeholder="Digite a placa (ex.: GB-24-BC)" autoComplete="off" required className={`mt-1.5 ${inputClass}`}/>
+          </label>
+          {selectedVehicle&&<div className="mt-1 text-[11px] font-semibold text-[#006B35]">Dono: {selectedVehicle.owner}{selectedVehicle.driver&&selectedVehicle.driver!==selectedVehicle.owner?` · Condutor: ${selectedVehicle.driver}`:''}</div>}
+          {showSuggestions&&matchedVehicles.length>0&&<ul role="listbox" className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto border border-[#dcd9cc] bg-white shadow-lg">{matchedVehicles.map(v=><li key={v.plate} role="option" aria-selected={selectedVehicle?.plate===v.plate} onMouseDown={e=>{e.preventDefault();setPlateQuery(v.plate);setShowSuggestions(false);setFineError('');}} className="cursor-pointer border-b border-[#f0eee7] px-3 py-2 text-xs last:border-b-0 hover:bg-[#009E49]/10"><div className="flex items-center justify-between font-bold text-[#1c3024]"><span>{v.plate}</span><span className="text-[10px] font-normal text-[#737a70]">{v.make} {v.model}</span></div><div className="mt-0.5 text-[11px] text-[#006B35]">Dono: <b>{v.owner}</b></div></li>)}</ul>}
+        </div>
+        <label className="block text-xs font-semibold sm:col-span-2">Infração (Catálogo Nacional)
+          <select name="infraction" value={selectedInfraction} onChange={e=>handleInfractionChange(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {infractionTypes.map(it=><option key={it.id} value={it.name}>{it.name} · [{it.severity}] ({currency(it.amount)})</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Gravidade
+          <select name="severity" value={selectedSeverity} onChange={e=>setSelectedSeverity(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            <option value="Leve">Leve</option>
+            <option value="Média">Média</option>
+            <option value="Grave">Grave</option>
+            <option value="Gravíssima">Gravíssima</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Valor da Multa (XOF)
+          <input name="amount" type="number" required value={fineAmount} onChange={e=>setFineAmount(e.target.value)} className={`mt-1.5 ${inputClass}`}/>
+        </label>
+        <Field label="Data da infração" name="date" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Local da fiscalização / via" name="location" defaultValue="Av. Amílcar Cabral · Bissau"/>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Agente fiscalizador autuante
+          <select name="agentBadge" className={`mt-1.5 ${inputClass}`}>
+            {agents.map(a=><option key={a.id} value={a.badge}>{a.name} · Matrícula: {a.badge} ({a.district})</option>)}
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Resumo de provas / observações do auto (opcional)" name="evidenceDescription" required={false} placeholder="Ex.: Radar cinemómetro / Falta de livrete constatada em operação stop"/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Emitir auto de infração</button>
+        </div>
+      </form>
+      {fineError&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{fineError}</p>}
+      <p className="mt-3 text-[11px] text-[#7a4c00]">O valor e a gravidade são preenchidos automaticamente de acordo com a infração selecionada no <Link to="/infraction-types" className="font-semibold underline">Catálogo nacional de infrações</Link>.</p>
+    </Drawer>}
+    <div className="mt-5 overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º do auto','Data / Local','Matrícula / Condutor','Infração','Gravidade','Agente Fiscalizador','Valor','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {fines.map(f=>{
+            const it=infractionTypes.find(t=>t.name.toLowerCase()===f.infraction.toLowerCase());
+            const sev=f.severity||it?.severity||'Média';
+            return <tr key={f.id} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-mono text-xs">{f.id}{f.administrativeBlock&&<span className="mt-1 block text-[10px] font-bold uppercase text-[#9f1a2b]">Bloqueio Adm.</span>}</td>
+              <td className="px-3 py-3">{f.date}<span className="block text-[11px] text-[#737a70]">{f.location||'Bissau'}</span></td>
+              <td className="px-3 py-3 font-semibold">{f.plate}<span className="block text-[11px] font-normal text-[#737a70]">{f.driver||'—'}</span></td>
+              <td className="px-3 py-3">{f.infraction}</td>
+              <td className="px-3 py-3"><Status value={sev}/></td>
+              <td className="px-3 py-3 text-xs">{f.agentName||'Subcomissário Malam Bacai'}<span className="block text-[11px] text-[#006B35]">{f.agentBadge||'AG-GB-0104'}</span></td>
+              <td className="px-3 py-3 font-semibold">{currency(f.amount)}</td>
+              <td className="px-3 py-3"><Status value={f.status}/></td>
+              <td className="px-3 py-3"><button disabled={f.status==='Pago'||f.status==='Anulado'} onClick={()=>payFine(f.id)} className={secondaryClass}>Registar pagamento</button></td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
 
 export function InfractionCatalog(){
   const [items,setItems]=useSaved('infraction-types',seedInfractionTypes);
   const [open,setOpen]=useState(false);
   const [editing,setEditing]=useState<InfractionTypeItem|null>(null);
   const [error,setError]=useState('');
+  const [query,setQuery]=useState('');
+  const filteredItems=items.filter(it=>[it.id,it.name,it.severity,it.description||''].join(' ').toLowerCase().includes(query.toLowerCase()));
   function openCreate(){setEditing(null);setError('');setOpen(true);}
   function openEdit(item:InfractionTypeItem){setEditing(item);setError('');setOpen(true);}
   function closeDrawer(){setOpen(false);setEditing(null);setError('');}
@@ -517,7 +1436,712 @@ export function InfractionCatalog(){
       setError(err?.response?.data?.error||'Não foi possível guardar a infração.');
     }
   }
-  return <Shell><Title eyebrow="Enquadramento e coimas" title="Tabela de infrações e preços" description="Cadastre as infrações rodoviárias e os respetivos valores (XOF) para preenchimento automático na emissão de multas." icon={AlertTriangle}/><div className="mb-4 flex flex-wrap justify-end gap-2"><Link to="/fines" className={secondaryClass}><ClipboardList size={16}/> Ir para Multas e infrações</Link><button onClick={()=>open?closeDrawer():openCreate()} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Cadastrar infração'}</button></div>{open&&<Drawer title={editing?`Editar infração (${editing.id})`:'Nova infração e preço'} onClose={closeDrawer}><form key={editing?.id||'new'} onSubmit={submit} className="grid gap-3 sm:grid-cols-2"><Field label="Descrição da infração" name="name" defaultValue={editing?.name} placeholder="Ex.: Excesso de velocidade"/><Field label="Preço / Valor (XOF)" name="amount" type="number" defaultValue={editing?String(editing.amount):''} placeholder="Ex.: 35000"/><label className="block text-xs font-semibold text-[#4b5549]">Gravidade<select name="severity" defaultValue={editing?.severity||'Média'} className={`mt-1.5 ${inputClass}`}><option value="Leve">Leve</option><option value="Média">Média</option><option value="Grave">Grave</option><option value="Gravíssima">Gravíssima</option></select></label><Field label="Observação / enquadramento (opcional)" name="description" required={false} defaultValue={editing?.description} placeholder="Ex.: Artigo do código da estrada"/><div className="sm:col-span-2 flex items-end"><button className={primaryClass}>{editing?'Salvar alterações':'Guardar infração'}</button></div></form>{error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}</Drawer>}<div className="mt-5 overflow-x-auto border border-[#dcd9cc] bg-white p-4"><table className="w-full text-left text-sm"><thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]"><tr>{['Código','Infração','Gravidade','Observação','Preço (XOF)','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr></thead><tbody>{items.map(it=><tr key={it.id} className="border-b border-[#f0eee7]"><td className="px-3 py-3">{it.id}</td><td className="whitespace-nowrap px-3 py-3 font-semibold">{it.name}</td><td className="px-3 py-3"><Status value={it.severity}/></td><td className="px-3 py-3 text-xs text-[#737a70]">{it.description||'—'}</td><td className="whitespace-nowrap px-3 py-3 font-bold text-[#006B35]">{currency(it.amount)}</td><td className="whitespace-nowrap px-3 py-3"><div className="flex items-center gap-3"><button type="button" onClick={()=>openEdit(it)} className="text-xs font-semibold text-[#006B35] hover:underline">Editar</button><button type="button" onClick={()=>handleDelete(it.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Excluir</button></div></td></tr>)}</tbody></table></div></Shell>;
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 1" title="Catálogo nacional de infrações" description="Tipificação oficial das infrações rodoviárias, artigos do Código da Estrada, classificação por gravidade e coimas padrão (XOF)." icon={AlertTriangle}/>
+    <FineSubmenuBar/>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3"><Search size={16} className="text-[#737a70]"/><input aria-label="Pesquisar no catálogo" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Pesquisar código, infração, artigo ou gravidade" className="w-full py-2 text-sm outline-none"/></label>
+      <div className="flex flex-wrap gap-2">
+        <Link to="/fines" className={secondaryClass}><ClipboardList size={16}/> Emitir auto de infração</Link>
+        <button onClick={()=>open?closeDrawer():openCreate()} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Cadastrar infração no catálogo'}</button>
+      </div>
+    </div>
+    {open&&<Drawer title={editing?`Editar infração (${editing.id})`:'Nova infração do catálogo nacional'} onClose={closeDrawer}><form key={editing?.id||'new'} onSubmit={submit} className="grid gap-3 sm:grid-cols-2"><Field label="Descrição da infração" name="name" defaultValue={editing?.name} placeholder="Ex.: Excesso de velocidade"/><Field label="Valor da multa / Coima (XOF)" name="amount" type="number" defaultValue={editing?String(editing.amount):''} placeholder="Ex.: 35000"/><label className="block text-xs font-semibold text-[#4b5549]">Classificação por gravidade<select name="severity" defaultValue={editing?.severity||'Média'} className={`mt-1.5 ${inputClass}`}><option value="Leve">Leve</option><option value="Média">Média</option><option value="Grave">Grave</option><option value="Gravíssima">Gravíssima</option></select></label><Field label="Enquadramento legal / observação (opcional)" name="description" required={false} defaultValue={editing?.description} placeholder="Ex.: Art. 84.º do Código da Estrada"/><div className="sm:col-span-2 flex items-end"><button className={primaryClass}>{editing?'Salvar alterações':'Guardar no catálogo'}</button></div></form>{error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}</Drawer>}
+    <div className="mt-5 overflow-x-auto border border-[#dcd9cc] bg-white p-4"><table className="w-full text-left text-sm"><thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]"><tr>{['Código','Infração Tipificada','Gravidade','Enquadramento Legal / Descrição','Valor da Multa (XOF)','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr></thead><tbody>{filteredItems.map(it=><tr key={it.id} className="border-b border-[#f0eee7]"><td className="px-3 py-3 font-mono text-xs">{it.id}</td><td className="whitespace-nowrap px-3 py-3 font-semibold">{it.name}</td><td className="px-3 py-3"><Status value={it.severity}/></td><td className="px-3 py-3 text-xs text-[#737a70]">{it.description||'—'}</td><td className="whitespace-nowrap px-3 py-3 font-bold text-[#006B35]">{currency(it.amount)}</td><td className="whitespace-nowrap px-3 py-3"><div className="flex items-center gap-3"><button type="button" onClick={()=>openEdit(it)} className="text-xs font-semibold text-[#006B35] hover:underline">Editar</button><button type="button" onClick={()=>handleDelete(it.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Excluir</button></div></td></tr>)}</tbody></table></div>
+  </Shell>;
+}
+
+export function FineSeverityPage(){
+  const [items,setItems]=useSaved('infraction-types',seedInfractionTypes);
+  const [fines]=useSaved('fines',seedFines);
+  const [filterSeverity,setFilterSeverity]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+
+  const severityLevels=[
+    {level:'Leve',points:2,sanction:'Coima base · Advertência pedagógica',description:'Infrações de reduzido impacto na fluidez ou segurança viária, sem risco direto à integridade física.',color:'border-t-[#009E49]'},
+    {level:'Média',points:4,sanction:'Coima intermédia · Dedução de 4 pontos',description:'Condutas que perturbam a circulação ou incumprem deveres administrativos e de inspeção periódica.',color:'border-t-[#FCD116]'},
+    {level:'Grave',points:5,sanction:'Coima agravada · Dedução de 5 pontos · Retenção de documento',description:'Manobras perigosas, falta de documentação obrigatória ou desrespeito à sinalização prioritária.',color:'border-t-[#9f1a2b]'},
+    {level:'Gravíssima',points:7,sanction:'Coima máxima · Dedução de 7 pontos · Inibição de conduzir / Bloqueio',description:'Excesso severo de velocidade, condução sem habilitação legal ou sob efeito de álcool/psicotrópicos.',color:'border-t-[#CE1126]'},
+  ];
+
+  async function changeItemSeverity(item:InfractionTypeItem,newSeverity:string){
+    const updated={...item,severity:newSeverity};
+    try{
+      await api.put(`/infraction-types/${encodeURIComponent(item.id)}`,updated);
+    }catch{/* ignore */}
+    setItems(rows=>rows.map(r=>r.id===item.id?updated:r));
+    setSuccessMsg(`Gravidade da infração "${item.name}" atualizada para ${newSeverity}.`);
+  }
+
+  const visibleItems=filterSeverity?items.filter(i=>i.severity===filterSeverity):items;
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 2" title="Classificação por gravidade" description="Enquadramento das contraordenações rodoviárias por grau de gravidade (Leve, Média, Grave e Gravíssima), impacto na pontuação e sanções acessórias." icon={AlertTriangle}/>
+    <FineSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {severityLevels.map(s=>{
+        const catalogCount=items.filter(i=>i.severity===s.level).length;
+        const finesCount=fines.filter(f=>(f.severity||'Média')===s.level).length;
+        return <div key={s.level} className={`flex flex-col justify-between border border-[#dcd9cc] border-t-4 ${s.color} bg-white p-4`}>
+          <div>
+            <div className="flex items-center justify-between">
+              <Status value={s.level}/>
+              <span className="text-xs font-bold text-[#9f1a2b]">-{s.points} pontos na carta</span>
+            </div>
+            <h3 className="mt-3 font-serif text-lg font-bold text-[#1c3024]">Infração {s.level}</h3>
+            <p className="mt-1 text-xs leading-5 text-[#697168]">{s.description}</p>
+          </div>
+          <div className="mt-4 border-t border-[#f0eee7] pt-3 text-[11px] text-[#4b5549]">
+            <div><b>Sanção aplicável:</b> {s.sanction}</div>
+            <div className="mt-1 flex justify-between font-semibold text-[#006B35]"><span>{catalogCount} no catálogo</span><span>{finesCount} auto(s) emitido(s)</span></div>
+          </div>
+        </div>;
+      })}
+    </div>
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-[#e9e6dc] pb-3">
+        <h2 className="font-serif text-lg font-bold text-[#1c3024]">Reclassificação de Gravidade por Infração</h2>
+        <select aria-label="Filtrar gravidade" value={filterSeverity} onChange={e=>setFilterSeverity(e.target.value)} className="border border-[#d5d1c2] bg-white px-3 py-1.5 text-xs font-semibold outline-none">
+          <option value="">Todas as gravidades</option>
+          <option value="Leve">Leve</option>
+          <option value="Média">Média</option>
+          <option value="Grave">Grave</option>
+          <option value="Gravíssima">Gravíssima</option>
+        </select>
+      </div>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Código','Infração','Gravidade Atual','Pontos a Deduzir','Valor Base','Alterar Classificação de Gravidade'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {visibleItems.map(it=>{
+            const pts=it.severity==='Leve'?2:it.severity==='Média'?4:it.severity==='Grave'?5:7;
+            return <tr key={it.id} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-mono text-xs">{it.id}</td>
+              <td className="px-3 py-3 font-semibold">{it.name}</td>
+              <td className="px-3 py-3"><Status value={it.severity}/></td>
+              <td className="px-3 py-3 font-bold text-[#9f1a2b]">-{pts} pts</td>
+              <td className="px-3 py-3 font-semibold">{currency(it.amount)}</td>
+              <td className="px-3 py-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {['Leve','Média','Grave','Gravíssima'].map(lvl=><button key={lvl} type="button" onClick={()=>changeItemSeverity(it,lvl)} className={`border px-2.5 py-1 text-xs font-semibold transition ${it.severity===lvl?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-[#f8f7f2] text-[#26372b] hover:border-[#009E49]'}`}>{lvl}</button>)}
+                </div>
+              </td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FineAmountsPage(){
+  const [items,setItems]=useSaved('infraction-types',seedInfractionTypes);
+  const [fines]=useSaved('fines',seedFines);
+  const [draftAmounts,setDraftAmounts]=useState<Record<string,string>>({});
+  const [successMsg,setSuccessMsg]=useState('');
+
+  async function updateAmount(item:InfractionTypeItem){
+    const raw=draftAmounts[item.id];
+    const newAmount=raw!==undefined?Number(raw):item.amount;
+    if(!newAmount||newAmount<=0)return;
+    const updated={...item,amount:newAmount};
+    try{await api.put(`/infraction-types/${encodeURIComponent(item.id)}`,updated);}catch{/* ignore */}
+    setItems(rows=>rows.map(r=>r.id===item.id?updated:r));
+    setSuccessMsg(`Valor da multa para "${item.name}" atualizado para ${currency(newAmount)}.`);
+  }
+
+  const totalIssued=fines.reduce((acc,f)=>acc+f.amount,0);
+  const totalPaid=fines.filter(f=>f.status==='Pago').reduce((acc,f)=>acc+f.amount,0);
+  const totalPending=fines.filter(f=>f.status==='Pendente').reduce((acc,f)=>acc+f.amount,0);
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 3" title="Valor da multa" description="Tabela financeira de coimas em Franco CFA (XOF), atualização de montantes oficiais e simulação de agravamento por reincidência." icon={Banknote}/>
+    <FineSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Montante total autuado" value={currency(totalIssued)} detail={`${fines.length} auto(s) registado(s)`} icon={ClipboardList}/>
+      <Stat label="Valor arrecadado (Pago)" value={currency(totalPaid)} detail="Liquidado na tesouraria" icon={Check}/>
+      <Stat label="Valor pendente de cobrança" value={currency(totalPending)} detail="Aguardando pagamento" icon={Banknote}/>
+    </div>
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Tabela Oficial de Valores de Multa e Coimas (XOF)</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Código','Infração','Gravidade','Valor Base (XOF)','Valor c/ Agravamento Reincidência (+50%)','Novo Valor (XOF)','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {items.map(it=><tr key={it.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{it.id}</td>
+            <td className="px-3 py-3 font-semibold">{it.name}</td>
+            <td className="px-3 py-3"><Status value={it.severity}/></td>
+            <td className="px-3 py-3 font-bold text-[#006B35]">{currency(it.amount)}</td>
+            <td className="px-3 py-3 font-semibold text-[#9f1a2b]">{currency(Math.round(it.amount*1.5))}</td>
+            <td className="px-3 py-3 w-48">
+              <input type="number" aria-label={`Novo valor para ${it.name}`} value={draftAmounts[it.id]??String(it.amount)} onChange={e=>setDraftAmounts({...draftAmounts,[it.id]:e.target.value})} className="w-full border border-[#d5d1c2] px-2.5 py-1.5 text-sm outline-none focus:border-[#009E49]"/>
+            </td>
+            <td className="px-3 py-3">
+              <button type="button" onClick={()=>updateAmount(it)} className={secondaryClass}>Atualizar valor</button>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FineEvidencePage(){
+  const [fines,setFines]=useSaved('fines',seedFines);
+  const [open,setOpen]=useState(false);
+  const [selectedFineId,setSelectedFineId]=useState('');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const selectedFine=fines.find(f=>f.id===selectedFineId)||fines[0];
+
+  async function submitEvidence(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const fineId=String(f.get('fineId')||selectedFine?.id||'');
+    const file=f.get('evidenceFile') as File|null;
+    if(file&&file.size>1_500_000){setError('A fotografia/prova deve ter no máximo 1.5 MB.');return;}
+    try{
+      setError('');setSuccessMsg('');
+      let evFile=selectedFine?.evidenceFile;
+      if(file&&file.size>0){
+        const dataUrl=await new Promise<string>((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=()=>resolve(String(reader.result));
+          reader.onerror=()=>reject(new Error('Erro ao ler ficheiro'));
+          reader.readAsDataURL(file);
+        });
+        evFile={name:file.name,dataUrl};
+      }
+      const desc=String(f.get('evidenceDescription')||'').trim();
+      const loc=String(f.get('location')||selectedFine?.location||'').trim();
+      const res=await api.put<Fine>(`/fines/${encodeURIComponent(fineId)}`,{
+        evidenceFile:evFile,
+        evidenceDescription:desc,
+        location:loc,
+      });
+      setFines(rows=>rows.map(r=>r.id===fineId?res.data:r));
+      setSuccessMsg(`Fotografia / prova material anexada com sucesso ao auto ${fineId}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível anexar a prova ao auto.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 5" title="Fotografias e provas" description="Repositório probatório dos autos de infração: registo fotográfico da infração, leitura de radar/etilómetro e descrição pericial." icon={ClipboardCheck}/>
+    <FineSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Anexar fotografia / prova ao auto'}</button>
+    </div>
+    {open&&<Drawer title="Anexar Fotografia ou Prova Material" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitEvidence} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Selecionar Auto de Infração
+          <select name="fineId" value={selectedFine?.id||''} onChange={e=>setSelectedFineId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {fines.map(f=><option key={f.id} value={f.id}>{f.id} · {f.plate} · {f.infraction} ({f.date})</option>)}
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Local exato / Coordenadas ou Posto Policial" name="location" defaultValue={selectedFine?.location||'Av. Amílcar Cabral · Bissau'}/>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Descrição técnica da prova (Radar, Etilómetro, Testemunho, Fotografia)" name="evidenceDescription" defaultValue={selectedFine?.evidenceDescription||''} placeholder="Ex.: Registo fotográfico da matrícula em estacionamento proibido / Talão cinemómetro"/>
+        </div>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Ficheiro de Fotografia ou Comprovativo Técnico (JPG, PNG, PDF)
+          <input type="file" name="evidenceFile" accept=".jpg,.jpeg,.png,.pdf" className={`mt-1.5 ${inputClass} file:mr-3 file:border-0 file:bg-[#173d2b] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white`}/>
+        </label>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Guardar fotografia e prova no processo</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Autos de Infração e Provas Documentais / Fotográficas</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º do Auto','Data / Local','Matrícula','Infração','Descrição da Prova / Perícia','Fotografia / Anexo','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {fines.map(f=><tr key={f.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{f.id}</td>
+            <td className="px-3 py-3">{f.date}<span className="block text-[11px] text-[#737a70]">{f.location||'Bissau'}</span></td>
+            <td className="px-3 py-3 font-semibold">{f.plate}</td>
+            <td className="px-3 py-3">{f.infraction}</td>
+            <td className="px-3 py-3 text-xs text-[#4b5549]">{f.evidenceDescription||'Sem descrição pericial registada'}</td>
+            <td className="px-3 py-3 text-xs">
+              {f.evidenceFile?<a href={f.evidenceFile.dataUrl} download={f.evidenceFile.name} className="font-semibold text-[#006B35] underline">{f.evidenceFile.name}</a>:<span className="text-[#737a70]">Sem ficheiro anexado</span>}
+            </td>
+            <td className="px-3 py-3">
+              <button type="button" onClick={()=>{setSelectedFineId(f.id);setOpen(true);}} className="text-xs font-semibold text-[#006B35] hover:underline">Anexar / Editar prova</button>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FineAgentsPage(){
+  const [agents,setAgents]=useSaved('inspection-agents',seedInspectionAgents);
+  const [fines]=useSaved('fines',seedFines);
+  const [open,setOpen]=useState(false);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+
+  async function submitAgent(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    try{
+      setError('');setSuccessMsg('');
+      const payload={
+        id:`AGT-${String(Date.now()).slice(-4)}`,
+        name:String(f.get('name')||'').trim(),
+        badge:String(f.get('badge')||'').trim().toUpperCase(),
+        unit:String(f.get('unit')||'Brigada Nacional de Trânsito').trim(),
+        district:String(f.get('district')||'Bissau').trim(),
+        phone:String(f.get('phone')||'').trim(),
+        status:String(f.get('status')||'Ativo'),
+      };
+      const res=await api.post<InspectionAgent>('/inspection-agents',payload);
+      setAgents([...agents,res.data]);
+      setSuccessMsg(`Agente fiscalizador ${res.data.name} (${res.data.badge}) credenciado com sucesso.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível cadastrar o agente fiscalizador.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm(`Deseja remover o agente fiscalizador ${id}?`))return;
+    try{await api.delete(`/inspection-agents/${encodeURIComponent(id)}`);}catch{/* ignore */}
+    setAgents(rows=>rows.filter(a=>a.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 6" title="Identificação do agente fiscalizador" description="Cadastro nacional de agentes autuantes da Brigada de Trânsito, matrículas funcionais, unidades operacionais e produtividade de fiscalização." icon={ShieldCheck}/>
+    <FineSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Credenciar agente fiscalizador'}</button>
+    </div>
+    {open&&<Drawer title="Credenciamento de Agente Fiscalizador" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitAgent} className="grid gap-3 sm:grid-cols-2">
+        <Field label="Patente e Nome completo" name="name" placeholder="Ex.: Subcomissário Malam Bacai"/>
+        <Field label="N.º de Matrícula / Crachá Funcional" name="badge" placeholder="Ex.: AG-GB-0412"/>
+        <Field label="Unidade / Corporação" name="unit" defaultValue="Brigada Nacional de Trânsito"/>
+        <Field label="Delegação / Região" name="district" defaultValue="Bissau"/>
+        <Field label="Contacto de serviço" name="phone" required={false} placeholder="+245 955 000 000"/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Estado funcional
+          <select name="status" className={`mt-1.5 ${inputClass}`}>
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Guardar agente fiscalizador</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Corpo de Agentes Fiscalizadores Credenciados</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Código','Patente / Nome do Agente','Matrícula Funcional','Unidade / Corporação','Distrito','Autos Emitidos','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {agents.map(a=>{
+            const issuedCount=fines.filter(f=>f.agentBadge===a.badge||f.agentName===a.name).length;
+            return <tr key={a.id} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-mono text-xs">{a.id}</td>
+              <td className="px-3 py-3 font-semibold">{a.name}<span className="block text-[11px] font-normal text-[#737a70]">{a.phone||'—'}</span></td>
+              <td className="px-3 py-3 font-mono font-bold text-[#006B35]">{a.badge}</td>
+              <td className="px-3 py-3">{a.unit}</td>
+              <td className="px-3 py-3">{a.district}</td>
+              <td className="px-3 py-3 font-bold">{issuedCount} auto(s)</td>
+              <td className="px-3 py-3"><Status value={a.status}/></td>
+              <td className="px-3 py-3"><button type="button" onClick={()=>handleDelete(a.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button></td>
+            </tr>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FinePaymentsPage(){
+  const [fines,setFines]=useSaved('fines',seedFines);
+  const [open,setOpen]=useState(false);
+  const [selectedFineId,setSelectedFineId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const pendingFines=fines.filter(f=>f.status==='Pendente');
+  const selectedFine=fines.find(f=>f.id===selectedFineId)||pendingFines[0]||fines[0];
+
+  async function submitPayment(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const fineId=String(f.get('fineId')||selectedFine?.id||'');
+    if(!fineId){setError('Selecione um auto de infração.');return;}
+    try{
+      setError('');setSuccessMsg('');
+      const receipt=String(f.get('paymentReceipt')||`REC-DGV-${new Date().getFullYear()}-${String(Date.now()).slice(-5)}`).trim();
+      const paymentDate=String(f.get('paymentDate')||new Date().toISOString().slice(0,10));
+      const paymentMethod=String(f.get('paymentMethod')||'Tesouraria / Guia DGT');
+      const res=await api.put<Fine>(`/fines/${encodeURIComponent(fineId)}`,{
+        status:'Pago',
+        paymentReceipt:receipt,
+        paymentDate,
+        paymentMethod,
+      });
+      setFines(rows=>rows.map(r=>r.id===fineId?res.data:r));
+      setSuccessMsg(`Pagamento registado com sucesso! Comprovativo n.º ${receipt} emitido para o auto ${fineId}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível registar o pagamento.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 7" title="Pagamento e comprovativos" description="Liquidação de coimas, emissão de número de recibo/comprovativo de pagamento, método de arrecadação e conciliação com a tesouraria." icon={Banknote}/>
+    <FineSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><Banknote size={16}/>{open?'Fechar formulário':'Registar pagamento e emitir comprovativo'}</button>
+    </div>
+    {open&&<Drawer title="Liquidação de Multa e Emissão de Comprovativo" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitPayment} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Auto de Infração a liquidar
+          <select name="fineId" value={selectedFine?.id||''} onChange={e=>setSelectedFineId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {fines.map(f=><option key={f.id} value={f.id}>{f.id} · {f.plate} · {f.infraction} · {currency(f.amount)} [{f.status}]</option>)}
+          </select>
+        </label>
+        <Field label="N.º do Comprovativo / Recibo da Tesouraria" name="paymentReceipt" defaultValue={`REC-DGV-2026-${String(Date.now()).slice(-4)}`}/>
+        <Field label="Data do pagamento" name="paymentDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Meio de pagamento utilizado
+          <select name="paymentMethod" className={`mt-1.5 ${inputClass}`}>
+            <option value="Referência Bancária / Tesouraria Pública">Referência Bancária / Tesouraria Pública</option>
+            <option value="Pagamento Presencial no Balcão DGV">Pagamento Presencial no Balcão DGV</option>
+            <option value="Mobile Money / Pagamento Digital">Mobile Money / Pagamento Digital</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Confirmar liquidação e gerar comprovativo</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Relação de Pagamentos e Comprovativos de Multas</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º do Auto','Matrícula / Condutor','Infração','Valor (XOF)','Estado','N.º do Comprovativo','Data / Meio de Pagamento','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {fines.map(f=><tr key={f.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{f.id}</td>
+            <td className="px-3 py-3 font-semibold">{f.plate}<span className="block text-[11px] font-normal text-[#737a70]">{f.driver}</span></td>
+            <td className="px-3 py-3">{f.infraction}</td>
+            <td className="px-3 py-3 font-bold">{currency(f.amount)}</td>
+            <td className="px-3 py-3"><Status value={f.status}/></td>
+            <td className="px-3 py-3 font-mono text-xs font-bold text-[#006B35]">{f.paymentReceipt||'Aguardando liquidação'}</td>
+            <td className="px-3 py-3 text-xs">{f.paymentDate?`${f.paymentDate} · ${f.paymentMethod||'Tesouraria'}`:'—'}</td>
+            <td className="px-3 py-3">
+              {f.status==='Pago'?<button type="button" onClick={()=>window.print()} className="text-xs font-semibold text-[#006B35] hover:underline">Imprimir comprovativo</button>:<button type="button" onClick={()=>{setSelectedFineId(f.id);setOpen(true);}} className={secondaryClass}>Liquidar</button>}
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FineAppealsPage(){
+  const [fines,setFines]=useSaved('fines',seedFines);
+  const [appeals,setAppeals]=useSaved('fine-appeals',seedFineAppeals);
+  const [open,setOpen]=useState(false);
+  const [selectedFineId,setSelectedFineId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const selectedFine=fines.find(f=>f.id===selectedFineId)||fines[0];
+
+  async function submitAppeal(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const fineId=String(f.get('fineId')||selectedFine?.id||'');
+    const fineObj=fines.find(x=>x.id===fineId);
+    try{
+      setError('');setSuccessMsg('');
+      const payload={
+        id:`REC-2026-${String(Date.now()).slice(-4)}`,
+        fineId,
+        plate:fineObj?.plate||String(f.get('plate')||''),
+        appellant:String(f.get('appellant')||fineObj?.driver||'').trim(),
+        reason:String(f.get('reason')||'').trim(),
+        defenseArguments:String(f.get('defenseArguments')||'').trim(),
+        appealDate:String(f.get('appealDate')||new Date().toISOString().slice(0,10)),
+        status:'Em análise',
+      };
+      const res=await api.post<FineAppeal>('/fine-appeals',payload);
+      setAppeals([res.data,...appeals]);
+      setSuccessMsg(`Recurso administrativo ${res.data.id} protocolado com sucesso para o auto ${fineId}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível protocolar o recurso.');
+    }
+  }
+
+  async function decideAppeal(appeal:FineAppeal,newStatus:'Deferido'|'Indeferido'){
+    const notes=newStatus==='Deferido'?'Recurso acolhido pela Comissão de Contraordenações; auto de infração anulado.':'Recurso indeferido por confirmação material da infração; mantida a coima.';
+    try{
+      const res=await api.put<{appeal:FineAppeal;fine?:Fine}>(`/fine-appeals/${encodeURIComponent(appeal.id)}`,{status:newStatus,decisionNotes:notes});
+      setAppeals(rows=>rows.map(a=>a.id===appeal.id?res.data.appeal:a));
+      if(res.data.fine){
+        setFines(rows=>rows.map(f=>f.id===res.data.fine!.id?res.data.fine!:f));
+      }
+      setSuccessMsg(`Decisão "${newStatus}" averbada no recurso ${appeal.id}.`);
+    }catch{/* ignore */}
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 8" title="Recursos e contestações" description="Apresentação de defesa prévia, recursos administrativos contra autos de infração e deliberação (Deferimento / Indeferimento)." icon={ClipboardList}/>
+    <FineSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Protocolar recurso / contestação'}</button>
+    </div>
+    {open&&<Drawer title="Novo Recurso ou Contestação de Auto" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitAppeal} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Auto de Infração contestado
+          <select name="fineId" value={selectedFine?.id||''} onChange={e=>setSelectedFineId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {fines.map(f=><option key={f.id} value={f.id}>{f.id} · {f.plate} · {f.infraction} ({currency(f.amount)})</option>)}
+          </select>
+        </label>
+        <Field label="Nome do requerente (Condutor ou Proprietário)" name="appellant" defaultValue={selectedFine?.driver||''}/>
+        <Field label="Data de entrada do recurso" name="appealDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <div className="sm:col-span-2">
+          <Field label="Fundamento principal da contestação" name="reason" placeholder="Ex.: Erro material na matrícula / Sinalização encoberta / Documento válido à data"/>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Alegações detalhadas de defesa" name="defenseArguments" placeholder="Exponha os factos e provas que fundamentam o pedido de arquivamento do auto"/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Submeter recurso administrativo</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Processos de Recursos e Contestações</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Protocolo','Data','Auto / Matrícula','Requerente','Fundamento e Defesa','Parecer / Estado','Deliberação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {appeals.map(a=><tr key={a.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{a.id}</td>
+            <td className="px-3 py-3">{a.appealDate}</td>
+            <td className="px-3 py-3 font-semibold">{a.fineId}<span className="block text-[11px] font-normal text-[#737a70]">{a.plate}</span></td>
+            <td className="px-3 py-3 font-semibold">{a.appellant}</td>
+            <td className="px-3 py-3 text-xs"><div className="font-semibold text-[#1c3024]">{a.reason}</div><div className="mt-0.5 text-[#697168]">{a.defenseArguments}</div></td>
+            <td className="px-3 py-3"><Status value={a.status}/><span className="mt-1 block text-[11px] text-[#737a70]">{a.decisionNotes||''}</span></td>
+            <td className="px-3 py-3">
+              <div className="flex items-center gap-2">
+                <button type="button" disabled={a.status!=='Em análise'} onClick={()=>decideAppeal(a,'Deferido')} className="border border-[#009E49]/40 bg-[#009E49]/10 px-2.5 py-1 text-xs font-semibold text-[#006B35] disabled:opacity-40">Deferir (Anular Auto)</button>
+                <button type="button" disabled={a.status!=='Em análise'} onClick={()=>decideAppeal(a,'Indeferido')} className="border border-[#CE1126]/30 bg-[#CE1126]/10 px-2.5 py-1 text-xs font-semibold text-[#9f1a2b] disabled:opacity-40">Indeferir</button>
+              </div>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FineRecidivismPage(){
+  const [fines]=useSaved('fines',seedFines);
+
+  const byDriver=useMemo(()=>{
+    const map=new Map<string,{driver:string;plates:Set<string>;count:number;totalAmount:number;infractions:string[];lastDate:string}>();
+    fines.forEach(f=>{
+      const key=f.driver||'Não identificado';
+      const cur=map.get(key)||{driver:key,plates:new Set<string>(),count:0,totalAmount:0,infractions:[],lastDate:f.date};
+      cur.plates.add(f.plate);
+      cur.count+=1;
+      cur.totalAmount+=f.amount;
+      cur.infractions.push(`${f.infraction} (${f.date})`);
+      if(f.date>cur.lastDate)cur.lastDate=f.date;
+      map.set(key,cur);
+    });
+    return Array.from(map.values()).sort((a,b)=>b.count-a.count);
+  },[fines]);
+
+  const byPlate=useMemo(()=>{
+    const map=new Map<string,{plate:string;driver:string;count:number;totalAmount:number;pendingCount:number}>();
+    fines.forEach(f=>{
+      const cur=map.get(f.plate)||{plate:f.plate,driver:f.driver,count:0,totalAmount:0,pendingCount:0};
+      cur.count+=1;
+      cur.totalAmount+=f.amount;
+      if(f.status==='Pendente')cur.pendingCount+=1;
+      map.set(f.plate,cur);
+    });
+    return Array.from(map.values()).sort((a,b)=>b.count-a.count);
+  },[fines]);
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 9" title="Histórico de reincidência" description="Monitorização de condutores e veículos reincidentes, cálculo automático de agravamento legal e identificação de infratores contumazes." icon={Activity}/>
+    <FineSubmenuBar/>
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Condutores reincidentes" value={String(byDriver.filter(d=>d.count>=2).length)} detail="Com 2 ou mais autos registados" icon={Users}/>
+      <Stat label="Matrículas reincidentes" value={String(byPlate.filter(p=>p.count>=2).length)} detail="Viaturas com múltiplas infrações" icon={CarFront}/>
+      <Stat label="Total de autos analisados" value={String(fines.length)} detail="Base histórica nacional" icon={ClipboardList}/>
+    </div>
+    <div className="grid gap-5 lg:grid-cols-2">
+      <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+        <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Reincidência por Condutor</h2>
+        <table className="w-full text-left text-sm">
+          <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>{['Condutor','Matrículas','N.º de Infrações','Histórico Recente','Enquadramento'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+          </thead>
+          <tbody>
+            {byDriver.map(d=><tr key={d.driver} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-semibold">{d.driver}</td>
+              <td className="px-3 py-3 font-mono text-xs">{Array.from(d.plates).join(', ')}</td>
+              <td className="px-3 py-3 font-bold">{d.count} auto(s)</td>
+              <td className="px-3 py-3 text-xs text-[#697168]">{d.infractions.join(' · ')}</td>
+              <td className="px-3 py-3"><Status value={d.count>=2?'Reincidente · Agravamento':'Primário'}/></td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+        <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Reincidência por Matrícula</h2>
+        <table className="w-full text-left text-sm">
+          <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>{['Matrícula','Condutor Principal','Total de Autos','Pendentes','Montante Acumulado','Situação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+          </thead>
+          <tbody>
+            {byPlate.map(p=><tr key={p.plate} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-semibold">{p.plate}</td>
+              <td className="px-3 py-3">{p.driver}</td>
+              <td className="px-3 py-3 font-bold">{p.count}</td>
+              <td className="px-3 py-3 font-semibold text-[#9f1a2b]">{p.pendingCount}</td>
+              <td className="px-3 py-3 font-semibold">{currency(p.totalAmount)}</td>
+              <td className="px-3 py-3"><Status value={p.count>=2?'Reincidente':'Regular'}/></td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function FineAdministrativeBlocksPage(){
+  const [fines,setFines]=useSaved('fines',seedFines);
+  const [vehicles,setVehicles]=useSaved('vehicles',seedVehicles);
+  const [open,setOpen]=useState(false);
+  const [selectedFineId,setSelectedFineId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const selectedFine=fines.find(f=>f.id===selectedFineId)||fines[0];
+  const blockedFines=fines.filter(f=>f.administrativeBlock);
+
+  async function submitBlock(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const fineId=String(f.get('fineId')||selectedFine?.id||'');
+    const actionType=String(f.get('actionType')||'block');
+    const blockReason=String(f.get('blockReason')||'').trim();
+    const isBlock=actionType==='block';
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.put<Fine>(`/fines/${encodeURIComponent(fineId)}`,{
+        administrativeBlock:isBlock,
+        blockReason:isBlock?blockReason:'',
+      });
+      setFines(rows=>rows.map(r=>r.id===fineId?res.data:r));
+      if(res.data.plate){
+        setVehicles(rows=>rows.map(v=>v.plate===res.data.plate?{...v,legalStatus:isBlock?'Apreendido':v.legalStatus==='Apreendido'?'Regular':v.legalStatus}:v));
+      }
+      setSuccessMsg(isBlock?`Bloqueio administrativo legalmente averbado para o auto ${fineId} (Matrícula ${res.data.plate}).`:`Bloqueio administrativo levantado para o auto ${fineId}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível atualizar o bloqueio administrativo.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de multas e infrações · Submenu 10" title="Bloqueio administrativo quando legalmente autorizado" description="Imposição e levantamento de restrição administrativa sobre matrícula e habilitação por acumulação de coimas vencidas, infração gravíssima ou ordem legal." icon={ShieldCheck}/>
+    <FineSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Autos com bloqueio ativo" value={String(blockedFines.length)} detail="Restrição administrativa averbada" icon={AlertTriangle}/>
+      <Stat label="Autos sem bloqueio" value={String(fines.length-blockedFines.length)} detail="Trovão administrativo não acionado" icon={Check}/>
+      <Stat label="Enquadramento legal" value="Art. 142.º" detail="Despacho fundamentado obrigatório" icon={ShieldCheck}/>
+    </div>
+    <div className="mb-4 flex justify-end">
+      <button type="button" onClick={()=>{setOpen(!open);setError('');}} className="inline-flex items-center justify-center gap-2 bg-[#9f1a2b] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#7f1422]"><ShieldCheck size={16}/>{open?'Fechar formulário':'Decretar / levantar bloqueio administrativo'}</button>
+    </div>
+    {open&&<Drawer title="Bloqueio Administrativo Legalmente Autorizado" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitBlock} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Auto de Infração vinculado
+          <select name="fineId" value={selectedFine?.id||''} onChange={e=>setSelectedFineId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {fines.map(f=><option key={f.id} value={f.id}>{f.id} · {f.plate} · {f.infraction} ({f.administrativeBlock?'BLOQUEADO':'Sem bloqueio'})</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Medida administrativa
+          <select name="actionType" className={`mt-1.5 ${inputClass}`}>
+            <option value="block">Decretar Bloqueio Administrativo (Impede transferência, renovação e circulação)</option>
+            <option value="unblock">Levantar Bloqueio Administrativo (Após regularização legal)</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Fundamentação legal e despacho autorizador" name="blockReason" defaultValue={selectedFine?.blockReason||'Despacho DGT n.º 118/2026 · Infração gravíssima não regularizada no prazo legal (Art. 142.º CE)'}/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className="inline-flex items-center justify-center gap-2 bg-[#9f1a2b] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#7f1422]">Confirmar despacho administrativo</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Controlo de Bloqueios Administrativos Vinculados a Autos</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º do Auto','Matrícula / Condutor','Infração / Gravidade','Valor','Restrição Administrativa','Despacho / Fundamentação Legal','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {fines.map(f=><tr key={f.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs">{f.id}</td>
+            <td className="px-3 py-3 font-semibold">{f.plate}<span className="block text-[11px] font-normal text-[#737a70]">{f.driver}</span></td>
+            <td className="px-3 py-3">{f.infraction}<span className="block text-[11px] text-[#737a70]">Gravidade: {f.severity||'Média'}</span></td>
+            <td className="px-3 py-3 font-semibold">{currency(f.amount)}</td>
+            <td className="px-3 py-3"><Status value={f.administrativeBlock?'Bloqueado':'Sem bloqueio'}/></td>
+            <td className="px-3 py-3 text-xs text-[#4b5549]">{f.blockReason||'Nenhuma restrição ativa'}</td>
+            <td className="px-3 py-3">
+              <button type="button" onClick={()=>{setSelectedFineId(f.id);setOpen(true);}} className="text-xs font-semibold text-[#006B35] hover:underline">{f.administrativeBlock?'Gerir / Levantar':'Aplicar bloqueio'}</button>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
 }
 
 export function InspectionManagement(){const [vehicles]=useSaved('vehicles',seedVehicles);const [rows,setRows]=useSaved('inspections',seedInspections);const [open,setOpen]=useState(false);function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);setRows([{id:`ITV-${String(Date.now()).slice(-5)}`,plate:String(f.get('plate')),reason:String(f.get('reason')),office:String(f.get('office')),date:String(f.get('date')),status:'Agendada'},...rows]);e.currentTarget.reset();window.dispatchEvent(new Event('sigetran:drawer-close'));}

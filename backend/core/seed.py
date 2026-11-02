@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from .models import (
-    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, Multa, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
 )
@@ -119,49 +119,190 @@ def ensure_seed_data():
         seed_condutores = [
             {
                 'codigo': 'D-001', 'nome': 'Mamadu Embaló', 'documento': '000000001',
-                'carta': 'GB-C-10294', 'categoria': 'Ligeiros',
-                'telefone': '+245 955 100 201', 'distrito': 'Bissau', 'status': 'Ativo'
+                'carta': 'GB-C-10294', 'categoria': 'B · Ligeiros',
+                'telefone': '+245 955 100 201', 'distrito': 'Bissau', 'status': 'Ativo',
+                'data_emissao': '2023-04-10', 'data_validade': '2028-04-10',
+                'pontuacao': 13, 'restricoes_medicas': 'Sem restrições'
             },
             {
                 'codigo': 'D-002', 'nome': 'Bacar Camará', 'documento': '000000002',
-                'carta': 'GB-C-08142', 'categoria': 'Ligeiros e mercadorias',
-                'telefone': '+245 966 200 142', 'distrito': 'Bafatá', 'status': 'Ativo'
+                'carta': 'GB-C-08142', 'categoria': 'B, C · Ligeiros e Mercadorias',
+                'telefone': '+245 966 200 142', 'distrito': 'Bafatá', 'status': 'Ativo',
+                'data_emissao': '2021-08-22', 'data_validade': '2026-08-22',
+                'pontuacao': 20, 'restricoes_medicas': 'Uso obrigatório de lentes corretivas'
             },
             {
                 'codigo': 'D-003', 'nome': 'Ibraima Sanhá', 'documento': '000000003',
-                'carta': 'GB-D-07331', 'categoria': 'Pesados',
-                'telefone': '+245 955 300 733', 'distrito': 'Cacheu', 'status': 'Ativo'
+                'carta': 'GB-D-07331', 'categoria': 'C, D, E · Pesados e Passageiros',
+                'telefone': '+245 955 300 733', 'distrito': 'Cacheu', 'status': 'Ativo',
+                'data_emissao': '2020-11-05', 'data_validade': '2025-11-05',
+                'pontuacao': 15, 'restricoes_medicas': 'Avaliação psicotécnica periódica (Cat. D/E)'
             },
             {
                 'codigo': 'D-004', 'nome': 'Naima Mané', 'documento': '000000004',
-                'carta': 'GB-A-11620', 'categoria': 'Motociclos',
-                'telefone': '+245 966 400 620', 'distrito': 'Gabú', 'status': 'Ativo'
+                'carta': 'GB-A-11620', 'categoria': 'A · Motociclos',
+                'telefone': '+245 966 400 620', 'distrito': 'Gabú', 'status': 'Ativo',
+                'data_emissao': '2024-02-18', 'data_validade': '2029-02-18',
+                'pontuacao': 20, 'restricoes_medicas': 'Sem restrições'
             },
         ]
         for d in seed_condutores:
             Condutor.objects.create(**d)
+
+    # 3b. SIGETRAN: Registos de Carta de Condução (tabela 'registos_carta_conducao')
+    if not RegistoCartaConducao.objects.exists():
+        seed_registos_carta = [
+            {
+                'codigo': 'RCC-2026-0001',
+                'condutor_codigo': 'D-001',
+                'condutor_nome': 'Mamadu Embaló',
+                'carta': 'GB-C-10294',
+                'tipo_registo': 'Emissão',
+                'detalhe_acao': '1.ª Emissão Definitiva de Carta de Condução',
+                'categoria': 'B',
+                'data_emissao': '2023-04-10',
+                'data_validade': '2028-04-10',
+                'pontos_delta': 0,
+                'motivo_observacoes': 'Aprovação em exame teórico e prático na Delegação de Bissau'
+            },
+            {
+                'codigo': 'RCC-2026-0002',
+                'condutor_codigo': 'D-002',
+                'condutor_nome': 'Bacar Camará',
+                'carta': 'GB-C-08142',
+                'tipo_registo': 'Categoria',
+                'detalhe_acao': 'Averbamento / Adição de Categoria C (Pesados de Mercadorias)',
+                'categoria': 'B, C',
+                'data_emissao': '2024-05-12',
+                'data_validade': '2029-05-12',
+                'pontos_delta': 0,
+                'motivo_observacoes': 'Exame prático de pesados concluído com aproveitamento em Bafatá'
+            },
+            {
+                'codigo': 'RCC-2026-0003',
+                'condutor_codigo': 'D-003',
+                'condutor_nome': 'Ibraima Sanhá',
+                'carta': 'GB-D-07331',
+                'tipo_registo': 'Renovação',
+                'detalhe_acao': 'Renovação Periódica de Carta Profissional (Cat. D/E)',
+                'categoria': 'C, D, E',
+                'data_emissao': '2025-11-05',
+                'data_validade': '2030-11-05',
+                'pontos_delta': 0,
+                'motivo_observacoes': 'Apresentado atestado médico e certificado de aptidão psicológica'
+            },
+        ]
+        for rc in seed_registos_carta:
+            RegistoCartaConducao.objects.create(**rc)
+
+    # 3c. SIGETRAN: Exames Médicos e Psicológicos (tabela 'exames_condutores')
+    if not ExameCondutor.objects.exists():
+        seed_exames = [
+            {
+                'codigo': 'EXM-2026-0001',
+                'condutor_codigo': 'D-002',
+                'condutor_nome': 'Bacar Camará',
+                'carta': 'GB-C-08142',
+                'categoria_pretendida': 'B, C',
+                'tipo_exame': 'Exame Médico de Aptidão Física',
+                'resultado': 'Apto com restrições',
+                'entidade_medica': 'Hospital Regional de Bafatá · Junta Médica',
+                'numero_atestado': 'ATM-2026-0419',
+                'restricoes': 'Uso obrigatório de lentes corretivas',
+                'data_exame': '2026-02-14',
+                'validade_exame': '2029-02-14',
+            },
+            {
+                'codigo': 'EXM-2026-0002',
+                'condutor_codigo': 'D-003',
+                'condutor_nome': 'Ibraima Sanhá',
+                'carta': 'GB-D-07331',
+                'categoria_pretendida': 'C, D, E',
+                'tipo_exame': 'Exame Médico e Psicológico Completo',
+                'resultado': 'Apto',
+                'entidade_medica': 'Centro Nacional de Medicina Rodoviária · Bissau',
+                'numero_atestado': 'PSICO-2026-0882',
+                'restricoes': 'Sem restrições · Apto para transporte coletivo de passageiros',
+                'data_exame': '2026-05-20',
+                'validade_exame': '2028-05-20',
+            },
+        ]
+        for ex in seed_exames:
+            ExameCondutor.objects.create(**ex)
 
     # 4. SIGETRAN: Multas (tabela 'multas')
     if not Multa.objects.exists():
         seed_multas = [
             {
                 'codigo': 'GB-2026-0014', 'placa': 'GB-24-BC', 'condutor': 'Mamadu Embaló',
-                'infracao': 'Documentação em falta', 'valor': 25000,
-                'data': '2026-09-18', 'status': 'Pendente'
+                'infracao': 'Documentação em falta', 'gravidade': 'Grave', 'valor': 25000,
+                'data': '2026-09-18', 'status': 'Pendente',
+                'agente_nome': 'Subinspetor Braima Baldé', 'agente_matricula': 'AG-BT-104',
+                'local_infracao': 'Avenida Amílcar Cabral · Bissau',
+                'descricao_prova': 'Auto lavrado presencialmente em operação stop; ausência de título de registo',
+                'bloqueio_administrativo': True,
+                'motivo_bloqueio': 'Reincidência em infração rodoviária sem regularização no prazo legal (Art.º 142.º)'
             },
             {
                 'codigo': 'GB-2026-0015', 'placa': 'GB-24-BC', 'condutor': 'Mamadu Embaló',
-                'infracao': 'Estacionamento irregular', 'valor': 10000,
-                'data': '2026-09-20', 'status': 'Pendente'
+                'infracao': 'Estacionamento irregular', 'gravidade': 'Leve', 'valor': 10000,
+                'data': '2026-09-20', 'status': 'Pendente',
+                'agente_nome': 'Agente Fatu Djassi', 'agente_matricula': 'AG-BT-219',
+                'local_infracao': 'Praça dos Heróis Nacionais · Bissau',
+                'descricao_prova': 'Registo fotográfico da viatura estacionada sobre passeio pedonal',
             },
             {
                 'codigo': 'GB-2026-0016', 'placa': 'GB-22-CD', 'condutor': 'Ibraima Sanhá',
-                'infracao': 'Documentação em falta', 'valor': 35000,
-                'data': '2026-09-21', 'status': 'Pendente'
+                'infracao': 'Documentação em falta', 'gravidade': 'Grave', 'valor': 35000,
+                'data': '2026-09-21', 'status': 'Pendente',
+                'agente_nome': 'Comissário Malam Sanhá', 'agente_matricula': 'AG-BT-052',
+                'local_infracao': 'Posto de Controlo de Safim',
+                'descricao_prova': 'Falta de certificado de inspeção periódica obrigatória para transporte coletivo',
+                'bloqueio_administrativo': True,
+                'motivo_bloqueio': 'Bloqueio administrativo cautelar de transporte coletivo sem inspeção válida'
             },
         ]
         for m in seed_multas:
             Multa.objects.create(**m)
+
+    # 4b. SIGETRAN: Agentes Fiscalizadores (tabela 'agentes_fiscalizadores')
+    if not AgenteFiscalizador.objects.exists():
+        seed_agentes = [
+            {
+                'codigo': 'AG-BT-104', 'nome': 'Subinspetor Braima Baldé',
+                'corporacao': 'Brigada Nacional de Trânsito', 'posto_patente': 'Subinspetor de Trânsito',
+                'delegacao': 'Bissau', 'telefone': '+245 955 810 104', 'status': 'Ativo'
+            },
+            {
+                'codigo': 'AG-BT-219', 'nome': 'Agente Principal Fatu Djassi',
+                'corporacao': 'Polícia de Ordem Pública · Divisão de Trânsito', 'posto_patente': 'Agente Principal',
+                'delegacao': 'Bissau', 'telefone': '+245 966 820 219', 'status': 'Ativo'
+            },
+            {
+                'codigo': 'AG-BT-052', 'nome': 'Comissário Malam Sanhá',
+                'corporacao': 'Brigada Regional Rodoviária', 'posto_patente': 'Comissário Regional',
+                'delegacao': 'Cacheu', 'telefone': '+245 955 830 052', 'status': 'Ativo'
+            },
+        ]
+        for ag in seed_agentes:
+            AgenteFiscalizador.objects.create(**ag)
+
+    # 4c. SIGETRAN: Recursos e Contestações de Multas (tabela 'recursos_multas')
+    if not RecursoMulta.objects.exists():
+        seed_recursos = [
+            {
+                'codigo': 'REC-ADM-2026-0001',
+                'auto_codigo': 'GB-2026-0015',
+                'placa': 'GB-24-BC',
+                'recorrente': 'Mamadu Embaló',
+                'fundamentacao': 'Paragem momentânea de emergência por avaria elétrica devidamente sinalizada com triângulo.',
+                'data_submissao': '2026-09-25',
+                'decisao': 'Em análise',
+                'parecer_autoridade': 'Aguarda junção do comprovativo da oficina mecânica pela Comissão de Instrução.'
+            },
+        ]
+        for rec in seed_recursos:
+            RecursoMulta.objects.create(**rec)
 
     # 5. SIGETRAN: Tipos de Infração e Preços (tabela 'tipos_infracao')
     if not TipoInfracao.objects.exists():

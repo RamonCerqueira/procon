@@ -90,6 +90,10 @@ class Condutor(models.Model):
     telefone = models.CharField('Telefone', max_length=50)
     distrito = models.CharField('Distrito', max_length=100)
     status = models.CharField('Estado', max_length=50, default='Ativo')
+    data_emissao = models.CharField('Data de Emissão da Carta', max_length=20, blank=True, default='2024-01-15')
+    data_validade = models.CharField('Validade da Carta', max_length=20, blank=True, default='2029-01-15')
+    pontuacao = models.IntegerField('Pontuação do Condutor', default=20)
+    restricoes_medicas = models.CharField('Restrições / Observações da Carta', max_length=200, blank=True, default='Sem restrições')
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
 
     class Meta:
@@ -102,14 +106,74 @@ class Condutor(models.Model):
         return f"{self.codigo} - {self.nome}"
 
 
+class RegistoCartaConducao(models.Model):
+    codigo = models.CharField('Código do Registo', max_length=50, unique=True)
+    condutor_codigo = models.CharField('Código do Condutor', max_length=32)
+    condutor_nome = models.CharField('Nome do Condutor', max_length=200)
+    carta = models.CharField('N.º da Carta', max_length=100)
+    tipo_registo = models.CharField('Tipo de Operação', max_length=60)
+    detalhe_acao = models.CharField('Ação / Natureza', max_length=150)
+    categoria = models.CharField('Categoria(s) (A, B, C, D, E)', max_length=100, blank=True, default='')
+    data_emissao = models.CharField('Data de Emissão / Registo', max_length=20, blank=True, default='')
+    data_validade = models.CharField('Nova Validade / Prazo', max_length=20, blank=True, default='')
+    pontos_delta = models.IntegerField('Variação de Pontos', default=0)
+    motivo_observacoes = models.CharField('Motivo / Processo / Observações', max_length=255, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'registos_carta_conducao'
+        verbose_name = 'Registo de Carta de Condução'
+        verbose_name_plural = 'Registos de Carta de Condução'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.condutor_nome} ({self.tipo_registo})"
+
+
+class ExameCondutor(models.Model):
+    codigo = models.CharField('Código do Exame', max_length=50, unique=True)
+    condutor_codigo = models.CharField('Código do Condutor', max_length=32)
+    condutor_nome = models.CharField('Nome do Condutor', max_length=200)
+    carta = models.CharField('N.º da Carta', max_length=100, blank=True, default='')
+    categoria_pretendida = models.CharField('Categoria Avaliada', max_length=50, default='B')
+    tipo_exame = models.CharField('Tipo de Exame', max_length=80)
+    resultado = models.CharField('Resultado', max_length=50, default='Apto')
+    entidade_medica = models.CharField('Centro Médico / Especialista', max_length=150, blank=True, default='')
+    numero_atestado = models.CharField('N.º do Atestado / Laudo', max_length=100, blank=True, default='')
+    restricoes = models.CharField('Restrições / Recomendações', max_length=200, blank=True, default='Sem restrições')
+    data_exame = models.CharField('Data do Exame', max_length=20)
+    validade_exame = models.CharField('Validade do Exame', max_length=20, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'exames_condutores'
+        verbose_name = 'Exame Médico / Psicológico de Condutor'
+        verbose_name_plural = 'Exames Médicos e Psicológicos de Condutores'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.condutor_nome} ({self.tipo_exame})"
+
+
 class Multa(models.Model):
     codigo = models.CharField('N.º do Auto', max_length=50, unique=True)
     placa = models.CharField('Matrícula / Placa', max_length=32)
     condutor = models.CharField('Condutor / Proprietário', max_length=200, blank=True, default='')
     infracao = models.CharField('Infração', max_length=255)
+    gravidade = models.CharField('Gravidade', max_length=50, blank=True, default='Média')
     valor = models.BigIntegerField('Valor (XOF)', default=0)
     data = models.CharField('Data', max_length=20)
     status = models.CharField('Estado', max_length=30, default='Pendente')
+    agente_nome = models.CharField('Agente Fiscalizador', max_length=150, blank=True, default='Agente N.º 104 · Brigada de Trânsito')
+    agente_matricula = models.CharField('Matrícula / Crachá do Agente', max_length=60, blank=True, default='AG-BT-104')
+    local_infracao = models.CharField('Local da Infração', max_length=200, blank=True, default='Bissau')
+    arquivo_prova = models.JSONField('Fotografia / Prova Anexa', null=True, blank=True)
+    descricao_prova = models.CharField('Descrição da Prova / Equipamento', max_length=255, blank=True, default='')
+    comprovativo_pagamento = models.CharField('N.º do Comprovativo / Recibo', max_length=100, blank=True, default='')
+    data_pagamento = models.CharField('Data do Pagamento', max_length=20, blank=True, default='')
+    metodo_pagamento = models.CharField('Meio de Pagamento', max_length=80, blank=True, default='')
+    bloqueio_administrativo = models.BooleanField('Bloqueio Administrativo Ativo', default=False)
+    motivo_bloqueio = models.CharField('Motivo / Despacho do Bloqueio Administrativo', max_length=255, blank=True, default='')
     criado_em = models.DateTimeField('Criado em', auto_now_add=True)
 
     class Meta:
@@ -120,6 +184,47 @@ class Multa(models.Model):
 
     def __str__(self):
         return f"{self.codigo} - {self.placa}"
+
+
+class RecursoMulta(models.Model):
+    codigo = models.CharField('N.º do Processo de Recurso', max_length=50, unique=True)
+    auto_codigo = models.CharField('N.º do Auto de Infração', max_length=50)
+    placa = models.CharField('Matrícula / Placa', max_length=32)
+    recorrente = models.CharField('Condutor / Proprietário Recorrente', max_length=200)
+    fundamentacao = models.CharField('Fundamentação / Alegações da Contestação', max_length=255)
+    data_submissao = models.CharField('Data de Submissão', max_length=20)
+    decisao = models.CharField('Estado / Decisão', max_length=50, default='Em análise')
+    parecer_autoridade = models.CharField('Parecer da Comissão / Autoridade', max_length=255, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'recursos_multas'
+        verbose_name = 'Recurso / Contestação de Multa'
+        verbose_name_plural = 'Recursos e Contestações de Multas'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - Auto {self.auto_codigo}"
+
+
+class AgenteFiscalizador(models.Model):
+    codigo = models.CharField('Matrícula / Crachá', max_length=50, unique=True)
+    nome = models.CharField('Nome Completo do Agente', max_length=200)
+    corporacao = models.CharField('Corporação / Unidade', max_length=150, default='Brigada Nacional de Trânsito')
+    posto_patente = models.CharField('Posto / Função', max_length=100, default='Subinspetor de Trânsito')
+    delegacao = models.CharField('Delegação / Zona de Atuação', max_length=100, default='Bissau')
+    telefone = models.CharField('Contacto de Serviço', max_length=50, blank=True, default='')
+    status = models.CharField('Estado', max_length=40, default='Ativo')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'agentes_fiscalizadores'
+        verbose_name = 'Agente Fiscalizador'
+        verbose_name_plural = 'Agentes Fiscalizadores'
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nome}"
 
 
 class TipoInfracao(models.Model):

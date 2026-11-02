@@ -4,8 +4,23 @@ import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import {
   CirculationTax,
+  DriverCategoriesPage,
+  DriverExamsPage,
+  DriverInfractionsHistoryPage,
+  DriverLicenseIssuePage,
+  DriverPointsPage,
   DriverRegistry,
+  DriverRenewalPage,
+  DriverSuspensionPage,
+  FineAdministrativeBlocksPage,
+  FineAgentsPage,
+  FineAmountsPage,
+  FineAppealsPage,
+  FineEvidencePage,
   FineManagement,
+  FinePaymentsPage,
+  FineRecidivismPage,
+  FineSeverityPage,
   InfractionCatalog,
   InspectionManagement,
   OwnershipTransferAndHistory,
@@ -36,8 +51,23 @@ export function AppRoutes() {
     <Route path="/ownership-transfers" element={<Protected><OwnershipTransferAndHistory/></Protected>}/>
     <Route path="/vehicle-occurrences" element={<Protected><VehicleLegalStatusAndWriteOff/></Protected>}/>
     <Route path="/drivers" element={<Protected><DriverRegistry/></Protected>}/>
+    <Route path="/drivers/license-issue" element={<Protected><DriverLicenseIssuePage/></Protected>}/>
+    <Route path="/drivers/categories" element={<Protected><DriverCategoriesPage/></Protected>}/>
+    <Route path="/drivers/renewals" element={<Protected><DriverRenewalPage/></Protected>}/>
+    <Route path="/drivers/suspensions" element={<Protected><DriverSuspensionPage/></Protected>}/>
+    <Route path="/drivers/infractions-history" element={<Protected><DriverInfractionsHistoryPage/></Protected>}/>
+    <Route path="/drivers/points" element={<Protected><DriverPointsPage/></Protected>}/>
+    <Route path="/drivers/exams" element={<Protected><DriverExamsPage/></Protected>}/>
     <Route path="/circulation-tax" element={<Protected><CirculationTax/></Protected>}/>
     <Route path="/fines" element={<Protected><FineManagement/></Protected>}/>
+    <Route path="/fines/severity" element={<Protected><FineSeverityPage/></Protected>}/>
+    <Route path="/fines/amounts" element={<Protected><FineAmountsPage/></Protected>}/>
+    <Route path="/fines/evidence" element={<Protected><FineEvidencePage/></Protected>}/>
+    <Route path="/fines/agents" element={<Protected><FineAgentsPage/></Protected>}/>
+    <Route path="/fines/payments" element={<Protected><FinePaymentsPage/></Protected>}/>
+    <Route path="/fines/appeals" element={<Protected><FineAppealsPage/></Protected>}/>
+    <Route path="/fines/recidivism" element={<Protected><FineRecidivismPage/></Protected>}/>
+    <Route path="/fines/administrative-blocks" element={<Protected><FineAdministrativeBlocksPage/></Protected>}/>
     <Route path="/infraction-types" element={<Protected><InfractionCatalog/></Protected>}/>
     <Route path="/inspections" element={<Protected><InspectionManagement/></Protected>}/>
     <Route path="/reports" element={<Protected><ReportsManagement/></Protected>}/>

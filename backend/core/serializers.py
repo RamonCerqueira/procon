@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, Multa, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
 )
@@ -82,10 +82,64 @@ class CondutorSerializer(serializers.ModelSerializer):
     category = serializers.CharField(source='categoria')
     phone = serializers.CharField(source='telefone')
     district = serializers.CharField(source='distrito')
+    issueDate = serializers.CharField(source='data_emissao', required=False, allow_blank=True, default='2024-01-15')
+    expiryDate = serializers.CharField(source='data_validade', required=False, allow_blank=True, default='2029-01-15')
+    points = serializers.IntegerField(source='pontuacao', required=False, default=20)
+    medicalRestrictions = serializers.CharField(source='restricoes_medicas', required=False, allow_blank=True, default='Sem restrições')
 
     class Meta:
         model = Condutor
-        fields = ['id', 'name', 'document', 'documentFile', 'license', 'category', 'phone', 'district', 'status']
+        fields = [
+            'id', 'name', 'document', 'documentFile', 'license', 'category',
+            'phone', 'district', 'status', 'issueDate', 'expiryDate', 'points', 'medicalRestrictions'
+        ]
+
+
+class RegistoCartaConducaoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    driverId = serializers.CharField(source='condutor_codigo')
+    driverName = serializers.CharField(source='condutor_nome')
+    license = serializers.CharField(source='carta')
+    recordType = serializers.CharField(source='tipo_registo')
+    actionDetail = serializers.CharField(source='detalhe_acao')
+    category = serializers.CharField(source='categoria', required=False, allow_blank=True, default='')
+    issueDate = serializers.CharField(source='data_emissao', required=False, allow_blank=True, default='')
+    expiryDate = serializers.CharField(source='data_validade', required=False, allow_blank=True, default='')
+    pointsDelta = serializers.IntegerField(source='pontos_delta', required=False, default=0)
+    notes = serializers.CharField(source='motivo_observacoes', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = RegistoCartaConducao
+        fields = [
+            'id', 'driverId', 'driverName', 'license', 'recordType',
+            'actionDetail', 'category', 'issueDate', 'expiryDate',
+            'pointsDelta', 'notes', 'createdAt'
+        ]
+
+
+class ExameCondutorSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    driverId = serializers.CharField(source='condutor_codigo')
+    driverName = serializers.CharField(source='condutor_nome')
+    license = serializers.CharField(source='carta', required=False, allow_blank=True, default='')
+    targetCategory = serializers.CharField(source='categoria_pretendida', required=False, default='B')
+    examType = serializers.CharField(source='tipo_exame')
+    result = serializers.CharField(source='resultado', required=False, default='Apto')
+    medicalEntity = serializers.CharField(source='entidade_medica', required=False, allow_blank=True, default='')
+    certificateNumber = serializers.CharField(source='numero_atestado', required=False, allow_blank=True, default='')
+    restrictions = serializers.CharField(source='restricoes', required=False, allow_blank=True, default='Sem restrições')
+    examDate = serializers.CharField(source='data_exame')
+    expiryDate = serializers.CharField(source='validade_exame', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = ExameCondutor
+        fields = [
+            'id', 'driverId', 'driverName', 'license', 'targetCategory',
+            'examType', 'result', 'medicalEntity', 'certificateNumber',
+            'restrictions', 'examDate', 'expiryDate', 'createdAt'
+        ]
 
 
 class MultaSerializer(serializers.ModelSerializer):
@@ -93,12 +147,59 @@ class MultaSerializer(serializers.ModelSerializer):
     plate = serializers.CharField(source='placa')
     driver = serializers.CharField(source='condutor', required=False, allow_blank=True, default='')
     infraction = serializers.CharField(source='infracao')
+    severity = serializers.CharField(source='gravidade', required=False, allow_blank=True, default='Média')
     amount = serializers.IntegerField(source='valor')
     date = serializers.CharField(source='data')
+    agentName = serializers.CharField(source='agente_nome', required=False, allow_blank=True, default='Agente N.º 104 · Brigada de Trânsito')
+    agentBadge = serializers.CharField(source='agente_matricula', required=False, allow_blank=True, default='AG-BT-104')
+    location = serializers.CharField(source='local_infracao', required=False, allow_blank=True, default='Bissau')
+    evidenceFile = serializers.JSONField(source='arquivo_prova', required=False, allow_null=True)
+    evidenceDescription = serializers.CharField(source='descricao_prova', required=False, allow_blank=True, default='')
+    paymentReceipt = serializers.CharField(source='comprovativo_pagamento', required=False, allow_blank=True, default='')
+    paymentDate = serializers.CharField(source='data_pagamento', required=False, allow_blank=True, default='')
+    paymentMethod = serializers.CharField(source='metodo_pagamento', required=False, allow_blank=True, default='')
+    administrativeBlock = serializers.BooleanField(source='bloqueio_administrativo', required=False, default=False)
+    blockReason = serializers.CharField(source='motivo_bloqueio', required=False, allow_blank=True, default='')
 
     class Meta:
         model = Multa
-        fields = ['id', 'plate', 'driver', 'infraction', 'amount', 'date', 'status']
+        fields = [
+            'id', 'plate', 'driver', 'infraction', 'severity', 'amount', 'date', 'status',
+            'agentName', 'agentBadge', 'location', 'evidenceFile', 'evidenceDescription',
+            'paymentReceipt', 'paymentDate', 'paymentMethod', 'administrativeBlock', 'blockReason'
+        ]
+
+
+class RecursoMultaSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    fineId = serializers.CharField(source='auto_codigo')
+    plate = serializers.CharField(source='placa')
+    appellant = serializers.CharField(source='recorrente')
+    grounds = serializers.CharField(source='fundamentacao')
+    submissionDate = serializers.CharField(source='data_submissao')
+    decision = serializers.CharField(source='decisao', required=False, default='Em análise')
+    authorityNotes = serializers.CharField(source='parecer_autoridade', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = RecursoMulta
+        fields = [
+            'id', 'fineId', 'plate', 'appellant', 'grounds',
+            'submissionDate', 'decision', 'authorityNotes', 'createdAt'
+        ]
+
+
+class AgenteFiscalizadorSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    name = serializers.CharField(source='nome')
+    corps = serializers.CharField(source='corporacao', required=False, default='Brigada Nacional de Trânsito')
+    rank = serializers.CharField(source='posto_patente', required=False, default='Subinspetor de Trânsito')
+    office = serializers.CharField(source='delegacao', required=False, default='Bissau')
+    phone = serializers.CharField(source='telefone', required=False, allow_blank=True, default='')
+
+    class Meta:
+        model = AgenteFiscalizador
+        fields = ['id', 'name', 'corps', 'rank', 'office', 'phone', 'status']
 
 
 class TipoInfracaoSerializer(serializers.ModelSerializer):
