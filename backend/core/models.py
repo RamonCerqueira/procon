@@ -264,6 +264,35 @@ class InspecaoVeicular(models.Model):
         return f"{self.codigo} - {self.placa}"
 
 
+class DocumentoCertificado(models.Model):
+    codigo = models.CharField('N.º do Documento / Certificado', max_length=50, unique=True)
+    tipo_documento = models.CharField('Tipo de Documento', max_length=120)
+    modalidade_emissao = models.CharField('Modalidade de Emissão', max_length=100, default='1.ª Via Original')
+    referencia_vinculada = models.CharField('Matrícula ou N.º da Carta', max_length=60)
+    titular_nome = models.CharField('Nome do Titular / Proprietário / Condutor', max_length=200)
+    titular_documento = models.CharField('BI / NIF do Titular', max_length=60, blank=True, default='')
+    detalhes_tecnicos = models.CharField('Dados Técnicos (Veículo ou Categorias)', max_length=255, blank=True, default='')
+    codigo_autenticidade = models.CharField('Código Público de Autenticidade', max_length=80, unique=True)
+    assinatura_qr = models.CharField('Payload de Validação QR Code', max_length=255)
+    delegacao_emissora = models.CharField('Delegação Emissora', max_length=120, default='Direção-Geral de Viação · Bissau')
+    data_emissao = models.CharField('Data de Emissão', max_length=20)
+    data_validade = models.CharField('Validade', max_length=40, blank=True, default='Permanente')
+    status = models.CharField('Estado do Documento', max_length=50, default='Válido')
+    bloqueio_administrativo = models.BooleanField('Bloqueio Administrativo Ativo', default=False)
+    motivo_bloqueio = models.CharField('Fundamentação / Despacho de Bloqueio', max_length=255, blank=True, default='')
+    observacoes = models.CharField('Observações / Motivo de 2.ª Via', max_length=255, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'documentos_certificados'
+        verbose_name = 'Documento / Certificado Oficial'
+        verbose_name_plural = 'Documentos e Certificados Oficiais'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.tipo_documento} ({self.referencia_vinculada})"
+
+
 class UsuarioSistema(models.Model):
     nome = models.CharField('Nome', max_length=200)
     email = models.EmailField('Email', unique=True)

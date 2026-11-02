@@ -4,6 +4,10 @@ import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import {
   CirculationTax,
+  DigitalDrivingLicensePage,
+  DocumentAdministrativeBlockPage,
+  DocumentIssuanceHistoryPage,
+  DocumentSecondCopyPage,
   DriverCategoriesPage,
   DriverExamsPage,
   DriverInfractionsHistoryPage,
@@ -23,12 +27,17 @@ import {
   FineSeverityPage,
   InfractionCatalog,
   InspectionManagement,
+  OwnershipCertificatePage,
   OwnershipTransferAndHistory,
   PlateCheck,
+  PublicAuthenticityVerificationPage,
+  QRCodeValidationPage,
+  RegistrationCertificatePage,
   ReportsManagement,
   SystemAdministration,
   TransportDashboard,
   TransportLanding,
+  VehicleIdentificationDocPage,
   VehicleLegalStatusAndWriteOff,
   VehicleRegistry,
 } from '../modules/transport/TransportPortal';
@@ -69,6 +78,15 @@ export function AppRoutes() {
     <Route path="/fines/recidivism" element={<Protected><FineRecidivismPage/></Protected>}/>
     <Route path="/fines/administrative-blocks" element={<Protected><FineAdministrativeBlocksPage/></Protected>}/>
     <Route path="/infraction-types" element={<Protected><InfractionCatalog/></Protected>}/>
+    <Route path="/documents-certificates" element={<Protected><VehicleIdentificationDocPage/></Protected>}/>
+    <Route path="/documents-certificates/registration-certificate" element={<Protected><RegistrationCertificatePage/></Protected>}/>
+    <Route path="/documents-certificates/digital-license" element={<Protected><DigitalDrivingLicensePage/></Protected>}/>
+    <Route path="/documents-certificates/ownership-certificate" element={<Protected><OwnershipCertificatePage/></Protected>}/>
+    <Route path="/documents-certificates/history" element={<Protected><DocumentIssuanceHistoryPage/></Protected>}/>
+    <Route path="/documents-certificates/second-copy" element={<Protected><DocumentSecondCopyPage/></Protected>}/>
+    <Route path="/documents-certificates/qr-validation" element={<Protected><QRCodeValidationPage/></Protected>}/>
+    <Route path="/documents-certificates/authenticity" element={<PublicAuthenticityVerificationPage/>}/>
+    <Route path="/documents-certificates/administrative-blocks" element={<Protected><DocumentAdministrativeBlockPage/></Protected>}/>
     <Route path="/inspections" element={<Protected><InspectionManagement/></Protected>}/>
     <Route path="/reports" element={<Protected><ReportsManagement/></Protected>}/>
     <Route path="/users" element={<Protected><SystemAdministration/></Protected>}/>

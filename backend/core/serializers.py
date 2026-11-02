@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado, UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
 )
@@ -224,6 +224,33 @@ class InspecaoVeicularSerializer(serializers.ModelSerializer):
     class Meta:
         model = InspecaoVeicular
         fields = ['id', 'plate', 'reason', 'office', 'date', 'status']
+
+
+class DocumentoCertificadoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    documentType = serializers.CharField(source='tipo_documento')
+    issueMode = serializers.CharField(source='modalidade_emissao', required=False, default='1.ª Via Original')
+    targetRef = serializers.CharField(source='referencia_vinculada')
+    holderName = serializers.CharField(source='titular_nome')
+    holderDocument = serializers.CharField(source='titular_documento', required=False, allow_blank=True, default='')
+    technicalDetails = serializers.CharField(source='detalhes_tecnicos', required=False, allow_blank=True, default='')
+    authenticityCode = serializers.CharField(source='codigo_autenticidade')
+    qrPayload = serializers.CharField(source='assinatura_qr')
+    issuingOffice = serializers.CharField(source='delegacao_emissora', required=False, default='Direção-Geral de Viação · Bissau')
+    issueDate = serializers.CharField(source='data_emissao')
+    expiryDate = serializers.CharField(source='data_validade', required=False, allow_blank=True, default='Permanente')
+    administrativeBlock = serializers.BooleanField(source='bloqueio_administrativo', required=False, default=False)
+    blockReason = serializers.CharField(source='motivo_bloqueio', required=False, allow_blank=True, default='')
+    notes = serializers.CharField(source='observacoes', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = DocumentoCertificado
+        fields = [
+            'id', 'documentType', 'issueMode', 'targetRef', 'holderName', 'holderDocument',
+            'technicalDetails', 'authenticityCode', 'qrPayload', 'issuingOffice',
+            'issueDate', 'expiryDate', 'status', 'administrativeBlock', 'blockReason', 'notes', 'createdAt'
+        ]
 
 
 class UsuarioSistemaSerializer(serializers.ModelSerializer):

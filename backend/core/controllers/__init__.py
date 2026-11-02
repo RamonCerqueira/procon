@@ -5,6 +5,7 @@ from .fine_controller import FineController
 from .infraction_controller import InfractionController
 from .ownership_controller import OwnershipController
 from .vehicle_status_controller import VehicleStatusController
+from .document_controller import DocumentController
 
 __all__ = [
     'AuthController',
@@ -14,4 +15,5 @@ __all__ = [
     'InfractionController',
     'OwnershipController',
     'VehicleStatusController',
+    'DocumentController',
 ]

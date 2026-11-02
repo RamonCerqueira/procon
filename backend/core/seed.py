@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from .models import (
-    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado, UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
 )
@@ -330,6 +330,103 @@ def ensure_seed_data():
         ]
         for i in seed_inspecoes:
             InspecaoVeicular.objects.create(**i)
+
+    # 6b. SIGETRAN: Documentos e Certificados Oficiais (tabela 'documentos_certificados')
+    if not DocumentoCertificado.objects.exists():
+        seed_documentos = [
+            {
+                'codigo': 'DOC-2026-0001',
+                'tipo_documento': 'Documento de Identificação do Veículo',
+                'modalidade_emissao': '1.ª Via Original',
+                'referencia_vinculada': 'GB-24-BC',
+                'titular_nome': 'Mamadu Embaló',
+                'titular_documento': '000000001',
+                'detalhes_tecnicos': 'Toyota Corolla (2018) · Cor: Prata · Cat.: Ligeiro particular',
+                'codigo_autenticidade': 'AUTH-GB-2026-1001-24BC',
+                'assinatura_qr': 'SIGETRAN-QR|DOC-2026-0001|GB-24-BC|AUTH-GB-2026-1001-24BC',
+                'delegacao_emissora': 'Direção-Geral de Viação · Bissau',
+                'data_emissao': '2026-03-14',
+                'data_validade': 'Permanente',
+                'status': 'Válido',
+                'bloqueio_administrativo': False,
+                'motivo_bloqueio': '',
+                'observacoes': 'Livre de ónus fiscais · Emissão inicial após averbamento.',
+            },
+            {
+                'codigo': 'DOC-2026-0002',
+                'tipo_documento': 'Certificado de Matrícula',
+                'modalidade_emissao': '1.ª Via Original',
+                'referencia_vinculada': 'GB-19-AA',
+                'titular_nome': 'Adama Baldé',
+                'titular_documento': '000492811',
+                'detalhes_tecnicos': 'Suzuki Carry (2020) · Cor: Branco · Cat.: Transporte misto',
+                'codigo_autenticidade': 'AUTH-GB-2026-1002-19AA',
+                'assinatura_qr': 'SIGETRAN-QR|DOC-2026-0002|GB-19-AA|AUTH-GB-2026-1002-19AA',
+                'delegacao_emissora': 'Delegação Regional de Viação · Bafatá',
+                'data_emissao': '2026-06-22',
+                'data_validade': 'Permanente',
+                'status': 'Válido',
+                'bloqueio_administrativo': False,
+                'motivo_bloqueio': '',
+                'observacoes': 'Certificado definitivo homologado pela DGV.',
+            },
+            {
+                'codigo': 'DOC-2026-0003',
+                'tipo_documento': 'Carta de Condução Digital',
+                'modalidade_emissao': 'Emissão Digital Certificada',
+                'referencia_vinculada': 'GB-C-10294',
+                'titular_nome': 'Mamadu Embaló',
+                'titular_documento': '000000001',
+                'detalhes_tecnicos': 'Categoria: B · Ligeiros · Pontuação: 13/20 pts · Sem restrições',
+                'codigo_autenticidade': 'AUTH-GB-2026-1003-C294',
+                'assinatura_qr': 'SIGETRAN-QR|DOC-2026-0003|GB-C-10294|AUTH-GB-2026-1003-C294',
+                'delegacao_emissora': 'Direção-Geral de Viação · Bissau',
+                'data_emissao': '2026-07-10',
+                'data_validade': '2028-04-10',
+                'status': 'Válido',
+                'bloqueio_administrativo': False,
+                'motivo_bloqueio': '',
+                'observacoes': 'Assinatura digital ICP-GB ativa com QR Code dinâmico.',
+            },
+            {
+                'codigo': 'DOC-2026-0004',
+                'tipo_documento': 'Certificado de Propriedade',
+                'modalidade_emissao': '1.ª Via Original',
+                'referencia_vinculada': 'GB-22-CD',
+                'titular_nome': 'Transportes Cacheu',
+                'titular_documento': '500918273',
+                'detalhes_tecnicos': 'Mercedes-Benz Sprinter (2017) · Cor: Azul · Cat.: Transporte colectivo',
+                'codigo_autenticidade': 'AUTH-GB-2026-1004-22CD',
+                'assinatura_qr': 'SIGETRAN-QR|DOC-2026-0004|GB-22-CD|AUTH-GB-2026-1004-22CD',
+                'delegacao_emissora': 'Delegação Regional de Viação · Cacheu',
+                'data_emissao': '2026-01-19',
+                'data_validade': 'Permanente',
+                'status': 'Bloqueado',
+                'bloqueio_administrativo': True,
+                'motivo_bloqueio': 'Despacho DGT n.º 118/2026 · Restrição administrativa por apreensão e coima gravíssima pendente (Art. 142.º CE).',
+                'observacoes': 'Transferência de titularidade bloqueada até regularização.',
+            },
+            {
+                'codigo': 'DOC-2026-0005',
+                'tipo_documento': 'Documento de Identificação do Veículo',
+                'modalidade_emissao': '2.ª Via (Extravio / Deterioração)',
+                'referencia_vinculada': 'GB-23-FA',
+                'titular_nome': 'Naima Mané',
+                'titular_documento': '000000004',
+                'detalhes_tecnicos': 'Honda Wave (2022) · Cor: Vermelho · Cat.: Motociclo',
+                'codigo_autenticidade': 'AUTH-GB-2026-1005-23FA',
+                'assinatura_qr': 'SIGETRAN-QR|DOC-2026-0005|GB-23-FA|AUTH-GB-2026-1005-23FA',
+                'delegacao_emissora': 'Delegação Regional de Viação · Gabú',
+                'data_emissao': '2026-08-05',
+                'data_validade': 'Permanente',
+                'status': 'Válido',
+                'bloqueio_administrativo': False,
+                'motivo_bloqueio': '',
+                'observacoes': '2.ª Via emitida mediante declaração policial de extravio n.º 88/2026.',
+            },
+        ]
+        for doc_item in seed_documentos:
+            DocumentoCertificado.objects.create(**doc_item)
 
     # 7. SIGETRAN: Usuários e Configuração (tabelas 'usuarios_sistema' e 'configuracoes_sistema')
     if not UsuarioSistema.objects.exists():

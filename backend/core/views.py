@@ -3,15 +3,15 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
-from .controllers import AuthController, VehicleController, DriverController, FineController, InfractionController, OwnershipController, VehicleStatusController
+from .controllers import AuthController, VehicleController, DriverController, FineController, InfractionController, OwnershipController, VehicleStatusController, DocumentController
 from .models import (
-    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, UsuarioSistema, ConfiguracaoSistema,
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado, UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
 )
 from .serializers import (
     VeiculoSerializer, OcorrenciaVeicularSerializer, HistoricoProprietarioSerializer, CondutorSerializer, RegistoCartaConducaoSerializer, ExameCondutorSerializer, MultaSerializer, RecursoMultaSerializer, AgenteFiscalizadorSerializer, TipoInfracaoSerializer,
-    InspecaoVeicularSerializer, UsuarioSistemaSerializer, ConfiguracaoSistemaSerializer,
+    InspecaoVeicularSerializer, DocumentoCertificadoSerializer, UsuarioSistemaSerializer, ConfiguracaoSistemaSerializer,
     ConsumidorSerializer, FornecedorSerializer, ProcessoSerializer,
     MensagemProcessoSerializer, DocumentoSerializer, FiscalizacaoSerializer,
     SuperendividamentoSerializer, AudienciaSerializer
@@ -395,6 +395,42 @@ def sigetran_state(request, key):
                 InspecaoVeicular.objects.exclude(codigo__in=codigos).delete()
             return Response(InspecaoVeicularSerializer(InspecaoVeicular.objects.all(), many=True).data)
 
+    elif key == 'transport-documents':
+        if request.method == 'GET':
+            items = DocumentoCertificado.objects.all()
+            return Response(DocumentoCertificadoSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    DocumentoCertificado.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'tipo_documento': item.get('documentType', 'Documento de Identificação do Veículo'),
+                            'modalidade_emissao': item.get('issueMode', '1.ª Via Original') or '1.ª Via Original',
+                            'referencia_vinculada': item.get('targetRef', ''),
+                            'titular_nome': item.get('holderName', ''),
+                            'titular_documento': item.get('holderDocument', '') or '',
+                            'detalhes_tecnicos': item.get('technicalDetails', '') or '',
+                            'codigo_autenticidade': item.get('authenticityCode', f'AUTH-{codigo}'),
+                            'assinatura_qr': item.get('qrPayload', f'SIGETRAN-QR|{codigo}'),
+                            'delegacao_emissora': item.get('issuingOffice', 'Direção-Geral de Viação · Bissau') or 'Direção-Geral de Viação · Bissau',
+                            'data_emissao': item.get('issueDate', ''),
+                            'data_validade': item.get('expiryDate', 'Permanente') or 'Permanente',
+                            'status': item.get('status', 'Válido'),
+                            'bloqueio_administrativo': bool(item.get('administrativeBlock', False)),
+                            'motivo_bloqueio': item.get('blockReason', '') or '',
+                            'observacoes': item.get('notes', '') or '',
+                        }
+                    )
+                DocumentoCertificado.objects.exclude(codigo__in=codigos).delete()
+            return Response(DocumentoCertificadoSerializer(DocumentoCertificado.objects.all(), many=True).data)
+
     elif key == 'users':
         if request.method == 'GET':
             items = UsuarioSistema.objects.all()
@@ -623,6 +659,33 @@ def vehicle_occurrences_list(request):
 def vehicle_occurrence_detail(request, code):
     result = VehicleStatusController.delete_occurrence(code)
     return Response(status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def transport_documents_list(request):
+    if request.method == 'GET':
+        result = DocumentController.list_documents(
+            doc_type=request.GET.get('documentType', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = DocumentController.create_document(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['PUT', 'PATCH', 'DELETE'])
+def transport_document_detail(request, code):
+    if request.method == 'DELETE':
+        result = DocumentController.delete_document(code)
+        return Response(status=result['status_code'])
+    result = DocumentController.update_document(code, request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET'])
+def transport_document_verify(request):
+    result = DocumentController.verify_authenticity(request.GET.get('q', ''))
+    return Response(result['data'], status=result['status_code'])
 
 
 # ==============================================================================

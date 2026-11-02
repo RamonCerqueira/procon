@@ -53,6 +53,12 @@ urlpatterns = [
     path('vehicle-occurrences/', views.vehicle_occurrences_list),
     path('vehicle-occurrences/<str:code>', views.vehicle_occurrence_detail, name='vehicle_occurrence_detail'),
     path('vehicle-occurrences/<str:code>/', views.vehicle_occurrence_detail),
+    path('transport-documents', views.transport_documents_list, name='transport_documents_list'),
+    path('transport-documents/', views.transport_documents_list),
+    path('transport-documents/verify', views.transport_document_verify, name='transport_document_verify'),
+    path('transport-documents/verify/', views.transport_document_verify),
+    path('transport-documents/<str:code>', views.transport_document_detail, name='transport_document_detail'),
+    path('transport-documents/<str:code>/', views.transport_document_detail),
 
     # Endpoints REST PROCON
     path('dashboard/stats', views.dashboard_stats, name='dashboard_stats'),

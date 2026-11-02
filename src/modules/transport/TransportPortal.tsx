@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, AlertTriangle, ArrowRight, Banknote, CarFront, Check, ClipboardCheck, ClipboardList, FileBarChart2, FilePlus2, LogOut, Search, Settings, ShieldCheck, UserRoundCog, Users, X, type LucideIcon } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, Banknote, CarFront, Check, ClipboardCheck, ClipboardList, FileBarChart2, FilePlus2, FileText, LogOut, Printer, QrCode, Search, Settings, ShieldCheck, UserRoundCog, Users, X, type LucideIcon } from 'lucide-react';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 
@@ -15,6 +15,7 @@ type FineAppeal = { id: string; fineId: string; plate: string; appellant: string
 type InspectionAgent = { id: string; name: string; badge: string; unit: string; district: string; phone?: string; status: string };
 type InfractionTypeItem = { id: string; name: string; amount: number; severity: string; description?: string };
 type Inspection = { id: string; plate: string; reason: string; office: string; date: string; status: string };
+type OfficialDocument = { id: string; documentType: string; issueMode: string; targetRef: string; holderName: string; holderDocument?: string; technicalDetails?: string; authenticityCode: string; qrPayload: string; issuingOffice: string; issueDate: string; expiryDate: string; status: string; administrativeBlock?: boolean; blockReason?: string; notes?: string };
 
 const seedVehicles: Vehicle[] = [
   { plate:'GB-24-BC',make:'Toyota',model:'Corolla',year:2018,color:'Prata',owner:'Mamadu Embaló',driver:'Mamadu Embaló',taxDue:41500,district:'Bissau',category:'Ligeiro particular' },
@@ -69,6 +70,13 @@ const seedInspections: Inspection[] = [
   {id:'ITV-0061',plate:'GB-24-BC',reason:'Inspeção periódica',office:'Bissau',date:'2026-10-28',status:'Agendada'},
   {id:'ITV-0062',plate:'GB-22-CD',reason:'Verificação de segurança',office:'Cacheu',date:'2026-10-30',status:'Agendada'},
 ];
+const seedOfficialDocuments: OfficialDocument[] = [
+  {id:'DOC-2026-0001',documentType:'Documento de Identificação do Veículo',issueMode:'1.ª Via Original',targetRef:'GB-24-BC',holderName:'Mamadu Embaló',holderDocument:'000000001',technicalDetails:'Toyota Corolla (2018) · Cor: Prata · Cat.: Ligeiro particular',authenticityCode:'AUTH-GB-2026-1001-24BC',qrPayload:'SIGETRAN-QR|DOC-2026-0001|GB-24-BC|AUTH-GB-2026-1001-24BC',issuingOffice:'Direção-Geral de Viação · Bissau',issueDate:'2026-03-14',expiryDate:'Permanente',status:'Válido',administrativeBlock:false,blockReason:'',notes:'Livre de ónus fiscais · Emissão inicial após averbamento.'},
+  {id:'DOC-2026-0002',documentType:'Certificado de Matrícula',issueMode:'1.ª Via Original',targetRef:'GB-19-AA',holderName:'Adama Baldé',holderDocument:'000492811',technicalDetails:'Suzuki Carry (2020) · Cor: Branco · Cat.: Transporte misto',authenticityCode:'AUTH-GB-2026-1002-19AA',qrPayload:'SIGETRAN-QR|DOC-2026-0002|GB-19-AA|AUTH-GB-2026-1002-19AA',issuingOffice:'Delegação Regional de Viação · Bafatá',issueDate:'2026-06-22',expiryDate:'Permanente',status:'Válido',administrativeBlock:false,blockReason:'',notes:'Certificado definitivo homologado pela DGV.'},
+  {id:'DOC-2026-0003',documentType:'Carta de Condução Digital',issueMode:'Emissão Digital Certificada',targetRef:'GB-C-10294',holderName:'Mamadu Embaló',holderDocument:'000000001',technicalDetails:'Categoria: B · Ligeiros · Pontuação: 13/20 pts · Sem restrições',authenticityCode:'AUTH-GB-2026-1003-C294',qrPayload:'SIGETRAN-QR|DOC-2026-0003|GB-C-10294|AUTH-GB-2026-1003-C294',issuingOffice:'Direção-Geral de Viação · Bissau',issueDate:'2026-07-10',expiryDate:'2028-04-10',status:'Válido',administrativeBlock:false,blockReason:'',notes:'Assinatura digital ICP-GB ativa com QR Code dinâmico.'},
+  {id:'DOC-2026-0004',documentType:'Certificado de Propriedade',issueMode:'1.ª Via Original',targetRef:'GB-22-CD',holderName:'Transportes Cacheu',holderDocument:'500918273',technicalDetails:'Mercedes-Benz Sprinter (2017) · Cor: Azul · Cat.: Transporte colectivo',authenticityCode:'AUTH-GB-2026-1004-22CD',qrPayload:'SIGETRAN-QR|DOC-2026-0004|GB-22-CD|AUTH-GB-2026-1004-22CD',issuingOffice:'Delegação Regional de Viação · Cacheu',issueDate:'2026-01-19',expiryDate:'Permanente',status:'Bloqueado',administrativeBlock:true,blockReason:'Despacho DGT n.º 118/2026 · Restrição administrativa por apreensão e coima gravíssima pendente (Art. 142.º CE).',notes:'Transferência de titularidade bloqueada até regularização.'},
+  {id:'DOC-2026-0005',documentType:'Documento de Identificação do Veículo',issueMode:'2.ª Via (Extravio / Deterioração)',targetRef:'GB-23-FA',holderName:'Naima Mané',holderDocument:'000000004',technicalDetails:'Honda Wave (2022) · Cor: Vermelho · Cat.: Motociclo',authenticityCode:'AUTH-GB-2026-1005-23FA',qrPayload:'SIGETRAN-QR|DOC-2026-0005|GB-23-FA|AUTH-GB-2026-1005-23FA',issuingOffice:'Delegação Regional de Viação · Gabú',issueDate:'2026-08-05',expiryDate:'Permanente',status:'Válido',administrativeBlock:false,blockReason:'',notes:'2.ª Via emitida mediante declaração policial de extravio n.º 88/2026.'},
+];
 
 function useSaved<T>(key:string, initial:T) {
   const [data,setData] = useState<T>(()=>{try {const value=localStorage.getItem(`sigetran:${key}`);return value?JSON.parse(value) as T:initial;}catch{return initial;}});
@@ -98,8 +106,19 @@ const fineSubmenus:{path:string;label:string;shortLabel:string}[]=[
   {path:'/fines/recidivism',label:'Histórico de reincidência',shortLabel:'Reincidência'},
   {path:'/fines/administrative-blocks',label:'Bloqueio administrativo',shortLabel:'Bloqueio administrativo'},
 ];
+const documentSubmenus:{path:string;label:string;shortLabel:string}[]=[
+  {path:'/documents-certificates',label:'Documento de identificação do veículo',shortLabel:'Doc. Identificação Veículo'},
+  {path:'/documents-certificates/registration-certificate',label:'Certificado de matrícula',shortLabel:'Certificado de Matrícula'},
+  {path:'/documents-certificates/digital-license',label:'Carta de condução digital',shortLabel:'Carta Digital'},
+  {path:'/documents-certificates/ownership-certificate',label:'Certificado de propriedade',shortLabel:'Certificado de Propriedade'},
+  {path:'/documents-certificates/history',label:'Histórico de emissão de documentos',shortLabel:'Histórico de Emissão'},
+  {path:'/documents-certificates/second-copy',label:'Segunda via',shortLabel:'Segunda Via'},
+  {path:'/documents-certificates/qr-validation',label:'Validação por QR Code',shortLabel:'Validação QR Code'},
+  {path:'/documents-certificates/authenticity',label:'Verificação pública de autenticidade',shortLabel:'Autenticidade Pública'},
+  {path:'/documents-certificates/administrative-blocks',label:'Bloqueio administrativo',shortLabel:'Bloqueio Administrativo'},
+];
 const menu:{path:string;label:string;icon:LucideIcon;children?:{path:string;label:string}[]}[]=[
-  {path:'/dashboard',label:'Painel de gestão',icon:Activity},{path:'/vehicles',label:'Veículos e matrículas',icon:CarFront},{path:'/ownership-transfers',label:'Transferência e histórico',icon:ArrowRight},{path:'/vehicle-occurrences',label:'Apreensões, roubos e baixas',icon:ShieldCheck},{path:'/drivers',label:'Gestão de condutores',icon:Users,children:driverSubmenus},{path:'/plate-check',label:'Consulta de matrícula',icon:Search},{path:'/circulation-tax',label:'Imposto de Circulação',icon:Banknote},{path:'/fines',label:'Gestão de multas e infrações',icon:ClipboardList,children:fineSubmenus},{path:'/inspections',label:'Inspeções veiculares',icon:ClipboardCheck},{path:'/reports',label:'Relatórios nacionais',icon:FileBarChart2},{path:'/users',label:'Utilizadores',icon:UserRoundCog},{path:'/settings',label:'Configuração',icon:Settings},
+  {path:'/dashboard',label:'Painel de gestão',icon:Activity},{path:'/vehicles',label:'Veículos e matrículas',icon:CarFront},{path:'/ownership-transfers',label:'Transferência e histórico',icon:ArrowRight},{path:'/vehicle-occurrences',label:'Apreensões, roubos e baixas',icon:ShieldCheck},{path:'/drivers',label:'Gestão de condutores',icon:Users,children:driverSubmenus},{path:'/plate-check',label:'Consulta de matrícula',icon:Search},{path:'/circulation-tax',label:'Imposto de Circulação',icon:Banknote},{path:'/fines',label:'Gestão de multas e infrações',icon:ClipboardList,children:fineSubmenus},{path:'/documents-certificates',label:'Documentação e certificados',icon:FilePlus2,children:documentSubmenus},{path:'/inspections',label:'Inspeções veiculares',icon:ClipboardCheck},{path:'/reports',label:'Relatórios nacionais',icon:FileBarChart2},{path:'/users',label:'Utilizadores',icon:UserRoundCog},{path:'/settings',label:'Configuração',icon:Settings},
 ];
 const inputClass='w-full border border-[#d5d1c2] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#009E49] focus:ring-2 focus:ring-[#009E49]/15';
 const primaryClass='inline-flex items-center justify-center gap-2 bg-[#006B35] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#00552b] disabled:cursor-not-allowed disabled:opacity-50';
@@ -119,7 +138,7 @@ function Shell({children}:{children:ReactNode}) {
 }
 function Title({eyebrow,title,description,icon:Icon}:{eyebrow:string;title:string;description:string;icon:LucideIcon}){return <div className="mb-7 flex items-start gap-4 border-b border-[#d8d5c9] pb-5"><div className="grid h-12 w-12 shrink-0 place-items-center border border-[#d5d1c2] bg-white text-[#009E49]"><Icon size={22}/></div><div><div className="text-[10px] font-bold uppercase tracking-[.17em] text-[#836300]">{eyebrow}</div><h1 className="mt-1 font-serif text-2xl font-bold tracking-tight text-[#1c3024] md:text-[30px]">{title}</h1><p className="mt-1 text-sm text-[#697168]">{description}</p></div></div>;}
 function Stat({label,value,detail,icon:Icon}:{label:string;value:string;detail:string;icon:LucideIcon}){return <div className="border border-[#dcd9cc] border-t-[3px] border-t-[#009E49] bg-white p-5"><div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[.08em] text-[#697168]"><span>{label}</span><Icon size={18} className="text-[#009E49]"/></div><div className="mt-3 font-serif text-[30px] font-bold text-[#1c3024]">{value}</div><div className="mt-1 text-xs text-[#737a70]">{detail}</div></div>;}
-function Status({value}:{value:string}){const positive=['Em dia','Pago','Concluída','Ativo','Regular','Recuperado','Válida','Apto','Apto com restrições','Deferido','Leve','Sem bloqueio'].includes(value);const cancelled=['Cancelado / Baixa Definitiva','Baixa Definitiva','Cancelamento de Matrícula','Cassado','Inapto','Anulado','Indeferido'].includes(value);return <span className={`inline-flex whitespace-nowrap border px-2 py-1 text-[11px] font-semibold ${positive?'border-[#009E49]/30 bg-[#009E49]/10 text-[#006B35]':cancelled?'border-[#4b5549]/40 bg-[#4b5549]/15 text-[#202820]':'border-[#CE1126]/25 bg-[#CE1126]/10 text-[#9f1a2b]'}`}>{value}</span>;}
+function Status({value}:{value:string}){const positive=['Em dia','Pago','Concluída','Ativo','Regular','Recuperado','Válida','Válido','Apto','Apto com restrições','Deferido','Leve','Sem bloqueio','Autêntico'].includes(value);const cancelled=['Cancelado / Baixa Definitiva','Baixa Definitiva','Cancelamento de Matrícula','Cassado','Inapto','Anulado','Indeferido','Substituído (2.ª Via)','Revogado'].includes(value);return <span className={`inline-flex whitespace-nowrap border px-2 py-1 text-[11px] font-semibold ${positive?'border-[#009E49]/30 bg-[#009E49]/10 text-[#006B35]':cancelled?'border-[#4b5549]/40 bg-[#4b5549]/15 text-[#202820]':'border-[#CE1126]/25 bg-[#CE1126]/10 text-[#9f1a2b]'}`}>{value}</span>;}
 function Field({label,name,type='text',required=true,defaultValue,placeholder}:{label:string;name:string;type?:string;required?:boolean;defaultValue?:string;placeholder?:string}){return <label className="block text-xs font-semibold text-[#4b5549]">{label}<input className={`mt-1.5 ${inputClass}`} type={type} name={name} required={required} defaultValue={defaultValue} placeholder={placeholder}/></label>;}
 function Panel({title,children,action}:{title:string;children:ReactNode;action?:ReactNode}){return <section className="border border-[#dcd9cc] bg-white p-5"><div className="mb-4 flex items-center justify-between border-b border-[#e9e6dc] pb-3"><h2 className="font-serif text-lg font-bold text-[#1c3024]">{title}</h2>{action}</div>{children}</section>;}
 function Drawer({title,children,onClose}:{title:string;children:ReactNode;onClose:()=>void}){const [visible,setVisible]=useState(false);useEffect(()=>{const frame=requestAnimationFrame(()=>setVisible(true));return()=>cancelAnimationFrame(frame);},[]);const close=()=>{setVisible(false);window.setTimeout(onClose,250);};useEffect(()=>{const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape')close();};window.addEventListener('keydown',onKeyDown);window.addEventListener('sigetran:drawer-close',close);return()=>{window.removeEventListener('keydown',onKeyDown);window.removeEventListener('sigetran:drawer-close',close);};},[]);return <div className="fixed inset-0 z-50 flex justify-end" role="presentation"><button aria-label="Fechar painel" onClick={close} className={`absolute inset-0 bg-[#10251a]/55 transition-opacity duration-300 ease-out motion-reduce:transition-none ${visible?'opacity-100':'opacity-0'}`}/><section role="dialog" aria-modal="true" aria-label={title} className={`relative flex h-full w-full max-w-2xl flex-col border-l-4 border-[#CE1126] bg-[#f8f7f2] shadow-2xl transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none ${visible?'translate-x-0 opacity-100':'translate-x-full opacity-0'}`}><header className="flex items-center justify-between border-b border-[#dcd9cc] bg-white px-5 py-4"><div><div className="text-[10px] font-bold uppercase tracking-[.16em] text-[#836300]">Novo registo</div><h2 className="mt-1 font-serif text-xl font-bold text-[#1c3024]">{title}</h2></div><button type="button" onClick={close} aria-label="Fechar" className="grid h-10 w-10 place-items-center border border-[#d5d1c2] text-[#26372b] hover:bg-[#f3f1e8]"><X size={18}/></button></header><div className="flex-1 overflow-y-auto p-5">{children}</div></section></div>;}
@@ -2136,6 +2155,927 @@ export function FineAdministrativeBlocksPage(){
             <td className="px-3 py-3 text-xs text-[#4b5549]">{f.blockReason||'Nenhuma restrição ativa'}</td>
             <td className="px-3 py-3">
               <button type="button" onClick={()=>{setSelectedFineId(f.id);setOpen(true);}} className="text-xs font-semibold text-[#006B35] hover:underline">{f.administrativeBlock?'Gerir / Levantar':'Aplicar bloqueio'}</button>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+function DocumentSubmenuBar(){
+  const {pathname}=useLocation();
+  return <div className="mb-6 flex flex-wrap gap-1.5 border-b border-[#dcd9cc] pb-4">
+    {documentSubmenus.map(sub=>{
+      const active=pathname===sub.path;
+      return <Link key={sub.path} to={sub.path} className={`border px-3 py-1.5 text-xs font-semibold transition ${active?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-white text-[#26372b] hover:border-[#009E49] hover:bg-[#f4f3ed]'}`}>{sub.label}</Link>;
+    })}
+  </div>;
+}
+
+function OfficialCertificateModal({doc,onClose}:{doc:OfficialDocument;onClose:()=>void}){
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#10251a]/60">
+    <div className="relative w-full max-w-2xl bg-white border-2 border-[#173d2b] shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+      <div className="flex justify-between items-start border-b-2 border-[#d5d1c2] pb-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 place-items-center border border-[#FCD116] bg-[#173d2b] text-base font-black text-[#FCD116]">GB</div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#836300]">República da Guiné-Bissau</div>
+            <h3 className="font-serif text-lg font-bold text-[#173d2b]">Ministério dos Transportes · Direção-Geral de Viação</h3>
+            <div className="text-xs text-[#697168]">{doc.documentType}</div>
+          </div>
+        </div>
+        <button onClick={onClose} aria-label="Fechar" className="p-1 text-[#737a70] hover:text-[#1c3024]"><X size={20}/></button>
+      </div>
+
+      <div className="space-y-4 text-xs">
+        <div className="grid grid-cols-2 gap-3 border border-[#dcd9cc] bg-[#f8f7f2] p-4">
+          <div><span className="text-[#737a70] block">N.º do Documento:</span><b className="font-mono text-sm text-[#173d2b]">{doc.id}</b></div>
+          <div><span className="text-[#737a70] block">Modalidade:</span><b>{doc.issueMode}</b></div>
+          <div><span className="text-[#737a70] block">Matrícula / Referência:</span><b className="font-mono text-sm text-[#006B35]">{doc.targetRef}</b></div>
+          <div><span className="text-[#737a70] block">Estado Atual:</span><Status value={doc.status}/></div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 border border-[#dcd9cc] p-4">
+          <div><span className="text-[#737a70] block">Titular / Proprietário:</span><b className="text-sm">{doc.holderName}</b></div>
+          <div><span className="text-[#737a70] block">BI / NIF / Documento:</span><b>{doc.holderDocument||'—'}</b></div>
+          <div className="col-span-2"><span className="text-[#737a70] block">Especificações Técnicas:</span><b>{doc.technicalDetails||'—'}</b></div>
+          <div><span className="text-[#737a70] block">Data de Emissão:</span><b>{doc.issueDate}</b></div>
+          <div><span className="text-[#737a70] block">Data de Validade:</span><b>{doc.expiryDate}</b></div>
+          <div className="col-span-2"><span className="text-[#737a70] block">Delegação Emissora:</span><b>{doc.issuingOffice}</b></div>
+          {doc.notes&&<div className="col-span-2"><span className="text-[#737a70] block">Observações Legais:</span><span className="text-[#4b5549]">{doc.notes}</span></div>}
+          {doc.administrativeBlock&&<div className="col-span-2 border border-[#CE1126]/30 bg-[#CE1126]/10 p-2 text-[#9f1a2b]"><b>Aviso de Bloqueio Administrativo:</b> {doc.blockReason}</div>}
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-between border-t border-[#dcd9cc] pt-4 gap-4 bg-[#f8f7f2] p-3">
+          <div className="flex items-center gap-3">
+            <div className="border border-[#173d2b] p-2 bg-white">
+              <QrCode size={48} className="text-[#173d2b]"/>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#737a70]">Assinatura e Validação Digital</div>
+              <div className="font-mono text-[11px] font-bold text-[#006B35]">{doc.authenticityCode}</div>
+              <div className="text-[10px] text-[#737a70] truncate max-w-xs">{doc.qrPayload}</div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={()=>window.print()} className={primaryClass}><Printer size={15}/> Imprimir Título</button>
+            <button onClick={onClose} className={secondaryClass}>Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+export function VehicleIdentificationDocPage(){
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [docs,setDocs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [open,setOpen]=useState(false);
+  const [selectedPlate,setSelectedPlate]=useState('');
+  const [viewingDoc,setViewingDoc]=useState<OfficialDocument|null>(null);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+
+  const vehicleDocs=docs.filter(d=>d.documentType==='Documento de Identificação do Veículo');
+  const filtered=vehicleDocs.filter(d=>[d.id,d.targetRef,d.holderName,d.authenticityCode].join(' ').toLowerCase().includes(search.toLowerCase()));
+  const selectedVehicle=vehicles.find(v=>v.plate===selectedPlate)||vehicles[0];
+
+  async function submitIssue(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const plate=String(f.get('targetRef')||selectedVehicle?.plate||'').toUpperCase().trim();
+    const veh=vehicles.find(v=>v.plate===plate);
+    try{
+      setError('');setSuccessMsg('');
+      const payload={
+        id:`DOC-2026-${String(Date.now()).slice(-4)}`,
+        documentType:'Documento de Identificação do Veículo',
+        issueMode:String(f.get('issueMode')||'1.ª Via Original'),
+        targetRef:plate,
+        holderName:String(f.get('holderName')||veh?.owner||'').trim(),
+        holderDocument:String(f.get('holderDocument')||'').trim(),
+        technicalDetails:String(f.get('technicalDetails')||`${veh?.make||''} ${veh?.model||''} (${veh?.year||2024}) · Cor: ${veh?.color||'Branco'} · Cat.: ${veh?.category||''}`).trim(),
+        issuingOffice:String(f.get('issuingOffice')||'Direção-Geral de Viação · Bissau'),
+        issueDate:String(f.get('issueDate')||new Date().toISOString().slice(0,10)),
+        expiryDate:'Permanente',
+        notes:String(f.get('notes')||'Livrete oficial emitido em conformidade com o Código da Estrada.').trim(),
+      };
+      const res=await api.post<OfficialDocument>('/transport-documents',payload);
+      setDocs([res.data,...docs]);
+      setSuccessMsg(`Documento de Identificação do Veículo (${res.data.id}) emitido com sucesso para a matrícula ${plate}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível emitir o documento de identificação.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 1" title="Documento de identificação do veículo" description="Emissão, consulta e autenticação do Documento de Identificação do Veículo (Livrete Oficial), especificações técnicas e titularidade." icon={FileText}/>
+    <DocumentSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Documentos emitidos" value={String(vehicleDocs.length)} detail="Livretes de identificação" icon={FileText}/>
+      <Stat label="Documentos válidos" value={String(vehicleDocs.filter(d=>d.status==='Válido').length)} detail="Sem restrições ativas" icon={Check}/>
+      <Stat label="Com bloqueio / substituído" value={String(vehicleDocs.filter(d=>d.status!=='Válido'||d.administrativeBlock).length)} detail="Restrição ou 2.ª via" icon={AlertTriangle}/>
+    </div>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+        <Search size={16} className="text-[#737a70]"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por matrícula, titular ou autenticidade" className="w-full py-2 text-sm outline-none"/>
+      </label>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Emitir Documento de Identificação (Livrete)'}</button>
+    </div>
+
+    {open&&<Drawer title="Emissão de Documento de Identificação do Veículo" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitIssue} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Veículo
+          <select name="targetRef" value={selectedPlate} onChange={e=>setSelectedPlate(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {vehicles.map(v=><option key={v.plate} value={v.plate}>{v.plate} · {v.make} {v.model} ({v.year}) — Proprietário: {v.owner}</option>)}
+          </select>
+        </label>
+        <Field label="Nome do Proprietário / Titular" name="holderName" defaultValue={selectedVehicle?.owner||''}/>
+        <Field label="N.º de BI / NIF do Titular" name="holderDocument" placeholder="Ex.: 000841920"/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Modalidade de Emissão
+          <select name="issueMode" className={`mt-1.5 ${inputClass}`}>
+            <option value="1.ª Via Original">1.ª Via Original</option>
+            <option value="2.ª Via (Extravio / Deterioração)">2.ª Via (Extravio / Deterioração)</option>
+            <option value="Atualização Cadastral / Características">Atualização Cadastral / Características</option>
+          </select>
+        </label>
+        <Field label="Data de Emissão" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <div className="sm:col-span-2">
+          <Field label="Características Técnicas do Veículo" name="technicalDetails" defaultValue={`${selectedVehicle?.make||''} ${selectedVehicle?.model||''} (${selectedVehicle?.year||2024}) · Cor: ${selectedVehicle?.color||'Branco'} · Categoria: ${selectedVehicle?.category||''}`}/>
+        </div>
+        <Field label="Delegação Emissora" name="issuingOffice" defaultValue="Direção-Geral de Viação · Bissau"/>
+        <Field label="Observações Legais" name="notes" defaultValue="Livrete oficial emitido em conformidade com o Código da Estrada." required={false}/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Emitir e registar livrete de identificação</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Documentos de Identificação do Veículo Emitidos</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Documento','Matrícula','Titular / Proprietário','Especificações Técnicas','Autenticidade / QR','Emissão','Estado','Ações'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(d=><tr key={d.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold">{d.id}</td>
+            <td className="px-3 py-3 font-semibold text-[#006B35]">{d.targetRef}</td>
+            <td className="px-3 py-3">{d.holderName}<span className="block text-[11px] text-[#737a70]">{d.holderDocument?`Doc: ${d.holderDocument}`:''}</span></td>
+            <td className="px-3 py-3 text-xs text-[#4b5549]">{d.technicalDetails}</td>
+            <td className="px-3 py-3 font-mono text-xs text-[#836300]">{d.authenticityCode}</td>
+            <td className="px-3 py-3 text-xs">{d.issueDate}</td>
+            <td className="px-3 py-3"><Status value={d.status}/></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={()=>setViewingDoc(d)} className="text-xs font-semibold text-[#006B35] hover:underline flex items-center gap-1"><Printer size={13}/> Imprimir</button>
+              </div>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    {viewingDoc&&<OfficialCertificateModal doc={viewingDoc} onClose={()=>setViewingDoc(null)}/>}
+  </Shell>;
+}
+
+export function RegistrationCertificatePage(){
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [docs,setDocs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [open,setOpen]=useState(false);
+  const [selectedPlate,setSelectedPlate]=useState('');
+  const [viewingDoc,setViewingDoc]=useState<OfficialDocument|null>(null);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+
+  const certDocs=docs.filter(d=>d.documentType==='Certificado de Matrícula');
+  const selectedVehicle=vehicles.find(v=>v.plate===selectedPlate)||vehicles[0];
+
+  async function submitCertificate(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const plate=String(f.get('targetRef')||selectedVehicle?.plate||'').toUpperCase().trim();
+    const veh=vehicles.find(v=>v.plate===plate);
+    try{
+      setError('');setSuccessMsg('');
+      const payload={
+        id:`CERT-MAT-2026-${String(Date.now()).slice(-4)}`,
+        documentType:'Certificado de Matrícula',
+        issueMode:String(f.get('issueMode')||'1.ª Via Original'),
+        targetRef:plate,
+        holderName:String(f.get('holderName')||veh?.owner||'').trim(),
+        holderDocument:String(f.get('holderDocument')||'').trim(),
+        technicalDetails:String(f.get('technicalDetails')||`${veh?.make||''} ${veh?.model||''} (${veh?.year||2024}) · Registo Definitivo`).trim(),
+        issuingOffice:String(f.get('issuingOffice')||'Direção-Geral de Viação · Bissau'),
+        issueDate:String(f.get('issueDate')||new Date().toISOString().slice(0,10)),
+        expiryDate:'Permanente',
+        notes:String(f.get('notes')||'Certificado de matrícula expedido após inspeção inicial e homologação.').trim(),
+      };
+      const res=await api.post<OfficialDocument>('/transport-documents',payload);
+      setDocs([res.data,...docs]);
+      setSuccessMsg(`Certificado de matrícula ${res.data.id} emitido com sucesso para o veículo ${plate}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível emitir o certificado de matrícula.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 2" title="Certificado de matrícula" description="Certificação oficial de matrícula de veículos automóveis, reboques e motociclos com homologação da Direção-Geral de Viação." icon={CarFront}/>
+    <DocumentSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Certificados emitidos" value={String(certDocs.length)} detail="Base de matrículas ativas" icon={CarFront}/>
+      <Stat label="Veículos homologados" value={String(vehicles.length)} detail="Frota registada no SIGETRAN" icon={ShieldCheck}/>
+      <Stat label="Certificados válidos" value={String(certDocs.filter(d=>d.status==='Válido').length)} detail="Sem pendência de bloqueio" icon={Check}/>
+    </div>
+    <div className="mb-4 flex justify-end">
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Emitir certificado de matrícula'}</button>
+    </div>
+
+    {open&&<Drawer title="Emissão de Certificado de Matrícula" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitCertificate} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Veículo Matriculado
+          <select name="targetRef" value={selectedPlate} onChange={e=>setSelectedPlate(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {vehicles.map(v=><option key={v.plate} value={v.plate}>{v.plate} · {v.make} {v.model} — {v.owner}</option>)}
+          </select>
+        </label>
+        <Field label="Nome do Titular da Matrícula" name="holderName" defaultValue={selectedVehicle?.owner||''}/>
+        <Field label="NIF / Documento de Identificação" name="holderDocument" placeholder="Ex.: 000492811"/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Modalidade
+          <select name="issueMode" className={`mt-1.5 ${inputClass}`}>
+            <option value="1.ª Via Original">1.ª Via Original (Atribuição de Nova Matrícula)</option>
+            <option value="2.ª Via">2.ª Via por Substituição</option>
+            <option value="Averbamento">Averbamento por Transferência</option>
+          </select>
+        </label>
+        <Field label="Data de Homologação" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <div className="sm:col-span-2">
+          <Field label="Dados Técnicos de Homologação" name="technicalDetails" defaultValue={`${selectedVehicle?.make||''} ${selectedVehicle?.model||''} (${selectedVehicle?.year||2024}) · Cor: ${selectedVehicle?.color||'Branco'} · Cat.: ${selectedVehicle?.category||''}`}/>
+        </div>
+        <Field label="Delegação Regional" name="issuingOffice" defaultValue="Direção-Geral de Viação · Bissau"/>
+        <Field label="Observações de Registo" name="notes" defaultValue="Certificado de matrícula expedido após inspeção inicial." required={false}/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Emitir certificado de matrícula</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Certificado','Matrícula Homologada','Titular','Modalidade','Código Autenticidade','Data Emissão','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {certDocs.map(c=><tr key={c.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold">{c.id}</td>
+            <td className="px-3 py-3 font-semibold text-[#006B35]">{c.targetRef}</td>
+            <td className="px-3 py-3">{c.holderName}</td>
+            <td className="px-3 py-3 text-xs">{c.issueMode}</td>
+            <td className="px-3 py-3 font-mono text-xs text-[#836300]">{c.authenticityCode}</td>
+            <td className="px-3 py-3 text-xs">{c.issueDate}</td>
+            <td className="px-3 py-3"><Status value={c.status}/></td>
+            <td className="px-3 py-3"><button type="button" onClick={()=>setViewingDoc(c)} className="text-xs font-semibold text-[#006B35] hover:underline flex items-center gap-1"><Printer size={13}/> Visualizar</button></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    {viewingDoc&&<OfficialCertificateModal doc={viewingDoc} onClose={()=>setViewingDoc(null)}/>}
+  </Shell>;
+}
+
+export function DigitalDrivingLicensePage(){
+  const [drivers]=useSaved('drivers',seedDrivers);
+  const [docs,setDocs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [open,setOpen]=useState(false);
+  const [selectedDriverId,setSelectedDriverId]=useState('');
+  const [viewingDoc,setViewingDoc]=useState<OfficialDocument|null>(null);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+
+  const digitalLicenses=docs.filter(d=>d.documentType==='Carta de Condução Digital');
+  const selectedDriver=drivers.find(d=>d.id===selectedDriverId)||drivers[0];
+
+  async function submitDigitalLicense(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const drv=selectedDriver;
+    if(!drv){setError('Selecione um condutor.');return;}
+    try{
+      setError('');setSuccessMsg('');
+      const payload={
+        id:`CNH-DIG-2026-${String(Date.now()).slice(-4)}`,
+        documentType:'Carta de Condução Digital',
+        issueMode:'Emissão Digital Certificada',
+        targetRef:drv.license,
+        holderName:drv.name,
+        holderDocument:drv.document,
+        technicalDetails:`Categoria: ${drv.category} · Saldo de Pontos: ${drv.points??20}/20 pts · ${drv.medicalRestrictions||'Sem restrições'}`,
+        issuingOffice:'Direção-Geral de Viação · Bissau',
+        issueDate:String(f.get('issueDate')||new Date().toISOString().slice(0,10)),
+        expiryDate:drv.expiryDate||'2031-01-15',
+        notes:'Título digital certificado com assinatura ICP-GB e QR Code dinâmico.',
+      };
+      const res=await api.post<OfficialDocument>('/transport-documents',payload);
+      setDocs([res.data,...docs]);
+      setSuccessMsg(`Carta de condução digital ativada para ${drv.name} (${drv.license}).`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível emitir a carta digital.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 3" title="Carta de condução digital" description="Emissão e gestão da Carta de Condução Digital com assinatura eletrónica, categorias habilitadas (A, B, C, D, E), saldo de pontos e QR Code dinâmico." icon={Users}/>
+    <DocumentSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    
+    <div className="mb-6 grid gap-5 lg:grid-cols-3">
+      <div className="lg:col-span-2 border border-[#dcd9cc] bg-white p-5">
+        <div className="flex justify-between items-center mb-4 border-b border-[#e9e6dc] pb-3">
+          <h2 className="font-serif text-lg font-bold text-[#1c3024]">Cartas Digitais Ativas no Dispositivo Móvel</h2>
+          <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Emitir / Ativar Carta Digital'}</button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+              <tr>{['N.º Carta','Condutor','Categorias','Validade','Código de Autenticidade','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+            </thead>
+            <tbody>
+              {digitalLicenses.map(dl=><tr key={dl.id} className="border-b border-[#f0eee7]">
+                <td className="px-3 py-3 font-semibold text-[#006B35]">{dl.targetRef}</td>
+                <td className="px-3 py-3 font-medium">{dl.holderName}</td>
+                <td className="px-3 py-3 text-xs">{dl.technicalDetails?.split('·')[0]}</td>
+                <td className="px-3 py-3 text-xs">{dl.expiryDate}</td>
+                <td className="px-3 py-3 font-mono text-xs text-[#836300]">{dl.authenticityCode}</td>
+                <td className="px-3 py-3"><Status value={dl.status}/></td>
+                <td className="px-3 py-3"><button type="button" onClick={()=>setViewingDoc(dl)} className="text-xs font-semibold text-[#006B35] hover:underline flex items-center gap-1"><QrCode size={13}/> Ver Título Digital</button></td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="border border-[#173d2b] bg-[#173d2b] text-white p-5 shadow-lg flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between border-b border-white/20 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center bg-[#FCD116] font-bold text-[#173d2b] text-xs">GB</span>
+              <div>
+                <div className="text-[9px] uppercase tracking-wider text-[#FCD116]">República da Guiné-Bissau</div>
+                <div className="text-xs font-bold leading-3">Carta de Condução Digital</div>
+              </div>
+            </div>
+            <span className="text-[10px] bg-[#009E49] px-2 py-0.5 rounded text-white font-bold">DIGITAL</span>
+          </div>
+          <div className="space-y-2 text-xs">
+            <div><span className="text-[#9fb7a4] text-[10px] block">Condutor:</span><b className="text-sm">{selectedDriver?.name||'Mamadu Embaló'}</b></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><span className="text-[#9fb7a4] text-[10px] block">N.º da Carta:</span><b className="font-mono text-[#FCD116]">{selectedDriver?.license||'GB-C-10294'}</b></div>
+              <div><span className="text-[#9fb7a4] text-[10px] block">N.º BI:</span><b>{selectedDriver?.document||'000000001'}</b></div>
+            </div>
+            <div><span className="text-[#9fb7a4] text-[10px] block">Categorias Habilitadas:</span><span className="inline-block bg-[#009E49]/30 border border-[#009E49] px-2 py-0.5 rounded font-bold text-xs">{selectedDriver?.category||'B · Ligeiros'}</span></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><span className="text-[#9fb7a4] text-[10px] block">Saldo de Pontos:</span><b className="text-sm text-[#FCD116]">{selectedDriver?.points??20} / 20 pts</b></div>
+              <div><span className="text-[#9fb7a4] text-[10px] block">Validade:</span><b>{selectedDriver?.expiryDate||'2028-04-10'}</b></div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 pt-3 border-t border-white/20 flex items-center justify-between">
+          <div className="bg-white p-1 rounded">
+            <QrCode size={44} className="text-[#173d2b]"/>
+          </div>
+          <div className="text-right text-[10px] text-[#bdcdbf]">
+            Fiscalização SIGETRAN<br/>
+            QR Code Dinâmico Ativo
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {open&&<Drawer title="Ativação de Carta de Condução Digital" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitDigitalLicense} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Condutor Habilitado
+          <select name="driverId" value={selectedDriverId} onChange={e=>setSelectedDriverId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {drivers.map(d=><option key={d.id} value={d.id}>{d.name} · Carta: {d.license} · Cat: {d.category} · Validade: {d.expiryDate}</option>)}
+          </select>
+        </label>
+        <Field label="Data de Emissão Digital" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Validade da Carta" name="expiryDate" defaultValue={selectedDriver?.expiryDate||'2029-01-15'}/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Emitir e assinar carta digital</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+    {viewingDoc&&<OfficialCertificateModal doc={viewingDoc} onClose={()=>setViewingDoc(null)}/>}
+  </Shell>;
+}
+
+export function OwnershipCertificatePage(){
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [transfers]=useSaved('ownership-transfers',seedOwnershipTransfers);
+  const [docs,setDocs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [open,setOpen]=useState(false);
+  const [selectedPlate,setSelectedPlate]=useState('');
+  const [viewingDoc,setViewingDoc]=useState<OfficialDocument|null>(null);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+
+  const ownershipDocs=docs.filter(d=>d.documentType==='Certificado de Propriedade');
+  const selectedVehicle=vehicles.find(v=>v.plate===selectedPlate)||vehicles[0];
+
+  async function submitOwnershipCert(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const plate=String(f.get('targetRef')||selectedVehicle?.plate||'').toUpperCase().trim();
+    const veh=vehicles.find(v=>v.plate===plate);
+    try{
+      setError('');setSuccessMsg('');
+      const payload={
+        id:`CERT-PROP-2026-${String(Date.now()).slice(-4)}`,
+        documentType:'Certificado de Propriedade',
+        issueMode:String(f.get('issueMode')||'1.ª Via Original'),
+        targetRef:plate,
+        holderName:String(f.get('holderName')||veh?.owner||'').trim(),
+        holderDocument:String(f.get('holderDocument')||'').trim(),
+        technicalDetails:String(f.get('technicalDetails')||`${veh?.make||''} ${veh?.model||''} (${veh?.year||2024}) · Registo Predial e Automóvel`).trim(),
+        issuingOffice:String(f.get('issuingOffice')||'Conservatória do Registo Automóvel e DGV · Bissau'),
+        issueDate:String(f.get('issueDate')||new Date().toISOString().slice(0,10)),
+        expiryDate:'Permanente',
+        notes:String(f.get('notes')||'Título de propriedade emitido com plena eficácia jurídica.').trim(),
+      };
+      const res=await api.post<OfficialDocument>('/transport-documents',payload);
+      setDocs([res.data,...docs]);
+      setSuccessMsg(`Certificado de propriedade ${res.data.id} emitido para a viatura ${plate}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível emitir o certificado de propriedade.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 4" title="Certificado de propriedade" description="Comprovativo jurídico e registo patrimonial do direito de propriedade de veículos, encargos, ónus e averbamentos cartorários." icon={ShieldCheck}/>
+    <DocumentSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    
+    <div className="mb-4 flex justify-between items-center">
+      <Link to="/ownership-transfers" className={secondaryClass}><ArrowRight size={16}/> Histórico de transferências de propriedade</Link>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Emitir Certificado de Propriedade'}</button>
+    </div>
+
+    {open&&<Drawer title="Emissão de Certificado de Propriedade Automóvel" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitOwnershipCert} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Veículo
+          <select name="targetRef" value={selectedPlate} onChange={e=>setSelectedPlate(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {vehicles.map(v=><option key={v.plate} value={v.plate}>{v.plate} · {v.make} {v.model} — Proprietário: {v.owner}</option>)}
+          </select>
+        </label>
+        <Field label="Nome Completo do Proprietário Legítimo" name="holderName" defaultValue={selectedVehicle?.owner||''}/>
+        <Field label="NIF / Documento de Identificação" name="holderDocument" placeholder="Ex.: 000000001"/>
+        <Field label="Data de Emissão do Título" name="issueDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Entidade Emissora" name="issuingOffice" defaultValue="Conservatória do Registo Automóvel e DGV · Bissau"/>
+        <div className="sm:col-span-2">
+          <Field label="Descrição e Especificações Registadas" name="technicalDetails" defaultValue={`${selectedVehicle?.make||''} ${selectedVehicle?.model||''} (${selectedVehicle?.year||2024}) · Registo Patrimonial Automóvel`}/>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Declaração de Encargos / Reserva de Propriedade" name="notes" defaultValue="Sem ónus ou reserva de propriedade registados." required={false}/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Emitir certificado de propriedade</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º do Título','Matrícula','Proprietário Registado','Ónus / Encargos','Código de Autenticidade','Data de Emissão','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {ownershipDocs.map(od=><tr key={od.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold">{od.id}</td>
+            <td className="px-3 py-3 font-semibold text-[#006B35]">{od.targetRef}</td>
+            <td className="px-3 py-3">{od.holderName}</td>
+            <td className="px-3 py-3 text-xs text-[#4b5549]">{od.notes||'Sem ónus'}</td>
+            <td className="px-3 py-3 font-mono text-xs text-[#836300]">{od.authenticityCode}</td>
+            <td className="px-3 py-3 text-xs">{od.issueDate}</td>
+            <td className="px-3 py-3"><Status value={od.status}/></td>
+            <td className="px-3 py-3"><button type="button" onClick={()=>setViewingDoc(od)} className="text-xs font-semibold text-[#006B35] hover:underline flex items-center gap-1"><Printer size={13}/> Imprimir Título</button></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    {viewingDoc&&<OfficialCertificateModal doc={viewingDoc} onClose={()=>setViewingDoc(null)}/>}
+  </Shell>;
+}
+
+export function DocumentIssuanceHistoryPage(){
+  const [docs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [typeFilter,setTypeFilter]=useState('');
+  const [search,setSearch]=useState('');
+  const [viewingDoc,setViewingDoc]=useState<OfficialDocument|null>(null);
+
+  const filteredDocs=docs.filter(d=>{
+    if(typeFilter&&d.documentType!==typeFilter)return false;
+    if(!search.trim())return true;
+    const q=search.toLowerCase();
+    return [d.id,d.documentType,d.targetRef,d.holderName,d.authenticityCode,d.issuingOffice].join(' ').toLowerCase().includes(q);
+  });
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 5" title="Histórico de emissão de documentos" description="Rastreabilidade e auditoria completa de todos os documentos e certificados oficiais emitidos na base central do Ministério dos Transportes." icon={ClipboardList}/>
+    <DocumentSubmenuBar/>
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <select aria-label="Filtrar por tipo de documento" value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} className="border border-[#d5d1c2] bg-white px-3 py-2 text-xs font-semibold outline-none">
+          <option value="">Todos os tipos de documentos</option>
+          <option value="Documento de Identificação do Veículo">Documento de Identificação do Veículo</option>
+          <option value="Certificado de Matrícula">Certificado de Matrícula</option>
+          <option value="Carta de Condução Digital">Carta de Condução Digital</option>
+          <option value="Certificado de Propriedade">Certificado de Propriedade</option>
+        </select>
+        <label className="flex items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+          <Search size={16} className="text-[#737a70]"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por n.º, titular, matrícula ou código" className="w-64 py-2 text-sm outline-none"/>
+        </label>
+      </div>
+      <span className="text-xs text-[#737a70]">{filteredDocs.length} documento(s) listado(s)</span>
+    </div>
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Documento','Tipo de Documento','Modalidade','Matrícula / Referência','Titular','Delegação Emissora','Data Emissão','Autenticidade','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filteredDocs.map(d=><tr key={d.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold">{d.id}</td>
+            <td className="px-3 py-3 font-medium">{d.documentType}</td>
+            <td className="px-3 py-3 text-xs">{d.issueMode}</td>
+            <td className="px-3 py-3 font-semibold text-[#006B35]">{d.targetRef}</td>
+            <td className="px-3 py-3">{d.holderName}</td>
+            <td className="px-3 py-3 text-xs text-[#737a70]">{d.issuingOffice}</td>
+            <td className="px-3 py-3 text-xs">{d.issueDate}</td>
+            <td className="px-3 py-3 font-mono text-xs text-[#836300]">{d.authenticityCode}</td>
+            <td className="px-3 py-3"><Status value={d.status}/></td>
+            <td className="px-3 py-3"><button type="button" onClick={()=>setViewingDoc(d)} className="text-xs font-semibold text-[#006B35] hover:underline">Ver Certificado</button></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    {viewingDoc&&<OfficialCertificateModal doc={viewingDoc} onClose={()=>setViewingDoc(null)}/>}
+  </Shell>;
+}
+
+export function DocumentSecondCopyPage(){
+  const [docs,setDocs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [drivers]=useSaved('drivers',seedDrivers);
+  const [open,setOpen]=useState(false);
+  const [selectedDocId,setSelectedDocId]=useState('');
+  const [reason,setReason]=useState('Extravio');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+  const [viewingDoc,setViewingDoc]=useState<OfficialDocument|null>(null);
+
+  const selectedDoc=docs.find(d=>d.id===selectedDocId)||docs[0];
+  const secondCopies=docs.filter(d=>d.issueMode.includes('2.ª Via')||d.issueMode.includes('Segunda Via'));
+
+  async function submitSecondCopy(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const originDoc=selectedDoc;
+    if(!originDoc){setError('Selecione o documento original para emitir a 2.ª via.');return;}
+    try{
+      setError('');setSuccessMsg('');
+      const policeReport=String(f.get('policeReport')||'').trim();
+      const payload={
+        id:`DOC-2VIA-2026-${String(Date.now()).slice(-4)}`,
+        documentType:originDoc.documentType,
+        issueMode:`2.ª Via (${reason})`,
+        targetRef:originDoc.targetRef,
+        holderName:originDoc.holderName,
+        holderDocument:originDoc.holderDocument,
+        technicalDetails:originDoc.technicalDetails,
+        issuingOffice:String(f.get('issuingOffice')||'Direção-Geral de Viação · Bissau'),
+        issueDate:new Date().toISOString().slice(0,10),
+        expiryDate:originDoc.expiryDate,
+        notes:`Segunda via emitida por motivo de ${reason}. ${policeReport?`Boletim de Ocorrência Policial: ${policeReport}.`:''} Documento anterior ${originDoc.id} cancelado/substituído.`,
+      };
+      const res=await api.post<OfficialDocument>('/transport-documents',payload);
+      // Invalida documento anterior
+      setDocs(rows=>rows.map(r=>r.id===originDoc.id?{...r,status:'Substituído (2.ª Via)'}:r).concat([res.data]));
+      setSuccessMsg(`2.ª Via ${res.data.id} emitida com sucesso! A 1.ª via anterior (${originDoc.id}) foi cancelada no sistema.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível emitir a segunda via.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 6" title="Segunda via" description="Processamento de pedidos de 2.ª via de livretes, certificados de matrícula e cartas de condução por motivo de extravio, roubo ou dano físico." icon={FilePlus2}/>
+    <DocumentSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+    
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Segundas vias emitidas" value={String(secondCopies.length)} detail="Processos de substituição" icon={FilePlus2}/>
+      <Stat label="Documentos cancelados" value={String(docs.filter(d=>d.status==='Substituído (2.ª Via)').length)} detail="Vias originais invalidadas" icon={AlertTriangle}/>
+      <Stat label="Taxa administrativa" value="15.000 XOF" detail="Taxa legal de reemissão" icon={Banknote}/>
+    </div>
+
+    <div className="mb-4 flex justify-end">
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Solicitar / Emitir Segunda Via'}</button>
+    </div>
+
+    {open&&<Drawer title="Emissão de Segunda Via de Documento" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitSecondCopy} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Documento Original a Substituir
+          <select name="originDocId" value={selectedDocId} onChange={e=>setSelectedDocId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {docs.filter(d=>d.status==='Válido').map(d=><option key={d.id} value={d.id}>{d.id} · {d.documentType} ({d.targetRef}) — {d.holderName}</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Motivo da Solicitação
+          <select value={reason} onChange={e=>setReason(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            <option value="Extravio">Extravio / Perda</option>
+            <option value="Furto / Roubo">Furto / Roubo (com participação policial)</option>
+            <option value="Deterioração">Deterioração / Inutilização física</option>
+            <option value="Alteração de Características">Alteração de Características</option>
+          </select>
+        </label>
+        <Field label="N.º do Boletim de Ocorrência Policial" name="policeReport" placeholder="Ex.: BO-POP-2026/089" required={reason==='Furto / Roubo'}/>
+        <Field label="Delegação Responsável" name="issuingOffice" defaultValue="Direção-Geral de Viação · Bissau"/>
+        <Field label="Taxa de Reemissão Paga (XOF)" name="fee" defaultValue="15000" type="number"/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Confirmar anulação da via anterior e gerar 2.ª via</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Histórico de Segundas Vias Emitidas</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º 2.ª Via','Documento','Matrícula / Ref.','Titular','Motivo / Observações','Data','Código Autenticidade','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {secondCopies.map(sc=><tr key={sc.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold text-[#9f1a2b]">{sc.id}</td>
+            <td className="px-3 py-3">{sc.documentType}</td>
+            <td className="px-3 py-3 font-semibold text-[#006B35]">{sc.targetRef}</td>
+            <td className="px-3 py-3">{sc.holderName}</td>
+            <td className="px-3 py-3 text-xs text-[#4b5549]">{sc.notes}</td>
+            <td className="px-3 py-3 text-xs">{sc.issueDate}</td>
+            <td className="px-3 py-3 font-mono text-xs text-[#836300]">{sc.authenticityCode}</td>
+            <td className="px-3 py-3"><button type="button" onClick={()=>setViewingDoc(sc)} className="text-xs font-semibold text-[#006B35] hover:underline flex items-center gap-1"><Printer size={13}/> Imprimir</button></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    {viewingDoc&&<OfficialCertificateModal doc={viewingDoc} onClose={()=>setViewingDoc(null)}/>}
+  </Shell>;
+}
+
+export function QRCodeValidationPage(){
+  const [docs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [inputPayload,setInputPayload]=useState('');
+  const [validatedDoc,setValidatedDoc]=useState<OfficialDocument|null>(null);
+  const [checked,setChecked]=useState(false);
+
+  function handleValidate(payloadToTest?:string){
+    const str=(payloadToTest??inputPayload).trim();
+    if(!str){return;}
+    setChecked(true);
+    const found=docs.find(d=>d.qrPayload.toUpperCase()===str.toUpperCase()||d.authenticityCode.toUpperCase()===str.toUpperCase()||d.id.toUpperCase()===str.toUpperCase()||d.targetRef.toUpperCase()===str.toUpperCase());
+    setValidatedDoc(found||null);
+  }
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 7" title="Validação por QR Code" description="Decodificação e validação de assinaturas QR Code geradas em documentos oficiais da Direção-Geral de Viação para operações de fiscalização rápida." icon={QrCode}/>
+    <DocumentSubmenuBar/>
+
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="border border-[#dcd9cc] bg-white p-5">
+        <h2 className="font-serif text-lg font-bold text-[#1c3024] mb-3 flex items-center gap-2"><QrCode size={18} className="text-[#006B35]"/> Leitor / Decodificador de QR Code</h2>
+        <p className="text-xs text-[#697168] mb-4">Insira o payload criptográfico do QR Code, o código de autenticidade ou a matrícula para testar a validação em tempo real.</p>
+        <div className="space-y-3">
+          <textarea value={inputPayload} onChange={e=>setInputPayload(e.target.value)} placeholder="Ex.: SIGETRAN-QR|DOC-2026-0001|GB-24-BC|AUTH-GB-2026-1001-24BC" className={`h-24 ${inputClass} font-mono text-xs`}/>
+          <div className="flex gap-2">
+            <button type="button" onClick={()=>handleValidate()} className={primaryClass}><Check size={16}/> Validar Assinatura QR Code</button>
+            <button type="button" onClick={()=>{setInputPayload('');setValidatedDoc(null);setChecked(false);}} className={secondaryClass}>Limpar</button>
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-[#e9e6dc] pt-4">
+          <div className="text-xs font-semibold text-[#4b5549] mb-2">Exemplos rápidos de QR Codes emitidos:</div>
+          <div className="space-y-1.5">
+            {docs.slice(0,3).map(d=><button key={d.id} type="button" onClick={()=>{setInputPayload(d.qrPayload);handleValidate(d.qrPayload);}} className="block w-full text-left border border-[#d5d1c2] bg-[#f8f7f2] p-2 text-xs hover:border-[#009E49]">
+              <span className="font-bold text-[#006B35]">{d.documentType} ({d.targetRef})</span>
+              <span className="block font-mono text-[11px] text-[#737a70] truncate">{d.qrPayload}</span>
+            </button>)}
+          </div>
+        </div>
+      </div>
+
+      <div className="border border-[#dcd9cc] bg-white p-5 flex flex-col justify-between">
+        <div>
+          <h2 className="font-serif text-lg font-bold text-[#1c3024] mb-3">Resultado da Validação Criptográfica</h2>
+          {!checked&&<div className="text-xs text-[#737a70] p-6 text-center border border-dashed border-[#dcd9cc]">Aguardando leitura ou inserção do código QR para validação.</div>}
+          {checked&&validatedDoc&&<div className={`p-4 border ${validatedDoc.status==='Válido'&&!validatedDoc.administrativeBlock?'border-[#009E49]/40 bg-[#009E49]/10':'border-[#CE1126]/30 bg-[#CE1126]/10'}`}>
+            <div className="flex items-center gap-2 mb-2 font-bold text-sm">
+              {validatedDoc.status==='Válido'&&!validatedDoc.administrativeBlock?<span className="text-[#006B35] flex items-center gap-1"><Check size={18}/> QR CODE VÁLIDO E AUTÊNTICO</span>:<span className="text-[#9f1a2b] flex items-center gap-1"><AlertTriangle size={18}/> RESTRIÇÃO / DOCUMENTO INVÁLIDO</span>}
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div><b>Documento:</b> {validatedDoc.documentType} ({validatedDoc.id})</div>
+              <div><b>Matrícula / Ref.:</b> {validatedDoc.targetRef}</div>
+              <div><b>Titular:</b> {validatedDoc.holderName}</div>
+              <div><b>Emissão:</b> {validatedDoc.issueDate} · Validade: {validatedDoc.expiryDate}</div>
+              <div><b>Código de Autenticidade:</b> <span className="font-mono text-[#836300] font-bold">{validatedDoc.authenticityCode}</span></div>
+              <div><b>Estado na Base Central:</b> <Status value={validatedDoc.status}/></div>
+              {validatedDoc.administrativeBlock&&<div className="text-[#9f1a2b] font-bold mt-1">Aviso: Documento com Bloqueio Administrativo Ativo ({validatedDoc.blockReason}).</div>}
+            </div>
+          </div>}
+          {checked&&!validatedDoc&&<div className="p-4 border border-[#CE1126]/30 bg-[#CE1126]/10 text-xs text-[#9f1a2b]">
+            <b className="flex items-center gap-1 text-sm mb-1"><X size={18}/> QR Code Inválido ou Não Reconhecido</b>
+            O código QR informado não corresponde a nenhum documento registrado na base de dados oficial do SIGETRAN.
+          </div>}
+        </div>
+        <div className="mt-4 pt-3 border-t border-[#e9e6dc] text-[11px] text-[#737a70] flex items-center gap-2">
+          <ShieldCheck size={16} className="text-[#006B35]"/> O validador confere a integridade criptográfica da assinatura e o estado operacional em tempo real.
+        </div>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function PublicAuthenticityVerificationPage(){
+  const [docs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [query,setQuery]=useState('');
+  const [result,setResult]=useState<OfficialDocument|null>(null);
+  const [hasSearched,setHasSearched]=useState(false);
+
+  function handleSearch(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const q=query.trim();
+    if(!q)return;
+    setHasSearched(true);
+    const found=docs.find(d=>d.authenticityCode.toUpperCase()===q.toUpperCase()||d.id.toUpperCase()===q.toUpperCase()||d.targetRef.toUpperCase()===q.toUpperCase()||d.qrPayload.toUpperCase()===q.toUpperCase());
+    setResult(found||null);
+  }
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 8" title="Verificação pública de autenticidade" description="Serviço público de verificação da autenticidade de documentos, livretes e cartas emitidas pelo Ministério dos Transportes." icon={ShieldCheck}/>
+    <DocumentSubmenuBar/>
+
+    <div className="max-w-3xl mx-auto border border-[#dcd9cc] bg-white p-6 shadow-sm">
+      <div className="text-center mb-6">
+        <div className="inline-grid h-12 w-12 place-items-center border border-[#FCD116] bg-[#173d2b] text-base font-black text-[#FCD116] mb-2">GB</div>
+        <h2 className="font-serif text-xl font-bold text-[#1c3024]">Validação Pública de Títulos e Certidões</h2>
+        <p className="text-xs text-[#697168] mt-1">Insira o Código de Autenticidade impresso no documento (ex.: AUTH-GB-2026-1001-24BC), o número da certidão ou a matrícula.</p>
+      </div>
+
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 mb-6">
+        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Código de Autenticidade (ex.: AUTH-GB-2026-1001-24BC)" className={`${inputClass} flex-1 font-mono`} required/>
+        <button className={primaryClass}><Search size={16}/> Verificar Autenticidade</button>
+      </form>
+
+      {hasSearched&&result&&<div className="border border-[#009E49]/40 bg-[#f8f7f2] p-5 space-y-3">
+        <div className="flex items-center justify-between border-b border-[#dcd9cc] pb-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-[#006B35]">
+            <Check size={18}/> DOCUMENTO AUTÊNTICO E REGISTADO NA BASE OFICIAL
+          </div>
+          <Status value={result.status}/>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3 text-xs">
+          <div><span className="text-[#737a70] block">Tipo de Documento:</span><b>{result.documentType}</b></div>
+          <div><span className="text-[#737a70] block">N.º de Registo:</span><b className="font-mono">{result.id}</b></div>
+          <div><span className="text-[#737a70] block">Matrícula / Referência Vinculada:</span><b className="font-mono text-sm text-[#006B35]">{result.targetRef}</b></div>
+          <div><span className="text-[#737a70] block">Titular Registado:</span><b>{result.holderName}</b></div>
+          <div className="sm:col-span-2"><span className="text-[#737a70] block">Dados Técnicos / Categorias:</span><b>{result.technicalDetails||'—'}</b></div>
+          <div><span className="text-[#737a70] block">Data de Emissão Oficial:</span><b>{result.issueDate}</b></div>
+          <div><span className="text-[#737a70] block">Validade:</span><b>{result.expiryDate}</b></div>
+          <div className="sm:col-span-2"><span className="text-[#737a70] block">Delegação Emissora:</span><b>{result.issuingOffice}</b></div>
+        </div>
+        {result.administrativeBlock&&<div className="p-2 border border-[#CE1126]/30 bg-[#CE1126]/10 text-xs text-[#9f1a2b]"><b>Atenção:</b> Este documento encontra-se temporariamente com bloqueio administrativo legalmente imposto.</div>}
+      </div>}
+
+      {hasSearched&&!result&&<div className="border border-[#CE1126]/30 bg-[#CE1126]/10 p-5 text-center text-xs text-[#9f1a2b]">
+        <b className="block text-sm mb-1">Nenhum registo oficial localizado</b>
+        O código informado não corresponde a nenhum documento autêntico registado na base do Ministério dos Transportes da Guiné-Bissau.
+      </div>}
+    </div>
+  </Shell>;
+}
+
+export function DocumentAdministrativeBlockPage(){
+  const [docs,setDocs]=useSaved('transport-documents',seedOfficialDocuments);
+  const [open,setOpen]=useState(false);
+  const [selectedDocId,setSelectedDocId]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [error,setError]=useState('');
+
+  const selectedDoc=docs.find(d=>d.id===selectedDocId)||docs[0];
+  const blockedDocs=docs.filter(d=>d.administrativeBlock||d.status==='Bloqueado');
+
+  async function submitBlock(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const docId=String(f.get('docId')||selectedDoc?.id||'');
+    const action=String(f.get('action')||'block');
+    const isBlock=action==='block';
+    const reason=String(f.get('blockReason')||'').trim();
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.put<OfficialDocument>(`/transport-documents/${encodeURIComponent(docId)}`,{
+        administrativeBlock:isBlock,
+        status:isBlock?'Bloqueado':'Válido',
+        blockReason:isBlock?reason:'',
+      });
+      setDocs(rows=>rows.map(r=>r.id===docId?res.data:r));
+      setSuccessMsg(isBlock?`Bloqueio administrativo decretado com sucesso para o documento ${docId}.`:`Bloqueio administrativo levantado para o documento ${docId}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível atualizar o bloqueio administrativo.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Documentação e certificados · Submenu 9" title="Bloqueio administrativo quando legalmente autorizado" description="Aplicação e levantamento de restrições administrativas sobre documentos, certificados de matrícula e títulos de propriedade por ordem judicial ou infração legal." icon={ShieldCheck}/>
+    <DocumentSubmenuBar/>
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <Stat label="Documentos com bloqueio" value={String(blockedDocs.length)} detail="Restrição administrativa ativa" icon={AlertTriangle}/>
+      <Stat label="Documentos regulares" value={String(docs.length-blockedDocs.length)} detail="Sem impedimentos legais" icon={Check}/>
+      <Stat label="Fundamentação jurídica" value="Art. 142.º" detail="Código da Estrada da Guiné-Bissau" icon={ShieldCheck}/>
+    </div>
+
+    <div className="mb-4 flex justify-end">
+      <button onClick={()=>{setOpen(!open);setError('');}} className="inline-flex items-center justify-center gap-2 bg-[#9f1a2b] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#7f1422]"><ShieldCheck size={16}/>{open?'Fechar':'Decretar / Levantar Bloqueio Administrativo'}</button>
+    </div>
+
+    {open&&<Drawer title="Bloqueio Administrativo de Documento / Certificado" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitBlock} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Documento / Certificado Alvo
+          <select name="docId" value={selectedDocId} onChange={e=>setSelectedDocId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {docs.map(d=><option key={d.id} value={d.id}>{d.id} · {d.documentType} ({d.targetRef}) — {d.holderName} [{d.status}]</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Ação Administrativa
+          <select name="action" className={`mt-1.5 ${inputClass}`}>
+            <option value="block">Decretar Bloqueio Administrativo (Impedimento legal)</option>
+            <option value="unblock">Levantar Bloqueio Administrativo (Restabelecer regularidade)</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Despacho Legal e Motivação do Bloqueio" name="blockReason" defaultValue={selectedDoc?.blockReason||'Despacho DGT n.º 118/2026 · Suspensão por processo judicial / apreensão administrativa.'}/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className="inline-flex items-center justify-center gap-2 bg-[#9f1a2b] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#7f1422]">Confirmar medida administrativa</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <h2 className="mb-3 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Registo de Bloqueios Administrativos sobre Documentos</h2>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Documento','Tipo de Documento','Matrícula / Ref.','Titular','Despacho / Motivação Legal','Situação','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {docs.map(d=><tr key={d.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold">{d.id}</td>
+            <td className="px-3 py-3">{d.documentType}</td>
+            <td className="px-3 py-3 font-semibold text-[#006B35]">{d.targetRef}</td>
+            <td className="px-3 py-3">{d.holderName}</td>
+            <td className="px-3 py-3 text-xs text-[#4b5549]">{d.blockReason||'Sem restrição'}</td>
+            <td className="px-3 py-3"><Status value={d.administrativeBlock||d.status==='Bloqueado'?'Bloqueado':'Sem bloqueio'}/></td>
+            <td className="px-3 py-3">
+              <button type="button" onClick={()=>{setSelectedDocId(d.id);setOpen(true);}} className="text-xs font-semibold text-[#006B35] hover:underline">
+                {d.administrativeBlock||d.status==='Bloqueado'?'Gerir / Levantar':'Aplicar bloqueio'}
+              </button>
             </td>
           </tr>)}
         </tbody>
