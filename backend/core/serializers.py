@@ -3,6 +3,7 @@ from .models import (
     Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado,
     VeiculoPublico, UtilizacaoVeiculoPublico, AbastecimentoFrota, ManutencaoFrota,
     AcidenteTransito, VeiculoCondutorAcidente, VitimaAcidente, TestemunhaAcidente, RelatorioPolicialAcidente, DocumentoFotografiaAcidente,
+    ConsultaMatriculaFiscalizacao, LeituraAutomaticaPlaca, ConsultaDocumentoQRCode, DispositivoMovelPolicial, RegistoInfracaoCampo, AlertaVeiculoRoubado,
     UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
@@ -644,4 +645,177 @@ class DocumentoFotografiaAcidenteSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'accidentId', 'evidenceType', 'title', 'fileUrl',
             'description', 'registeredBy', 'registrationDate', 'createdAt'
+        ]
+
+
+# ==============================================================================
+# Serializadores para Fiscalização Inteligente (Smart Road Enforcement)
+# ==============================================================================
+
+class ConsultaMatriculaFiscalizacaoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='matricula')
+    queryDateTime = serializers.CharField(source='data_hora')
+    officerName = serializers.CharField(source='agente_responsavel')
+    policeDepartment = serializers.CharField(source='orgao_policial', required=False, default='Brigada Nacional de Trânsito (BNT)')
+    location = serializers.CharField(source='localizacao', required=False, default='Bissau')
+    gpsCoordinates = serializers.CharField(source='coordenadas_gps', required=False, allow_blank=True, default='')
+    status = serializers.CharField(source='status_veiculo', required=False, default='Regular')
+    irregularityReason = serializers.CharField(source='motivo_irregularidade', required=False, allow_blank=True, default='')
+    vehicleDetails = serializers.CharField(source='detalhes_veiculo', required=False, allow_blank=True, default='')
+    ownerName = serializers.CharField(source='proprietario_nome', required=False, allow_blank=True, default='')
+    insuranceValid = serializers.BooleanField(source='seguro_valido', required=False, default=True)
+    inspectionValid = serializers.BooleanField(source='inspecao_valida', required=False, default=True)
+    circulationTaxPaid = serializers.BooleanField(source='taxa_circulacao_paga', required=False, default=True)
+    administrativeBlock = serializers.BooleanField(source='bloqueio_administrativo', required=False, default=False)
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = ConsultaMatriculaFiscalizacao
+        fields = [
+            'id', 'plate', 'queryDateTime', 'officerName', 'policeDepartment',
+            'location', 'gpsCoordinates', 'status', 'irregularityReason',
+            'vehicleDetails', 'ownerName', 'insuranceValid', 'inspectionValid',
+            'circulationTaxPaid', 'administrativeBlock', 'createdAt'
+        ]
+
+
+class LeituraAutomaticaPlacaSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    detectedPlate = serializers.CharField(source='matricula_detectada')
+    cameraId = serializers.CharField(source='camera_id')
+    cameraLocation = serializers.CharField(source='localizacao_camera')
+    gpsCoordinates = serializers.CharField(source='coordenadas_gps', required=False, allow_blank=True, default='')
+    speedKmh = serializers.IntegerField(source='velocidade_kmh', required=False, default=50)
+    confidence = serializers.DecimalField(source='precisao_leitura', max_digits=5, decimal_places=2, required=False, default=98.50)
+    captureImageUrl = serializers.CharField(source='imagem_captura_url', required=False, allow_blank=True, default='')
+    alertTriggered = serializers.BooleanField(source='alerta_disparado', required=False, default=False)
+    alertType = serializers.CharField(source='tipo_alerta', required=False, default='Nenhum')
+    interceptionStatus = serializers.CharField(source='status_intercecao', required=False, default='Livre / Sem Restrições')
+    timestamp = serializers.CharField(source='data_hora')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = LeituraAutomaticaPlaca
+        fields = [
+            'id', 'detectedPlate', 'cameraId', 'cameraLocation', 'gpsCoordinates',
+            'speedKmh', 'confidence', 'captureImageUrl', 'alertTriggered',
+            'alertType', 'interceptionStatus', 'timestamp', 'createdAt'
+        ]
+
+
+class ConsultaDocumentoQRCodeSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    documentType = serializers.CharField(source='tipo_documento')
+    documentNumber = serializers.CharField(source='numero_documento')
+    holderName = serializers.CharField(source='titular_nome')
+    associatedPlate = serializers.CharField(source='matricula_associada', required=False, allow_blank=True, default='')
+    cryptographicHash = serializers.CharField(source='hash_criptografico')
+    validityStatus = serializers.CharField(source='status_validade', required=False, default='Autêntico e Válido')
+    issueDate = serializers.CharField(source='data_emissao')
+    expiryDate = serializers.CharField(source='data_validade')
+    verifiedBy = serializers.CharField(source='agente_verificador')
+    deviceUsed = serializers.CharField(source='dispositivo_utilizado', required=False, default='Terminal Móvel Zebra TC26')
+    verificationDate = serializers.CharField(source='data_verificacao')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = ConsultaDocumentoQRCode
+        fields = [
+            'id', 'documentType', 'documentNumber', 'holderName', 'associatedPlate',
+            'cryptographicHash', 'validityStatus', 'issueDate', 'expiryDate',
+            'verifiedBy', 'deviceUsed', 'verificationDate', 'createdAt'
+        ]
+
+
+class DispositivoMovelPolicialSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='identificador')
+    assignedOfficer = serializers.CharField(source='agente_designado')
+    officerBadge = serializers.CharField(source='nip_agente')
+    policeUnit = serializers.CharField(source='unidade_policial', required=False, default='Brigada Nacional de Trânsito (BNT)')
+    deviceModel = serializers.CharField(source='marca_modelo_aparelho', required=False, default='Zebra TC26 Android Rugged')
+    batteryLevel = serializers.IntegerField(source='nivel_bateria', required=False, default=88)
+    networkStatus = serializers.CharField(source='status_rede', required=False, default='Online (4G LTE)')
+    isOffline = serializers.BooleanField(source='modo_offline', required=False, default=False)
+    pendingSyncCount = serializers.IntegerField(source='registos_pendentes_sincronizacao', required=False, default=0)
+    ticketsIssuedShift = serializers.IntegerField(source='infracoes_lavradas_turno', required=False, default=0)
+    queriesDoneShift = serializers.IntegerField(source='consultas_efetuadas_turno', required=False, default=0)
+    lastGps = serializers.CharField(source='ultima_localizacao_gps', required=False, default='11.8632, -15.5843')
+    appVersion = serializers.CharField(source='versao_aplicativo', required=False, default='v2.4.1')
+    isRemoteLocked = serializers.BooleanField(source='bloqueado_remotamente', required=False, default=False)
+    lastSync = serializers.DateTimeField(source='atualizado_em', read_only=True)
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = DispositivoMovelPolicial
+        fields = [
+            'id', 'assignedOfficer', 'officerBadge', 'policeUnit', 'deviceModel',
+            'batteryLevel', 'networkStatus', 'isOffline', 'pendingSyncCount',
+            'ticketsIssuedShift', 'queriesDoneShift', 'lastGps', 'appVersion',
+            'isRemoteLocked', 'lastSync', 'createdAt'
+        ]
+
+
+class RegistoInfracaoCampoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='numero_auto')
+    plate = serializers.CharField(source='matricula')
+    vehicleLabel = serializers.CharField(source='marca_modelo', required=False, allow_blank=True, default='')
+    color = serializers.CharField(source='cor', required=False, allow_blank=True, default='Branco')
+    driverName = serializers.CharField(source='condutor_nome')
+    driverDocument = serializers.CharField(source='condutor_documento')
+    driverLicense = serializers.CharField(source='condutor_carta', required=False, allow_blank=True, default='')
+    infractionCode = serializers.CharField(source='codigo_infracao')
+    legalArticle = serializers.CharField(source='artigo_legal', required=False, default='Artigo 24.º do Código da Estrada')
+    description = serializers.CharField(source='descricao_factos')
+    fineAmount = serializers.DecimalField(source='valor_multa', max_digits=12, decimal_places=2, required=False, default=25000.00)
+    gpsCoordinates = serializers.CharField(source='coordenadas_gps')
+    locationAddress = serializers.CharField(source='endereco_completo')
+    region = serializers.CharField(source='regiao', required=False, default='Bissau')
+    evidencePhotoUrl = serializers.CharField(source='fotografia_evidencia_url', required=False, allow_blank=True, default='')
+    officerName = serializers.CharField(source='agente_autuante')
+    officerBadge = serializers.CharField(source='agente_matricula')
+    policeDepartment = serializers.CharField(source='orgao_autuante', required=False, default='Brigada Nacional de Trânsito (BNT)')
+    paymentStatus = serializers.CharField(source='status_pagamento', required=False, default='Pendente')
+    vehicleImpounded = serializers.BooleanField(source='veiculo_apreendido', required=False, default=False)
+    timestamp = serializers.CharField(source='data_hora_infracao')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = RegistoInfracaoCampo
+        fields = [
+            'id', 'plate', 'vehicleLabel', 'color', 'driverName', 'driverDocument',
+            'driverLicense', 'infractionCode', 'legalArticle', 'description',
+            'fineAmount', 'gpsCoordinates', 'locationAddress', 'region',
+            'evidencePhotoUrl', 'officerName', 'officerBadge', 'policeDepartment',
+            'paymentStatus', 'vehicleImpounded', 'timestamp', 'createdAt'
+        ]
+
+
+class AlertaVeiculoRoubadoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo_alerta')
+    plate = serializers.CharField(source='matricula')
+    vehicleLabel = serializers.CharField(source='marca_modelo')
+    color = serializers.CharField(source='cor')
+    vin = serializers.CharField(source='numero_chassis')
+    theftReportNumber = serializers.CharField(source='numero_boletim_furto')
+    theftDateTime = serializers.CharField(source='data_roubo')
+    theftLocation = serializers.CharField(source='local_roubo')
+    region = serializers.CharField(source='regiao', required=False, default='Bissau')
+    victimName = serializers.CharField(source='proprietario_vitima')
+    victimContact = serializers.CharField(source='contacto_vitima')
+    priorityLevel = serializers.CharField(source='nivel_prioridade', required=False, default='Crítica / Vermelho')
+    status = serializers.CharField(source='status_alerta', required=False, default='Ativo - Veículo Procurado')
+    recoveryDate = serializers.CharField(source='data_recuperacao', required=False, allow_blank=True, default='')
+    recoveryLocation = serializers.CharField(source='local_recuperacao', required=False, allow_blank=True, default='')
+    recoveringOfficer = serializers.CharField(source='agente_recuperador', required=False, allow_blank=True, default='')
+    policeNotes = serializers.CharField(source='observacoes_policiais', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = AlertaVeiculoRoubado
+        fields = [
+            'id', 'plate', 'vehicleLabel', 'color', 'vin', 'theftReportNumber',
+            'theftDateTime', 'theftLocation', 'region', 'victimName', 'victimContact',
+            'priorityLevel', 'status', 'recoveryDate', 'recoveryLocation',
+            'recoveringOfficer', 'policeNotes', 'createdAt'
         ]

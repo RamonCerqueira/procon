@@ -6,12 +6,14 @@ from rest_framework import status
 from .controllers import (
     AuthController, VehicleController, DriverController, FineController,
     InfractionController, OwnershipController, VehicleStatusController,
-    DocumentController, StateFleetController, AccidentController
+    DocumentController, StateFleetController, AccidentController,
+    SmartInspectionController
 )
 from .models import (
     Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado,
     VeiculoPublico, UtilizacaoVeiculoPublico, AbastecimentoFrota, ManutencaoFrota,
     AcidenteTransito, VeiculoCondutorAcidente, VitimaAcidente, TestemunhaAcidente, RelatorioPolicialAcidente, DocumentoFotografiaAcidente,
+    ConsultaMatriculaFiscalizacao, LeituraAutomaticaPlaca, ConsultaDocumentoQRCode, DispositivoMovelPolicial, RegistoInfracaoCampo, AlertaVeiculoRoubado,
     UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
@@ -21,6 +23,7 @@ from .serializers import (
     InspecaoVeicularSerializer, DocumentoCertificadoSerializer,
     VeiculoPublicoSerializer, UtilizacaoVeiculoPublicoSerializer, AbastecimentoFrotaSerializer, ManutencaoFrotaSerializer,
     AcidenteTransitoSerializer, VeiculoCondutorAcidenteSerializer, VitimaAcidenteSerializer, TestemunhaAcidenteSerializer, RelatorioPolicialAcidenteSerializer, DocumentoFotografiaAcidenteSerializer,
+    ConsultaMatriculaFiscalizacaoSerializer, LeituraAutomaticaPlacaSerializer, ConsultaDocumentoQRCodeSerializer, DispositivoMovelPolicialSerializer, RegistoInfracaoCampoSerializer, AlertaVeiculoRoubadoSerializer,
     UsuarioSistemaSerializer, ConfiguracaoSistemaSerializer,
     ConsumidorSerializer, FornecedorSerializer, ProcessoSerializer,
     MensagemProcessoSerializer, DocumentoSerializer, FiscalizacaoSerializer,
@@ -780,6 +783,217 @@ def sigetran_state(request, key):
                 DocumentoFotografiaAcidente.objects.exclude(codigo__in=codigos).delete()
             return Response(DocumentoFotografiaAcidenteSerializer(DocumentoFotografiaAcidente.objects.all(), many=True).data)
 
+    elif key == 'smart-inspection-queries':
+        if request.method == 'GET':
+            items = ConsultaMatriculaFiscalizacao.objects.all()
+            return Response(ConsultaMatriculaFiscalizacaoSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    ConsultaMatriculaFiscalizacao.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'matricula': str(item.get('plate', '')).upper().strip(),
+                            'data_hora': item.get('queryDateTime', ''),
+                            'agente_responsavel': item.get('officerName', 'Agente BNT'),
+                            'orgao_policial': item.get('policeDepartment', 'Brigada Nacional de Trânsito (BNT)'),
+                            'localizacao': item.get('location', 'Bissau'),
+                            'coordenadas_gps': item.get('gpsCoordinates', '') or '',
+                            'status_veiculo': item.get('status', 'Regular'),
+                            'motivo_irregularidade': item.get('irregularityReason', '') or '',
+                            'detalhes_veiculo': item.get('vehicleDetails', '') or '',
+                            'proprietario_nome': item.get('ownerName', '') or '',
+                            'seguro_valido': bool(item.get('insuranceValid', True)),
+                            'inspecao_valida': bool(item.get('inspectionValid', True)),
+                            'taxa_circulacao_paga': bool(item.get('circulationTaxPaid', True)),
+                            'bloqueio_administrativo': bool(item.get('administrativeBlock', False)),
+                        }
+                    )
+                ConsultaMatriculaFiscalizacao.objects.exclude(codigo__in=codigos).delete()
+            return Response(ConsultaMatriculaFiscalizacaoSerializer(ConsultaMatriculaFiscalizacao.objects.all(), many=True).data)
+
+    elif key == 'smart-inspection-lpr':
+        if request.method == 'GET':
+            items = LeituraAutomaticaPlaca.objects.all()
+            return Response(LeituraAutomaticaPlacaSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    LeituraAutomaticaPlaca.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'matricula_detectada': str(item.get('detectedPlate', '')).upper().strip(),
+                            'camera_id': item.get('cameraId', ''),
+                            'localizacao_camera': item.get('cameraLocation', ''),
+                            'coordenadas_gps': item.get('gpsCoordinates', '') or '',
+                            'velocidade_kmh': int(item.get('speedKmh') or 50),
+                            'precisao_leitura': float(item.get('confidence') or 98.5),
+                            'imagem_captura_url': item.get('captureImageUrl', '') or '',
+                            'alerta_disparado': bool(item.get('alertTriggered', False)),
+                            'tipo_alerta': item.get('alertType', 'Nenhum'),
+                            'status_intercecao': item.get('interceptionStatus', 'Livre / Sem Restrições'),
+                            'data_hora': item.get('timestamp', ''),
+                        }
+                    )
+                LeituraAutomaticaPlaca.objects.exclude(codigo__in=codigos).delete()
+            return Response(LeituraAutomaticaPlacaSerializer(LeituraAutomaticaPlaca.objects.all(), many=True).data)
+
+    elif key == 'smart-inspection-qr':
+        if request.method == 'GET':
+            items = ConsultaDocumentoQRCode.objects.all()
+            return Response(ConsultaDocumentoQRCodeSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    ConsultaDocumentoQRCode.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'tipo_documento': item.get('documentType', 'Certificado de Matrícula (DUA)'),
+                            'numero_documento': item.get('documentNumber', ''),
+                            'titular_nome': item.get('holderName', ''),
+                            'matricula_associada': item.get('associatedPlate', '') or '',
+                            'hash_criptografico': item.get('cryptographicHash', ''),
+                            'status_validade': item.get('validityStatus', 'Autêntico e Válido'),
+                            'data_emissao': item.get('issueDate', ''),
+                            'data_validade': item.get('expiryDate', ''),
+                            'agente_verificador': item.get('verifiedBy', ''),
+                            'dispositivo_utilizado': item.get('deviceUsed', 'Terminal Móvel Zebra TC26'),
+                            'data_verificacao': item.get('verificationDate', ''),
+                        }
+                    )
+                ConsultaDocumentoQRCode.objects.exclude(codigo__in=codigos).delete()
+            return Response(ConsultaDocumentoQRCodeSerializer(ConsultaDocumentoQRCode.objects.all(), many=True).data)
+
+    elif key == 'smart-inspection-devices':
+        if request.method == 'GET':
+            items = DispositivoMovelPolicial.objects.all()
+            return Response(DispositivoMovelPolicialSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                ids = []
+                for item in data:
+                    ident = str(item.get('id', '')).strip()
+                    if not ident:
+                        continue
+                    ids.append(ident)
+                    DispositivoMovelPolicial.objects.update_or_create(
+                        identificador=ident,
+                        defaults={
+                            'agente_designado': item.get('assignedOfficer', ''),
+                            'nip_agente': item.get('officerBadge', ''),
+                            'unidade_policial': item.get('policeUnit', 'Brigada Nacional de Trânsito (BNT)'),
+                            'marca_modelo_aparelho': item.get('deviceModel', 'Zebra TC26 Android Rugged'),
+                            'nivel_bateria': int(item.get('batteryLevel') or 88),
+                            'status_rede': item.get('networkStatus', 'Online (4G LTE)'),
+                            'modo_offline': bool(item.get('isOffline', False)),
+                            'registos_pendentes_sincronizacao': int(item.get('pendingSyncCount') or 0),
+                            'infracoes_lavradas_turno': int(item.get('ticketsIssuedShift') or 0),
+                            'consultas_efetuadas_turno': int(item.get('queriesDoneShift') or 0),
+                            'ultima_localizacao_gps': item.get('lastGps', '11.8632, -15.5843'),
+                            'versao_aplicativo': item.get('appVersion', 'v2.4.1'),
+                            'bloqueado_remotamente': bool(item.get('isRemoteLocked', False)),
+                        }
+                    )
+                DispositivoMovelPolicial.objects.exclude(identificador__in=ids).delete()
+            return Response(DispositivoMovelPolicialSerializer(DispositivoMovelPolicial.objects.all(), many=True).data)
+
+    elif key == 'smart-inspection-infractions':
+        if request.method == 'GET':
+            items = RegistoInfracaoCampo.objects.all()
+            return Response(RegistoInfracaoCampoSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                autos = []
+                for item in data:
+                    num_auto = str(item.get('id', '')).strip()
+                    if not num_auto:
+                        continue
+                    autos.append(num_auto)
+                    RegistoInfracaoCampo.objects.update_or_create(
+                        numero_auto=num_auto,
+                        defaults={
+                            'matricula': str(item.get('plate', '')).upper().strip(),
+                            'marca_modelo': item.get('vehicleLabel', '') or '',
+                            'cor': item.get('color', 'Branco') or 'Branco',
+                            'condutor_nome': item.get('driverName', ''),
+                            'condutor_documento': item.get('driverDocument', ''),
+                            'condutor_carta': item.get('driverLicense', '') or '',
+                            'codigo_infracao': item.get('infractionCode', ''),
+                            'artigo_legal': item.get('legalArticle', 'Artigo 24.º do Código da Estrada') or 'Artigo 24.º do Código da Estrada',
+                            'descricao_factos': item.get('description', ''),
+                            'valor_multa': float(item.get('fineAmount') or 25000.0),
+                            'coordenadas_gps': item.get('gpsCoordinates', ''),
+                            'endereco_completo': item.get('locationAddress', ''),
+                            'regiao': item.get('region', 'Bissau') or 'Bissau',
+                            'fotografia_evidencia_url': item.get('evidencePhotoUrl', '') or '',
+                            'agente_autuante': item.get('officerName', ''),
+                            'agente_matricula': item.get('officerBadge', ''),
+                            'orgao_autuante': item.get('policeDepartment', 'Brigada Nacional de Trânsito (BNT)'),
+                            'status_pagamento': item.get('paymentStatus', 'Pendente') or 'Pendente',
+                            'veiculo_apreendido': bool(item.get('vehicleImpounded', False)),
+                            'data_hora_infracao': item.get('timestamp', ''),
+                        }
+                    )
+                RegistoInfracaoCampo.objects.exclude(numero_auto__in=autos).delete()
+            return Response(RegistoInfracaoCampoSerializer(RegistoInfracaoCampo.objects.all(), many=True).data)
+
+    elif key == 'smart-inspection-stolen':
+        if request.method == 'GET':
+            items = AlertaVeiculoRoubado.objects.all()
+            return Response(AlertaVeiculoRoubadoSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    AlertaVeiculoRoubado.objects.update_or_create(
+                        codigo_alerta=codigo,
+                        defaults={
+                            'matricula': str(item.get('plate', '')).upper().strip(),
+                            'marca_modelo': item.get('vehicleLabel', ''),
+                            'cor': item.get('color', 'Branco'),
+                            'numero_chassis': item.get('vin', ''),
+                            'numero_boletim_furto': item.get('theftReportNumber', ''),
+                            'data_roubo': item.get('theftDateTime', ''),
+                            'local_roubo': item.get('theftLocation', ''),
+                            'regiao': item.get('region', 'Bissau') or 'Bissau',
+                            'proprietario_vitima': item.get('victimName', ''),
+                            'contacto_vitima': item.get('victimContact', ''),
+                            'nivel_prioridade': item.get('priorityLevel', 'Crítica / Vermelho') or 'Crítica / Vermelho',
+                            'status_alerta': item.get('status', 'Ativo - Veículo Procurado') or 'Ativo - Veículo Procurado',
+                            'data_recuperacao': item.get('recoveryDate', '') or '',
+                            'local_recuperacao': item.get('recoveryLocation', '') or '',
+                            'agente_recuperador': item.get('recoveringOfficer', '') or '',
+                            'observacoes_policiais': item.get('policeNotes', '') or '',
+                        }
+                    )
+                AlertaVeiculoRoubado.objects.exclude(codigo_alerta__in=codigos).delete()
+            return Response(AlertaVeiculoRoubadoSerializer(AlertaVeiculoRoubado.objects.all(), many=True).data)
+
     elif key == 'users':
         if request.method == 'GET':
             items = UsuarioSistema.objects.all()
@@ -1258,6 +1472,102 @@ def accident_evidence_detail(request, code):
 @api_view(['GET'])
 def accident_statistics_view(request):
     result = AccidentController.get_accident_statistics()
+    return Response(result['data'], status=result['status_code'])
+
+
+# ==============================================================================
+# Endpoints REST Fiscalização Inteligente (SIGETRAN)
+# ==============================================================================
+
+@api_view(['POST'])
+def smart_inspection_plate_query_view(request):
+    result = SmartInspectionController.query_plate_realtime(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET'])
+def smart_inspection_queries_list(request):
+    search = request.GET.get('search', '')
+    result = SmartInspectionController.list_queries(search=search)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def smart_inspection_lpr_list(request):
+    if request.method == 'GET':
+        camera_id = request.GET.get('cameraId', '')
+        search = request.GET.get('search', '')
+        alert_only = request.GET.get('alertOnly', 'false').lower() == 'true'
+        result = SmartInspectionController.list_lpr_readings(camera_id=camera_id, search=search, alert_only=alert_only)
+        return Response(result['data'], status=result['status_code'])
+    result = SmartInspectionController.create_lpr_reading(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def smart_inspection_qr_verify_view(request):
+    if request.method == 'GET':
+        search = request.GET.get('search', '')
+        result = SmartInspectionController.list_qr_checks(search=search)
+        return Response(result['data'], status=result['status_code'])
+    result = SmartInspectionController.verify_qr_code(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def smart_inspection_devices_list(request):
+    if request.method == 'GET':
+        search = request.GET.get('search', '')
+        result = SmartInspectionController.list_mobile_devices(search=search)
+        return Response(result['data'], status=result['status_code'])
+    result = SmartInspectionController.register_mobile_device(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def smart_inspection_infractions_list(request):
+    if request.method == 'GET':
+        plate = request.GET.get('plate', '')
+        search = request.GET.get('search', '')
+        result = SmartInspectionController.list_field_infractions(search=search, plate=plate)
+        return Response(result['data'], status=result['status_code'])
+    result = SmartInspectionController.create_field_infraction(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def smart_inspection_infraction_detail(request, code):
+    result = SmartInspectionController.delete_field_infraction(code)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET'])
+def smart_inspection_expired_docs_view(request):
+    search = request.GET.get('search', '')
+    result = SmartInspectionController.get_expired_documents(search=search)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def smart_inspection_stolen_alerts_list(request):
+    if request.method == 'GET':
+        status_filter = request.GET.get('status', '')
+        search = request.GET.get('search', '')
+        result = SmartInspectionController.list_stolen_alerts(status_filter=status_filter, search=search)
+        return Response(result['data'], status=result['status_code'])
+    result = SmartInspectionController.create_stolen_alert(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['POST', 'PUT'])
+def smart_inspection_stolen_alert_resolve_view(request, code):
+    result = SmartInspectionController.resolve_stolen_alert(code, request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET'])
+def smart_inspection_stats_view(request):
+    result = SmartInspectionController.get_smart_inspection_stats()
     return Response(result['data'], status=result['status_code'])
 
 

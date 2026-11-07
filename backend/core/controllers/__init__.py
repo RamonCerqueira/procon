@@ -8,6 +8,7 @@ from .vehicle_status_controller import VehicleStatusController
 from .document_controller import DocumentController
 from .state_fleet_controller import StateFleetController
 from .accident_controller import AccidentController
+from .smart_inspection_controller import SmartInspectionController
 
 __all__ = [
     'AuthController',
@@ -20,4 +21,5 @@ __all__ = [
     'DocumentController',
     'StateFleetController',
     'AccidentController',
+    'SmartInspectionController',
 ]

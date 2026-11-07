@@ -765,3 +765,177 @@ class DocumentoFotografiaAcidente(models.Model):
 
     def __str__(self):
         return f"{self.codigo} - {self.acidente_codigo} ({self.titulo})"
+
+
+# ==============================================================================
+# Modelos para Fiscalização Inteligente (Smart Road Inspection / Enforcement)
+# ==============================================================================
+
+class ConsultaMatriculaFiscalizacao(models.Model):
+    codigo = models.CharField('Código da Consulta', max_length=50, unique=True)
+    matricula = models.CharField('Matrícula Pesquisada', max_length=30)
+    data_hora = models.CharField('Data e Hora da Consulta', max_length=30)
+    agente_responsavel = models.CharField('Agente Fiscalizador', max_length=150)
+    orgao_policial = models.CharField('Órgão Fiscalizador', max_length=150, default='Brigada Nacional de Trânsito (BNT)')
+    localizacao = models.CharField('Local do Posto de Fiscalização', max_length=200, default='Bissau')
+    coordenadas_gps = models.CharField('Coordenadas GPS', max_length=100, blank=True, default='')
+    status_veiculo = models.CharField('Situação do Veículo', max_length=80, default='Regular')
+    motivo_irregularidade = models.CharField('Motivo da Irregularidade', max_length=255, blank=True, default='')
+    detalhes_veiculo = models.CharField('Marca / Modelo / Cor', max_length=200, blank=True, default='')
+    proprietario_nome = models.CharField('Proprietário Registado', max_length=200, blank=True, default='')
+    seguro_valido = models.BooleanField('Seguro Obrigatório Válido', default=True)
+    inspecao_valida = models.BooleanField('Inspeção Técnica Válida', default=True)
+    taxa_circulacao_paga = models.BooleanField('Imposto de Circulação Pago', default=True)
+    bloqueio_administrativo = models.BooleanField('Bloqueio Administrativo Ativo', default=False)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'consultas_matricula_fiscalizacao'
+        verbose_name = 'Consulta de Matrícula em Fiscalização'
+        verbose_name_plural = 'Consultas de Matrícula em Fiscalização'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.matricula} ({self.status_veiculo})"
+
+
+class LeituraAutomaticaPlaca(models.Model):
+    codigo = models.CharField('Código do Registo LPR', max_length=50, unique=True)
+    matricula_detectada = models.CharField('Matrícula Detetada', max_length=30)
+    camera_id = models.CharField('Identificador da Câmara', max_length=80)
+    localizacao_camera = models.CharField('Localização do Ponto de Captura', max_length=200)
+    coordenadas_gps = models.CharField('Coordenadas GPS', max_length=100, blank=True, default='')
+    velocidade_kmh = models.IntegerField('Velocidade Registada (km/h)', default=50)
+    precisao_leitura = models.DecimalField('Confiança do Reconhecimento (%)', max_digits=5, decimal_places=2, default=98.50)
+    imagem_captura_url = models.CharField('Fotografia de Evidência / Captura', max_length=255, blank=True, default='')
+    alerta_disparado = models.BooleanField('Alerta de Trânsito Ativado', default=False)
+    tipo_alerta = models.CharField('Tipo de Alerta', max_length=100, default='Nenhum')
+    status_intercecao = models.CharField('Estado da Interceção', max_length=80, default='Livre / Sem Restrições')
+    data_hora = models.CharField('Data e Hora da Passagem', max_length=30)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'leituras_automaticas_placas'
+        verbose_name = 'Leitura Automática de Placa (LPR/ANPR)'
+        verbose_name_plural = 'Leituras Automáticas de Placas (LPR/ANPR)'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.matricula_detectada} [{self.camera_id}]"
+
+
+class ConsultaDocumentoQRCode(models.Model):
+    codigo = models.CharField('Código da Verificação', max_length=50, unique=True)
+    tipo_documento = models.CharField('Tipo de Documento', max_length=120)
+    numero_documento = models.CharField('Número do Documento', max_length=100)
+    titular_nome = models.CharField('Titular do Documento', max_length=200)
+    matricula_associada = models.CharField('Matrícula Associada', max_length=30, blank=True, default='')
+    hash_criptografico = models.CharField('Hash de Autenticidade Digital', max_length=128)
+    status_validade = models.CharField('Resultado da Validação', max_length=80, default='Autêntico e Válido')
+    data_emissao = models.CharField('Data de Emissão', max_length=30)
+    data_validade = models.CharField('Data de Validade', max_length=30)
+    agente_verificador = models.CharField('Agente Verificador', max_length=150)
+    dispositivo_utilizado = models.CharField('Dispositivo Leitor', max_length=150, default='Terminal Móvel Zebra TC26')
+    data_verificacao = models.CharField('Data e Hora da Verificação', max_length=30)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'consultas_documentos_qrcode'
+        verbose_name = 'Consulta de Documento por QR Code'
+        verbose_name_plural = 'Consultas de Documentos por QR Code'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.tipo_documento} ({self.status_validade})"
+
+
+class DispositivoMovelPolicial(models.Model):
+    identificador = models.CharField('Identificador do Aparelho (ID)', max_length=50, unique=True)
+    agente_designado = models.CharField('Agente Policial Responsável', max_length=150)
+    nip_agente = models.CharField('Número de Identificação Policial (NIP)', max_length=50)
+    unidade_policial = models.CharField('Unidade / Esquadra', max_length=150, default='Brigada Nacional de Trânsito (BNT)')
+    marca_modelo_aparelho = models.CharField('Aparelho / Terminal Robusto', max_length=120, default='Zebra TC26 Android Rugged')
+    nivel_bateria = models.IntegerField('Nível de Bateria (%)', default=88)
+    status_rede = models.CharField('Conectividade', max_length=50, default='Online (4G LTE)')
+    modo_offline = models.BooleanField('Operando em Modo Offline', default=False)
+    registos_pendentes_sincronizacao = models.IntegerField('Registos Pendentes de Sincronização', default=0)
+    infracoes_lavradas_turno = models.IntegerField('Autos Lavrados no Turno', default=0)
+    consultas_efetuadas_turno = models.IntegerField('Consultas Realizadas no Turno', default=0)
+    ultima_localizacao_gps = models.CharField('Última Localização GPS Conhecida', max_length=100, default='11.8632, -15.5843')
+    versao_aplicativo = models.CharField('Versão do SIGETRAN Mobile', max_length=30, default='v2.4.1')
+    bloqueado_remotamente = models.BooleanField('Bloqueado Remotamente', default=False)
+    atualizado_em = models.DateTimeField('Última Sincronização', auto_now=True)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'dispositivos_moveis_policiais'
+        verbose_name = 'Dispositivo Móvel Policial'
+        verbose_name_plural = 'Dispositivos Móveis Policiais'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.identificador} - {self.agente_designado} ({self.status_rede})"
+
+
+class RegistoInfracaoCampo(models.Model):
+    numero_auto = models.CharField('N.º do Auto de Notícia / Infração', max_length=60, unique=True)
+    matricula = models.CharField('Matrícula do Veículo', max_length=30)
+    marca_modelo = models.CharField('Marca e Modelo', max_length=150, blank=True, default='')
+    cor = models.CharField('Cor do Veículo', max_length=50, blank=True, default='Branco')
+    condutor_nome = models.CharField('Nome do Condutor Autuado', max_length=200)
+    condutor_documento = models.CharField('BI / Passaporte do Condutor', max_length=80)
+    condutor_carta = models.CharField('N.º da Carta de Condução', max_length=80, blank=True, default='')
+    codigo_infracao = models.CharField('Código da Infração', max_length=50)
+    artigo_legal = models.CharField('Enquadramento Legal (Código da Estrada)', max_length=200, default='Artigo 24.º do Código da Estrada')
+    descricao_factos = models.TextField('Descrição Sucinta dos Factos Constatados')
+    valor_multa = models.DecimalField('Montante da Coima (XOF)', max_digits=12, decimal_places=2, default=25000.00)
+    coordenadas_gps = models.CharField('Coordenadas GPS do Local', max_length=100)
+    endereco_completo = models.CharField('Artéria / Estrada / Quilómetro', max_length=255)
+    regiao = models.CharField('Região / Setor', max_length=100, default='Bissau')
+    fotografia_evidencia_url = models.CharField('Fotografia de Prova do Auto', max_length=255, blank=True, default='')
+    agente_autuante = models.CharField('Agente Autuante', max_length=150)
+    agente_matricula = models.CharField('N.º de Crachá / NIP', max_length=50)
+    orgao_autuante = models.CharField('Força de Segurança', max_length=150, default='Brigada Nacional de Trânsito (BNT)')
+    status_pagamento = models.CharField('Estado do Pagamento', max_length=80, default='Pendente')
+    veiculo_apreendido = models.BooleanField('Veículo Apreendido Cautelarmente', default=False)
+    data_hora_infracao = models.CharField('Data e Hora da Ocorrência', max_length=30)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'registos_infracoes_campo'
+        verbose_name = 'Registo de Infração em Campo'
+        verbose_name_plural = 'Registos de Infrações em Campo'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.numero_auto} - {self.matricula} ({self.codigo_infracao})"
+
+
+class AlertaVeiculoRoubado(models.Model):
+    codigo_alerta = models.CharField('Código do Alerta Nacional', max_length=60, unique=True)
+    matricula = models.CharField('Matrícula do Veículo', max_length=30)
+    marca_modelo = models.CharField('Marca e Modelo', max_length=150)
+    cor = models.CharField('Cor', max_length=50)
+    numero_chassis = models.CharField('Número de Chassis / VIN', max_length=100)
+    numero_boletim_furto = models.CharField('N.º do Boletim de Furto / Roubo (POP/PJ)', max_length=80)
+    data_roubo = models.CharField('Data e Hora do Furto/Roubo', max_length=30)
+    local_roubo = models.CharField('Localidade / Bairro do Crime', max_length=200)
+    regiao = models.CharField('Região Administrativa', max_length=100, default='Bissau')
+    proprietario_vitima = models.CharField('Proprietário / Vítima Queixosa', max_length=200)
+    contacto_vitima = models.CharField('Contacto Telefónico da Vítima', max_length=80)
+    nivel_prioridade = models.CharField('Nível de Prioridade do Alerta', max_length=50, default='Crítica / Vermelho')
+    status_alerta = models.CharField('Estado do Alerta', max_length=60, default='Ativo - Veículo Procurado')
+    data_recuperacao = models.CharField('Data da Recuperação', max_length=30, blank=True, default='')
+    local_recuperacao = models.CharField('Local da Interceção / Recuperação', max_length=200, blank=True, default='')
+    agente_recuperador = models.CharField('Agente / Brigada que Intercetou', max_length=150, blank=True, default='')
+    observacoes_policiais = models.TextField('Diligências e Informações Táticas', blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'alertas_veiculos_roubados'
+        verbose_name = 'Alerta de Veículo Roubado'
+        verbose_name_plural = 'Alertas de Veículos Roubados'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo_alerta} - {self.matricula} ({self.status_alerta})"

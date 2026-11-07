@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, AlertOctagon, AlertTriangle, ArrowRight, Banknote, Building2, Camera, CarFront, Check, ClipboardCheck, ClipboardList, Coins, FileBarChart2, FilePlus2, FileText, FileWarning, Fuel, Gauge, LogOut, MapPin, Printer, QrCode, Search, Settings, ShieldAlert, ShieldCheck, Siren, UserRoundCog, Users, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
+import { Activity, AlertOctagon, AlertTriangle, ArrowRight, Banknote, Battery, BatteryCharging, BellRing, Building2, Camera, CarFront, Check, ClipboardCheck, ClipboardList, Coins, FileBarChart2, FilePlus2, FileText, FileWarning, Fuel, Gauge, LogOut, MapPin, Printer, QrCode, Radar, Radio, Scan, ScanLine, Search, Settings, ShieldAlert, ShieldCheck, Siren, Smartphone, UserRoundCog, Users, UserX, Wifi, WifiOff, Wrench, X, type LucideIcon } from 'lucide-react';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 
@@ -26,6 +26,13 @@ type AccidentVictim = { id: string; accidentId: string; name: string; document?:
 type AccidentWitness = { id: string; accidentId: string; name: string; document?: string; phone?: string; address?: string; locationAtMoment?: string; statement?: string; statementDate: string };
 type AccidentPoliceReport = { id: string; accidentId: string; reportNumber: string; policeDepartment: string; officerName: string; officerBadge: string; reportDate: string; investigationSummary: string; infractionsFound?: string; legalReferral: string; procedureStatus: string; notes?: string };
 type AccidentEvidence = { id: string; accidentId: string; evidenceType: string; title: string; fileUrl?: string; description?: string; registeredBy: string; registrationDate: string };
+
+type SmartInspectionQuery = { id: string; plate: string; queryDateTime: string; officerName: string; policeDepartment?: string; location?: string; gpsCoordinates?: string; status: string; irregularityReason?: string; vehicleDetails?: string; ownerName?: string; insuranceValid?: boolean; inspectionValid?: boolean; circulationTaxPaid?: boolean; administrativeBlock?: boolean };
+type SmartLprReading = { id: string; detectedPlate: string; cameraId: string; cameraLocation: string; gpsCoordinates?: string; speedKmh: number; confidence: number | string; captureImageUrl?: string; alertTriggered: boolean; alertType: string; interceptionStatus: string; timestamp: string };
+type SmartQrVerification = { id: string; documentType: string; documentNumber: string; holderName: string; associatedPlate?: string; cryptographicHash: string; validityStatus: string; issueDate: string; expiryDate: string; verifiedBy: string; deviceUsed?: string; verificationDate: string };
+type SmartMobileDevice = { id: string; assignedOfficer: string; officerBadge: string; policeUnit: string; deviceModel: string; batteryLevel: number; networkStatus: string; isOffline: boolean; pendingSyncCount: number; ticketsIssuedShift: number; queriesDoneShift: number; lastGps: string; appVersion: string; isRemoteLocked: boolean };
+type SmartFieldInfraction = { id: string; plate: string; vehicleLabel?: string; color?: string; driverName: string; driverDocument: string; driverLicense?: string; infractionCode: string; legalArticle: string; description: string; fineAmount: number; gpsCoordinates: string; locationAddress: string; region?: string; evidencePhotoUrl?: string; officerName: string; officerBadge: string; policeDepartment?: string; paymentStatus: string; vehicleImpounded?: boolean; timestamp: string };
+type SmartStolenAlert = { id: string; plate: string; vehicleLabel: string; color: string; vin: string; theftReportNumber: string; theftDateTime: string; theftLocation: string; region?: string; victimName: string; victimContact: string; priorityLevel: string; status: string; recoveryDate?: string; recoveryLocation?: string; recoveringOfficer?: string; policeNotes?: string };
 
 const seedVehicles: Vehicle[] = [
   { plate:'GB-24-BC',make:'Toyota',model:'Corolla',year:2018,color:'Prata',owner:'Mamadu Embaló',driver:'Mamadu Embaló',taxDue:41500,district:'Bissau',category:'Ligeiro particular' },
@@ -393,6 +400,44 @@ const seedAccidentEvidence: AccidentEvidence[] = [
   },
 ];
 
+const seedSmartQueries: SmartInspectionQuery[] = [
+  { id: 'CMP-2026-0001', plate: 'GB-24-BC', queryDateTime: '2026-11-02 08:50:00', officerName: 'Agente Malam Pereira', policeDepartment: 'Brigada Nacional de Trânsito (BNT)', location: 'Posto Fixo Titina Silá, Bissau', gpsCoordinates: '11.8682, -15.5921', status: 'Irregular', irregularityReason: 'Imposto de Circulação / Vinheta em atraso (41.500 XOF)', vehicleDetails: 'Toyota Corolla (2018) - Prata', ownerName: 'Mamadu Embaló', insuranceValid: true, inspectionValid: true, circulationTaxPaid: false, administrativeBlock: false },
+  { id: 'CMP-2026-0002', plate: 'GB-19-AA', queryDateTime: '2026-11-02 09:30:15', officerName: 'Agente Principal Fátima Djú', policeDepartment: 'Brigada Nacional de Trânsito (BNT)', location: 'Rotunda de Safim', gpsCoordinates: '11.9542, -15.6511', status: 'Regular', irregularityReason: '', vehicleDetails: 'Suzuki Carry (2020) - Branco', ownerName: 'Adama Baldé', insuranceValid: true, inspectionValid: true, circulationTaxPaid: true, administrativeBlock: false },
+  { id: 'CMP-2026-0003', plate: 'GB-21-XX', queryDateTime: '2026-11-02 10:12:00', officerName: 'Sargento Braima Mané', policeDepartment: 'Brigada Nacional de Trânsito (BNT)', location: 'Aeroporto Internacional Osvaldo Vieira', gpsCoordinates: '11.8841, -15.6321', status: 'Alerta de Roubo', irregularityReason: 'Veículo com Mandado de Apreensão por Roubo (BO: BO-FURTO-2026-081)', vehicleDetails: 'Toyota Hilux D-4D 2.8 (2021) - Branco', ownerName: 'Dr. Augusto Sambú', insuranceValid: true, inspectionValid: true, circulationTaxPaid: true, administrativeBlock: true },
+];
+
+const seedSmartLpr: SmartLprReading[] = [
+  { id: 'LPR-2026-0001', detectedPlate: 'GB-24-BC', cameraId: 'CAM-BISSAU-AEROPORTO-01', cameraLocation: 'Av. dos Combatentes da Liberdade da Pátria (Sentido Aeroporto)', gpsCoordinates: '11.8841, -15.6321', speedKmh: 54, confidence: 99.2, captureImageUrl: '/media/lpr/lpr_gb_24_bc.jpg', alertTriggered: true, alertType: 'Taxa de Circulação Vencida', interceptionStatus: 'Sinalizado para Posto Fixo Titina Silá', timestamp: '2026-11-02 08:42:15' },
+  { id: 'LPR-2026-0002', detectedPlate: 'GB-21-XX', cameraId: 'CAM-SAFIM-NORTE-02', cameraLocation: 'Rotunda de Safim - Estrada Nacional N1', gpsCoordinates: '11.9542, -15.6511', speedKmh: 82, confidence: 98.7, captureImageUrl: '/media/lpr/lpr_gb_21_xx_roubado.jpg', alertTriggered: true, alertType: 'Veículo Roubado', interceptionStatus: 'ALERTA VERMELHO - Notificar Patrulha Imediatamente', timestamp: '2026-11-02 09:14:30' },
+  { id: 'LPR-2026-0003', detectedPlate: 'GB-19-AA', cameraId: 'CAM-PONTE-JOAOLANDIM-01', cameraLocation: 'Ponte Amílcar Cabral (João Landim)', gpsCoordinates: '11.9810, -15.6792', speedKmh: 48, confidence: 99.8, captureImageUrl: '/media/lpr/lpr_gb_19_aa.jpg', alertTriggered: false, alertType: 'Nenhum', interceptionStatus: 'Livre / Sem Restrições', timestamp: '2026-11-02 10:05:12' },
+  { id: 'LPR-2026-0004', detectedPlate: 'GB-30-ZZ', cameraId: 'CAM-PORTO-BISSAU-03', cameraLocation: 'Acesso ao Porto de Bissau (Pidjiguiti)', gpsCoordinates: '11.8542, -15.5781', speedKmh: 35, confidence: 97.9, captureImageUrl: '/media/lpr/lpr_gb_30_zz.jpg', alertTriggered: false, alertType: 'Nenhum', interceptionStatus: 'Livre / Sem Restrições', timestamp: '2026-11-02 11:22:04' },
+  { id: 'LPR-2026-0005', detectedPlate: 'GB-08-TT', cameraId: 'CAM-BAFATA-ENTRADA-01', cameraLocation: 'Entrada Poente de Bafatá - EN2', gpsCoordinates: '12.1690, -14.6582', speedKmh: 104, confidence: 98.4, captureImageUrl: '/media/lpr/lpr_gb_08_tt.jpg', alertTriggered: true, alertType: 'Excesso de Velocidade', interceptionStatus: 'Auto de Notícia Automático Emitido', timestamp: '2026-11-02 12:45:51' },
+];
+
+const seedSmartQr: SmartQrVerification[] = [
+  { id: 'QR-2026-0001', documentType: 'Certificado de Matrícula (DUA)', documentNumber: 'DUA-GB-2024-009841', holderName: 'Mamadu Embaló', associatedPlate: 'GB-24-BC', cryptographicHash: 'a7b9c1d3e5f7028149adbcde82410948', validityStatus: 'Autêntico e Válido', issueDate: '2024-01-15', expiryDate: '2029-01-15', verifiedBy: 'Agente Malam Pereira', deviceUsed: 'Terminal Zebra TC26 (BNT-01)', verificationDate: '2026-11-02 08:52:10' },
+  { id: 'QR-2026-0002', documentType: 'Carta de Condução Digital', documentNumber: 'CND-GB-B-849201', holderName: 'Bacar Camará', associatedPlate: 'GB-19-AA', cryptographicHash: '3f8e9102ab44cd55910385ffae029312', validityStatus: 'Autêntico e Válido', issueDate: '2023-05-10', expiryDate: '2028-05-10', verifiedBy: 'Agente Principal Fátima Djú', deviceUsed: 'Terminal Zebra TC26 (BNT-02)', verificationDate: '2026-11-02 09:32:44' },
+  { id: 'QR-2026-0003', documentType: 'Certificado de Inspeção Periódica', documentNumber: 'IPO-GB-2024-44102', holderName: 'Mariama Djabi', associatedPlate: 'GB-22-CD', cryptographicHash: 'cc894101eecb44019283f109248abce1', validityStatus: 'Documento Expirado', issueDate: '2024-02-01', expiryDate: '2025-02-01', verifiedBy: 'Sargento Domingos Sanhá', deviceUsed: 'Terminal Honeywell ScanPal', verificationDate: '2026-11-02 10:15:30' },
+];
+
+const seedSmartDevices: SmartMobileDevice[] = [
+  { id: 'MOB-BNT-01', assignedOfficer: 'Agente Malam Pereira', officerBadge: 'BNT-1044', policeUnit: 'Brigada Nacional de Trânsito - Posto Titina Silá', deviceModel: 'Zebra TC26 Android Rugged', batteryLevel: 92, networkStatus: 'Online (4G LTE)', isOffline: false, pendingSyncCount: 0, ticketsIssuedShift: 6, queriesDoneShift: 48, lastGps: '11.8682, -15.5921', appVersion: 'v2.4.1', isRemoteLocked: false },
+  { id: 'MOB-BNT-02', assignedOfficer: 'Agente Principal Fátima Djú', officerBadge: 'AG-GB-0219', policeUnit: 'Brigada Nacional de Trânsito - Destacamento de Safim', deviceModel: 'Zebra TC26 Android Rugged', batteryLevel: 78, networkStatus: 'Online (4G LTE)', isOffline: false, pendingSyncCount: 0, ticketsIssuedShift: 4, queriesDoneShift: 35, lastGps: '11.9542, -15.6511', appVersion: 'v2.4.1', isRemoteLocked: false },
+  { id: 'MOB-POP-03', assignedOfficer: 'Sargento Domingos Sanhá', officerBadge: 'POP-3301', policeUnit: 'Polícia de Ordem Pública - Comando Regional de Bafatá', deviceModel: 'Honeywell ScanPal EDA52', batteryLevel: 64, networkStatus: 'Offline (Armazenamento Local)', isOffline: true, pendingSyncCount: 3, ticketsIssuedShift: 2, queriesDoneShift: 19, lastGps: '12.1690, -14.6582', appVersion: 'v2.4.1', isRemoteLocked: false },
+];
+
+const seedSmartInfractions: SmartFieldInfraction[] = [
+  { id: 'AIF-2026-0142', plate: 'GB-22-CD', vehicleLabel: 'Mercedes-Benz Sprinter 313 CDI', color: 'Azul', driverName: 'Sene Camará', driverDocument: 'BI N.º 481920/2021', driverLicense: 'CND-GB-D-19042', infractionCode: 'INF-008 - Lotação Excedida', legalArticle: 'Artigo 45.º do Código da Estrada (Lotação em transporte público)', description: 'Transporte coletivo de passageiros circulando com 23 ocupantes em veículo homologado para 15 lugares.', fineAmount: 35000, gpsCoordinates: '11.8610, -15.5890', locationAddress: 'Avenida Amílcar Cabral, junto à Praça dos Heróis Nacionais', region: 'Bissau', evidencePhotoUrl: '/media/infracoes/lotacao_excedida_sprinter.jpg', officerName: 'Agente Malam Pereira', officerBadge: 'BNT-1044', policeDepartment: 'Brigada Nacional de Trânsito (BNT)', paymentStatus: 'Pendente', vehicleImpounded: false, timestamp: '2026-11-02 08:35:00' },
+  { id: 'AIF-2026-0143', plate: 'GB-08-TT', vehicleLabel: 'Toyota Land Cruiser Prado', color: 'Cinza', driverName: 'João Pedro Da Silva', driverDocument: 'BI N.º 390144/2020', driverLicense: 'CND-GB-B-99120', infractionCode: 'INF-001 - Excesso de Velocidade Gravíssimo', legalArticle: 'Artigo 24.º do Código da Estrada (Velocidade excessiva em perímetro urbano)', description: 'Circulação a 104 km/h em via com limite regulamentar sinalizado de 60 km/h captado por cinemómetro / radar.', fineAmount: 50000, gpsCoordinates: '11.8920, -15.6140', locationAddress: 'Estrada de Bor, Bissau', region: 'Bissau', evidencePhotoUrl: '/media/infracoes/radar_excesso_bor.jpg', officerName: 'Agente Principal Fátima Djú', officerBadge: 'AG-GB-0219', policeDepartment: 'Brigada Nacional de Trânsito (BNT)', paymentStatus: 'Pendente', vehicleImpounded: false, timestamp: '2026-11-02 10:14:00' },
+  { id: 'AIF-2026-0144', plate: 'GB-17-PL', vehicleLabel: 'Nissan Almera 1.6', color: 'Vermelho', driverName: 'Aliu Baldé', driverDocument: 'BI N.º 550182/2022', driverLicense: 'CND-GB-B-66103', infractionCode: 'INF-003 - Condução sob Influência do Álcool', legalArticle: 'Artigo 81.º do Código da Estrada (Taxa de álcool no sangue)', description: 'Condutor submetido ao teste de ar expirado com resultado positivo de 0.72 g/l de álcool no sangue.', fineAmount: 75000, gpsCoordinates: '11.9542, -15.6511', locationAddress: 'Posto de Controlo Rodoviário de Safim', region: 'Biombo', evidencePhotoUrl: '/media/infracoes/etilometro_teste_safim.jpg', officerName: 'Sargento Domingos Sanhá', officerBadge: 'POP-3301', policeDepartment: 'Guarda Nacional / BNT', paymentStatus: 'Notificado', vehicleImpounded: true, timestamp: '2026-11-02 11:30:00' },
+];
+
+const seedSmartStolen: SmartStolenAlert[] = [
+  { id: 'ALR-2026-0001', plate: 'GB-21-XX', vehicleLabel: 'Toyota Hilux D-4D 2.8', color: 'Branco', vin: 'MR0HA3CD8K1094821', theftReportNumber: 'BO-FURTO-2026-081', theftDateTime: '2026-10-22 21:30', theftLocation: 'Bairro de Belém, próximo ao Hospital Simão Mendes, Bissau', region: 'Bissau', victimName: 'Dr. Augusto Sambú', victimContact: '+245 955 120 441', priorityLevel: 'Crítica / Vermelho', status: 'Ativo - Veículo Procurado', policeNotes: 'Viatura subtraída com recurso a arma de fogo; suspeita de tentativa de fuga para a fronteira norte.' },
+  { id: 'ALR-2026-0002', plate: 'GB-15-KL', vehicleLabel: 'Mercedes-Benz 190D', color: 'Azul Escuro', vin: 'WDB2011221F983412', theftReportNumber: 'BO-FURTO-2026-064', theftDateTime: '2026-10-18 14:15', theftLocation: 'Parqueamento do Mercado de Bandim, Bissau', region: 'Bissau', victimName: 'Aminata Seidi', victimContact: '+245 966 331 890', priorityLevel: 'Alta', status: 'Ativo - Veículo Procurado', policeNotes: 'Furtado sem chaves de ignição; provável ligação direta efetuada.' },
+  { id: 'ALR-2026-0003', plate: 'GB-18-MN', vehicleLabel: 'Nissan Patrol GR 3.0', color: 'Preto', vin: 'JN1TESY61U0048192', theftReportNumber: 'BO-FURTO-2026-042', theftDateTime: '2026-10-05 02:40', theftLocation: 'Centro da Cidade de Bafatá', region: 'Bafatá', victimName: 'Malam Djassi', victimContact: '+245 955 771 202', priorityLevel: 'Alta', status: 'Intercetado / Recuperado', recoveryDate: '2026-10-12 16:20', recoveryLocation: 'Posto de Fiscalização BNT Safim', recoveringOfficer: 'Sargento Domingos Sanhá (BNT)', policeNotes: 'Intercetado pela patrulha móvel após leitura por câmara LPR na N1; condutor detido em flagrante delito.' },
+];
+
 function useSaved<T>(key:string, initial:T) {
   const [data,setData] = useState<T>(()=>{try {const value=localStorage.getItem(`sigetran:${key}`);return value?JSON.parse(value) as T:initial;}catch{return initial;}});
   useEffect(() => { let active = true; api.get<T>(`/state/${key}`).then(res => { if (active && res.data !== undefined) { setData(res.data); try { localStorage.setItem(`sigetran:${key}`, JSON.stringify(res.data)); } catch { /* ignore */ } } }).catch(() => { /* fallback */ }); return () => { active = false; }; }, [key]);
@@ -451,8 +496,17 @@ const accidentSubmenus:{path:string;label:string;shortLabel:string}[]=[
   {path:'/accidents/witnesses',label:'Identificação de testemunhas',shortLabel:'Testemunhas'},
   {path:'/accidents/statistics',label:'Estatísticas de acidentes por região',shortLabel:'Estatísticas Regionais'},
 ];
+const smartInspectionSubmenus:{path:string;label:string;shortLabel:string}[]=[
+  {path:'/smart-inspection',label:'Consulta de matrícula em tempo real',shortLabel:'Matrícula em Tempo Real'},
+  {path:'/smart-inspection/lpr-anpr',label:'Leitura automática de placas (LPR/ANPR)',shortLabel:'LPR / ANPR'},
+  {path:'/smart-inspection/qr-check',label:'Consulta através de QR Code',shortLabel:'Validador QR Code'},
+  {path:'/smart-inspection/mobile-app',label:'Aplicação móvel para agentes policiais',shortLabel:'App Móvel Agente'},
+  {path:'/smart-inspection/gps-infractions',label:'Registo de infrações com GPS e fotos',shortLabel:'Infrações GPS & Fotos'},
+  {path:'/smart-inspection/expired-docs',label:'Identificação de documentos vencidos',shortLabel:'Documentos Vencidos'},
+  {path:'/smart-inspection/stolen-alerts',label:'Alertas de veículos roubados',shortLabel:'Alertas de Roubo'},
+];
 const menu:{path:string;label:string;icon:LucideIcon;children?:{path:string;label:string}[]}[]=[
-  {path:'/dashboard',label:'Painel de gestão',icon:Activity},{path:'/vehicles',label:'Veículos e matrículas',icon:CarFront},{path:'/ownership-transfers',label:'Transferência e histórico',icon:ArrowRight},{path:'/vehicle-occurrences',label:'Apreensões, roubos e baixas',icon:ShieldCheck},{path:'/drivers',label:'Gestão de condutores',icon:Users,children:driverSubmenus},{path:'/plate-check',label:'Consulta de matrícula',icon:Search},{path:'/circulation-tax',label:'Imposto de Circulação',icon:Banknote},{path:'/fines',label:'Gestão de multas e infrações',icon:ClipboardList,children:fineSubmenus},{path:'/documents-certificates',label:'Documentação e certificados',icon:FilePlus2,children:documentSubmenus},{path:'/state-fleet',label:'Gestão da frota do Estado',icon:Building2,children:stateFleetSubmenus},{path:'/accidents',label:'Gestão de acidentes rodoviários',icon:ShieldAlert,children:accidentSubmenus},{path:'/inspections',label:'Inspeções veiculares',icon:ClipboardCheck},{path:'/reports',label:'Relatórios nacionais',icon:FileBarChart2},{path:'/users',label:'Utilizadores',icon:UserRoundCog},{path:'/settings',label:'Configuração',icon:Settings},
+  {path:'/dashboard',label:'Painel de gestão',icon:Activity},{path:'/vehicles',label:'Veículos e matrículas',icon:CarFront},{path:'/ownership-transfers',label:'Transferência e histórico',icon:ArrowRight},{path:'/vehicle-occurrences',label:'Apreensões, roubos e baixas',icon:ShieldCheck},{path:'/drivers',label:'Gestão de condutores',icon:Users,children:driverSubmenus},{path:'/plate-check',label:'Consulta de matrícula',icon:Search},{path:'/circulation-tax',label:'Imposto de Circulação',icon:Banknote},{path:'/fines',label:'Gestão de multas e infrações',icon:ClipboardList,children:fineSubmenus},{path:'/documents-certificates',label:'Documentação e certificados',icon:FilePlus2,children:documentSubmenus},{path:'/state-fleet',label:'Gestão da frota do Estado',icon:Building2,children:stateFleetSubmenus},{path:'/accidents',label:'Gestão de acidentes rodoviários',icon:ShieldAlert,children:accidentSubmenus},{path:'/smart-inspection',label:'Fiscalização inteligente',icon:Radar,children:smartInspectionSubmenus},{path:'/inspections',label:'Inspeções veiculares',icon:ClipboardCheck},{path:'/reports',label:'Relatórios nacionais',icon:FileBarChart2},{path:'/users',label:'Utilizadores',icon:UserRoundCog},{path:'/settings',label:'Configuração',icon:Settings},
 ];
 const inputClass='w-full border border-[#d5d1c2] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#009E49] focus:ring-2 focus:ring-[#009E49]/15';
 const primaryClass='inline-flex items-center justify-center gap-2 bg-[#006B35] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#00552b] disabled:cursor-not-allowed disabled:opacity-50';
@@ -5859,18 +5913,2794 @@ export function AccidentStatisticsPage(){
   </Shell>;
 }
 
-export function InspectionManagement(){const [vehicles]=useSaved('vehicles',seedVehicles);const [rows,setRows]=useSaved('inspections',seedInspections);const [open,setOpen]=useState(false);function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);setRows([{id:`ITV-${String(Date.now()).slice(-5)}`,plate:String(f.get('plate')),reason:String(f.get('reason')),office:String(f.get('office')),date:String(f.get('date')),status:'Agendada'},...rows]);e.currentTarget.reset();window.dispatchEvent(new Event('sigetran:drawer-close'));}
-  return <Shell><Title eyebrow="Segurança rodoviária" title="Inspeções veiculares" description="Agenda de verificações e histórico de inspeção da frota registada." icon={ClipboardCheck}/><div className="mb-4 flex justify-end"><button onClick={()=>setOpen(!open)} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar formulário':'Agendar inspeção'}</button></div>{open&&<Drawer title="Agendamento de inspeção" onClose={()=>setOpen(false)}><form onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="block text-xs font-semibold">Matrícula<select name="plate" className={`mt-1.5 ${inputClass}`}>{vehicles.map(v=><option key={v.plate}>{v.plate}</option>)}</select></label><Field label="Tipo de inspeção" name="reason" defaultValue="Inspeção periódica"/><Field label="Delegação" name="office"/><Field label="Data" name="date" type="date"/><div className="flex items-end"><button className={primaryClass}>Confirmar agenda</button></div></form></Drawer>}<div className="mt-5 overflow-x-auto border border-[#dcd9cc] bg-white p-4"><table className="w-full text-left text-sm"><thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]"><tr>{['Referência','Matrícula','Tipo','Delegação','Data','Estado','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr></thead><tbody>{rows.map(row=><tr key={row.id} className="border-b border-[#f0eee7]"><td className="px-3 py-3">{row.id}</td><td className="px-3 py-3 font-semibold">{row.plate}</td><td className="px-3 py-3">{row.reason}</td><td className="px-3 py-3">{row.office}</td><td className="px-3 py-3">{row.date}</td><td className="px-3 py-3"><Status value={row.status}/></td><td className="px-3 py-3"><button disabled={row.status==='Concluída'} onClick={()=>setRows(items=>items.map(item=>item.id===row.id?{...item,status:'Concluída'}:item))} className={secondaryClass}>Concluir</button></td></tr>)}</tbody></table></div></Shell>;}
+// ==============================================================================
+// Fiscalização Inteligente (Smart Enforcement & Road Inspection)
+// ==============================================================================
 
-export function ReportsManagement(){const [vehicles]=useSaved('vehicles',seedVehicles);const [drivers]=useSaved('drivers',seedDrivers);const [fines]=useSaved('fines',seedFines);const [inspections]=useSaved('inspections',seedInspections);const districts=useMemo(()=>Array.from(new Set(vehicles.map(v=>v.district))),[vehicles]);return <Shell><Title eyebrow="Informação de gestão" title="Relatórios nacionais" description="Indicadores consolidados a partir dos registos locais deste navegador." icon={FileBarChart2}/><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Stat label="Frota registada" value={String(vehicles.length)} detail="Veículos cadastrados" icon={CarFront}/><Stat label="Condutores ativos" value={String(drivers.filter(d=>d.status==='Ativo').length)} detail="Habilitações registadas" icon={Users}/><Stat label="Autos emitidos" value={String(fines.length)} detail={`${fines.filter(f=>f.status==='Pago').length} com pagamento registado`} icon={ClipboardList}/><Stat label="Inspeções na agenda" value={String(inspections.length)} detail="Registos de demonstração" icon={ClipboardCheck}/></div><Panel title="Distribuição por delegação"><div className="space-y-4">{districts.map(district=>{const count=vehicles.filter(v=>v.district===district).length;return <div key={district}><div className="mb-1 flex justify-between text-sm"><span>{district}</span><b>{count} veículo(s)</b></div><div className="h-2 bg-[#eeede5]"><div className="h-full bg-[#009E49]" style={{width:`${Math.max(8,count/vehicles.length*100)}%`}}/></div></div>})}</div><button onClick={()=>window.print()} className={`${secondaryClass} mt-5`}>Imprimir relatório</button></Panel></Shell>;}
-
-export function SystemAdministration({settings=false}:{settings?:boolean}){
-  const [users,setUsers]=useSaved('users',[{name:'Administrador do sistema',email:'admin@sigetran.gov.gw',role:'Administrador',office:'Direção Nacional',status:'Ativo'},{name:'Agente de trânsito',email:'agente@sigetran.gov.gw',role:'Fiscalização',office:'Bissau',status:'Ativo'}]);
-  const [config,setConfig]=useSaved('config',{institution:'Ministério dos Transportes · Guiné-Bissau',system:'SIGETRAN',currency:'Franco CFA (XOF)',office:'Bissau'});
-  const [saved,setSaved]=useState(false);const [open,setOpen]=useState(false);
-  if(settings)return <Shell><Title eyebrow="Administração central" title="Configuração do sistema" description="Preferências locais do protótipo e parâmetros de apresentação institucional." icon={Settings}/><Panel title="Identificação institucional"><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);setConfig({institution:String(f.get('institution')),system:String(f.get('system')),currency:String(f.get('currency')),office:String(f.get('office'))});setSaved(true);}} className="grid max-w-3xl gap-4 sm:grid-cols-2"><Field label="Instituição" name="institution" defaultValue={config.institution}/><Field label="Nome do sistema" name="system" defaultValue={config.system}/><Field label="Moeda de apresentação" name="currency" defaultValue={config.currency}/><Field label="Delegação padrão" name="office" defaultValue={config.office}/><div className="sm:col-span-2"><button className={primaryClass}>Guardar preferências</button>{saved&&<span className="ml-3 text-sm text-[#006B35]">Preferências guardadas neste navegador.</span>}</div></form></Panel><div className="mt-5 border-l-2 border-[#FCD116] bg-[#f5f2e7] p-4 text-sm leading-6">As taxas, infrações, sanções e prazos não são configuráveis aqui. Devem ser introduzidos somente após validação com os diplomas e tabelas oficiais aplicáveis.</div></Shell>;
-  function createUser(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);setUsers([{name:String(f.get('name')),email:String(f.get('email')),role:String(f.get('role')),office:String(f.get('office')),status:'Ativo'},...users]);e.currentTarget.reset();window.dispatchEvent(new Event('sigetran:drawer-close'));}
-  return <Shell><Title eyebrow="Administração central" title="Utilizadores e perfis" description="Registe os perfis de demonstração e a respetiva delegação de serviço." icon={UserRoundCog}/><div className="mb-4 flex justify-end"><button onClick={()=>setOpen(!open)} className={primaryClass}><UserRoundCog size={16}/>{open?'Fechar formulário':'Adicionar utilizador'}</button></div>{open&&<Drawer title="Novo utilizador" onClose={()=>setOpen(false)}><form onSubmit={createUser} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Field label="Nome" name="name"/><Field label="Email" name="email" type="email"/><label className="block text-xs font-semibold">Perfil<select name="role" className={`mt-1.5 ${inputClass}`}><option>Atendimento</option><option>Fiscalização</option><option>Registo de veículos</option><option>Administrador</option></select></label><Field label="Delegação" name="office"/><div className="flex items-end"><button className={primaryClass}>Guardar utilizador</button></div></form><p className="mt-3 text-xs text-[#737a70]">Acesso de demonstração local; este registo não cria uma conta real.</p></Drawer>}<div className="mt-5 overflow-x-auto border border-[#dcd9cc] bg-white p-4"><table className="w-full text-left text-sm"><thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]"><tr>{['Utilizador','Email','Perfil','Delegação','Estado'].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{users.map(u=><tr key={u.email} className="border-b border-[#f0eee7]"><td className="px-3 py-3 font-semibold">{u.name}</td><td className="px-3 py-3">{u.email}</td><td className="px-3 py-3">{u.role}</td><td className="px-3 py-3">{u.office}</td><td className="px-3 py-3"><Status value={u.status}/></td></tr>)}</tbody></table></div></Shell>;
+function SmartInspectionSubmenuBar(){
+  const {pathname}=useLocation();
+  return <div className="mb-6 flex flex-wrap gap-1.5 border-b border-[#dcd9cc] pb-4">
+    {smartInspectionSubmenus.map(sub=>{
+      const active=pathname===sub.path;
+      return <Link key={sub.path} to={sub.path} className={`border px-3 py-1.5 text-xs font-semibold transition ${active?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-white text-[#26372b] hover:border-[#006B35] hover:bg-[#f4f3ed]'}`}>{sub.label}</Link>;
+    })}
+  </div>;
 }
 
-export function TransportLanding(){return <div className="min-h-screen bg-[#173d2b] text-white"><div className="flex h-1.5"><div className="w-1/3 bg-[#CE1126]"/><div className="w-1/3 bg-[#FCD116]"/><div className="w-1/3 bg-[#009E49]"/></div><header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5"><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center border border-[#FCD116]/60 text-sm font-black text-[#FCD116]">GB</div><div><b className="tracking-wider">SIGETRAN</b><div className="text-xs text-[#c4d2c6]">Ministério dos Transportes · Guiné-Bissau</div></div></div><Link to="/login" className="border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10">Acesso institucional</Link></header><main className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-14 md:grid-cols-2 md:py-24"><div><div className="mb-4 inline-flex items-center gap-2 border border-[#FCD116]/40 bg-white/5 px-3 py-1.5 text-xs text-[#FCD116]"><ShieldCheck size={14}/> Portal de serviços · Demonstração</div><h1 className="font-serif text-4xl font-bold leading-tight md:text-6xl">Trânsito e transportes da Guiné-Bissau.</h1><p className="mt-5 max-w-xl leading-7 text-[#d8e2d9]">Uma plataforma integrada para matrícula de veículos, registo de condutores, imposto de circulação e fiscalização rodoviária.</p><div className="mt-8 flex flex-wrap gap-3"><Link to="/plate-check" className="flex items-center gap-2 bg-[#009E49] px-5 py-3 font-semibold text-white hover:bg-[#008440]"><Search size={18}/> Consultar matrícula</Link><Link to="/login" className="flex items-center gap-2 border border-white/35 px-5 py-3 font-semibold hover:bg-white/10">Entrar na gestão <ArrowRight size={17}/></Link></div><p className="mt-6 text-xs text-[#c4d2c6]">Protótipo com dados fictícios. Não processa pagamentos nem consultas oficiais.</p></div><div className="border border-white/15 bg-black/10 p-6"><div className="mb-5 flex items-center justify-between"><div><div className="font-serif text-lg font-bold">Serviços digitais</div><div className="text-xs text-[#c4d2c6]">Acesso rápido ao cidadão</div></div><span className="border border-[#FCD116]/40 px-2.5 py-1 text-[10px] uppercase text-[#FCD116]">Demonstração</span></div><div className="grid gap-3 sm:grid-cols-2">{[{label:'Consulta por matrícula',icon:Search,path:'/plate-check'},{label:'Cadastro de veículos',icon:CarFront,path:'/login'},{label:'Imposto de Circulação',icon:Banknote,path:'/login'},{label:'Multas e infrações',icon:ClipboardList,path:'/login'}].map(({label,icon:Icon,path})=><Link to={path} key={label} className="border border-white/10 bg-[#173d2b] p-4 hover:border-[#FCD116]/60"><Icon className="mb-4 text-[#FCD116]" size={21}/><div className="text-sm font-medium">{label}</div><div className="mt-2 text-xs text-[#c4d2c6]">Aceder ao serviço <ArrowRight className="ml-1 inline" size={13}/></div></Link>)}</div></div></main><footer className="border-t border-white/15 px-6 py-5 text-center text-xs text-[#c4d2c6]">Ministério dos Transportes · República da Guiné-Bissau · Plataforma demonstrativa</footer></div>;}
+function FieldInfractionPrintModal({infraction,onClose}:{infraction:SmartFieldInfraction;onClose:()=>void}){
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#10251a]/65">
+    <div className="relative w-full max-w-2xl bg-white border-2 border-[#006B35] shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+      <div className="flex justify-between items-start border-b-2 border-[#d5d1c2] pb-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 place-items-center border border-[#006B35] bg-[#173d2b] text-base font-black text-[#FCD116]">GB</div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#836300]">República da Guiné-Bissau</div>
+            <h3 className="font-serif text-lg font-bold text-[#173d2b]">Ministério do Interior · Brigada Nacional de Trânsito</h3>
+            <p className="text-xs text-[#52644f]">Auto de Notícia de Infração Rodoviária em Campo</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-1 hover:bg-[#f4f3ed]"><X size={20}/></button>
+      </div>
+
+      <div className="space-y-4 text-xs text-[#202820]">
+        <div className="grid grid-cols-2 gap-3 bg-[#f9f8f4] p-3 border border-[#e5e2d6]">
+          <div><span className="text-[#697168] block">N.º do Auto de Infração:</span><b className="font-mono text-sm text-[#006B35]">{infraction.id}</b></div>
+          <div><span className="text-[#697168] block">Data e Hora da Constatação:</span><b>{infraction.timestamp}</b></div>
+          <div><span className="text-[#697168] block">Força Policial / Unidade:</span><b>{infraction.policeDepartment||'Brigada Nacional de Trânsito (BNT)'}</b></div>
+          <div><span className="text-[#697168] block">Agente Autuante (NIP):</span><b>{infraction.officerName} ({infraction.officerBadge})</b></div>
+        </div>
+
+        <div className="border border-[#e5e2d6] p-3">
+          <h4 className="font-bold text-[#173d2b] mb-2 uppercase text-[11px] tracking-wide">Identificação do Veículo e Condutor</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <div><span className="text-[#697168]">Matrícula:</span> <b className="font-mono bg-[#FCD116] text-[#1c3024] px-1.5 py-0.5 border border-black/20">{infraction.plate}</b></div>
+            <div><span className="text-[#697168]">Veículo:</span> <b>{infraction.vehicleLabel||'Não especificado'} ({infraction.color||'Branco'})</b></div>
+            <div><span className="text-[#697168]">Condutor Autuado:</span> <b>{infraction.driverName}</b></div>
+            <div><span className="text-[#697168]">Documento (BI/Passaporte):</span> <b>{infraction.driverDocument}</b></div>
+            <div><span className="text-[#697168]">Carta de Condução:</span> <b>{infraction.driverLicense||'Não apresentada'}</b></div>
+            <div><span className="text-[#697168]">Apreensão Cautelar do Veículo:</span> <b>{infraction.vehicleImpounded?'SIM - Veículo Apreendido':'NÃO'}</b></div>
+          </div>
+        </div>
+
+        <div className="border border-[#e5e2d6] p-3 bg-[#fdfcf8]">
+          <h4 className="font-bold text-[#173d2b] mb-2 uppercase text-[11px] tracking-wide">Tipificação Legal e Coima</h4>
+          <div className="space-y-1">
+            <p><b className="text-[#CE1126]">{infraction.infractionCode}</b> - {infraction.legalArticle}</p>
+            <p className="text-[#555]">{infraction.description}</p>
+            <div className="mt-2 pt-2 border-t border-[#e5e2d6] flex justify-between items-center">
+              <span className="font-semibold text-sm">Montante da Coima Fixada:</span>
+              <span className="font-mono font-bold text-base text-[#CE1126]">{currency(Number(infraction.fineAmount))}</span>
+            </div>
+            <div className="flex justify-between text-xs text-[#697168] pt-1">
+              <span>Estado do Pagamento:</span>
+              <Status value={infraction.paymentStatus}/>
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-[#e5e2d6] p-3">
+          <h4 className="font-bold text-[#173d2b] mb-2 uppercase text-[11px] tracking-wide">Localização GPS e Fotografia de Evidência</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <div><span className="text-[#697168]">Local:</span> <b>{infraction.locationAddress}</b></div>
+            <div><span className="text-[#697168]">Coordenadas GPS:</span> <b className="font-mono">{infraction.gpsCoordinates}</b></div>
+          </div>
+          {infraction.evidencePhotoUrl&&(
+            <div className="mt-2 pt-2 border-t border-[#e5e2d6] flex items-center gap-3">
+              <Camera size={16} className="text-[#006B35]"/>
+              <span className="text-[#697168]">Registo fotográfico anexado ao auto:</span>
+              <span className="font-mono text-[11px] text-[#006B35]">{infraction.evidencePhotoUrl}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-[#d5d1c2] pt-4 text-[10px] text-[#737a70] space-y-1">
+          <p>O autuado dispõe do prazo legal de 15 dias para liquidar a coima voluntariamente ou apresentar defesa escrita à Direção-Geral de Viação e Transportes Terrestres.</p>
+          <p>Validação eletrónica via SIGETRAN · República da Guiné-Bissau.</p>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2 print:hidden">
+          <button onClick={()=>window.print()} className={primaryClass}><Printer size={15}/> Imprimir Auto Oficial</button>
+          <button onClick={onClose} className={secondaryClass}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+export function SmartPlateQueryPage(){
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [queries,setQueries]=useSaved('smart-inspection-queries',seedSmartQueries);
+  const [stolenAlerts]=useSaved('smart-inspection-stolen',seedSmartStolen);
+  const [fines]=useSaved('fines',seedFines);
+
+  const [inputPlate,setInputPlate]=useState('GB-24-BC');
+  const [selectedStation,setSelectedStation]=useState('Posto Fixo Titina Silá, Bissau');
+  const [officerName,setOfficerName]=useState('Agente Malam Pereira');
+  const [loading,setLoading]=useState(false);
+  const [searchHistory,setSearchHistory]=useState('');
+  const [queryResult,setQueryResult]=useState<any>(null);
+
+  async function handleQuery(plateToQuery?:string){
+    const plate=(plateToQuery||inputPlate).toUpperCase().trim();
+    if(!plate)return;
+    setLoading(true);
+    try{
+      const res=await api.post('/smart-inspection/plate-query',{
+        plate,
+        officerName,
+        location:selectedStation,
+        gpsCoordinates:'11.8682, -15.5921'
+      });
+      setQueryResult(res.data);
+      if(res.data?.query){
+        setQueries(prev=>[res.data.query,...prev.filter(q=>q.id!==res.data.query.id)]);
+      }
+    }catch(err){
+      // Fallback local logic
+      const veh=vehicles.find(v=>v.plate.toUpperCase()===plate);
+      const stolen=stolenAlerts.find(s=>s.plate.toUpperCase()===plate&&s.status.includes('Ativo'));
+      const pendingFinesList=fines.filter(f=>f.plate.toUpperCase()===plate&&f.status==='Pendente');
+      const isTaxDue=veh?.taxDue&&veh.taxDue>0;
+
+      let status='Regular';
+      let reason='';
+      if(stolen){status='Alerta de Roubo';reason=`Veículo com Mandado de Apreensão por Furto (BO: ${stolen.theftReportNumber})`;}
+      else if(isTaxDue){status='Irregular';reason='Imposto de Circulação / Vinheta em atraso';}
+      else if(!veh){status='Não Registado';reason='Matrícula não consta na base nacional';}
+
+      const mockQuery:SmartInspectionQuery={
+        id:`CMP-${Date.now().toString().slice(-6)}`,
+        plate,
+        queryDateTime:new Date().toISOString().replace('T',' ').slice(0,19),
+        officerName,
+        policeDepartment:'Brigada Nacional de Trânsito (BNT)',
+        location:selectedStation,
+        gpsCoordinates:'11.8682, -15.5921',
+        status,
+        irregularityReason:reason,
+        vehicleDetails:veh?`${veh.make} ${veh.model} (${veh.year}) - ${veh.color||'Branco'}`:'Desconhecido',
+        ownerName:veh?.owner||'Não identificado',
+        insuranceValid:true,
+        inspectionValid:!isTaxDue,
+        circulationTaxPaid:!isTaxDue,
+        administrativeBlock:Boolean(stolen)
+      };
+
+      setQueries(prev=>[mockQuery,...prev]);
+      setQueryResult({
+        query:mockQuery,
+        vehicle:{
+          plate,
+          found:Boolean(veh),
+          make:veh?.make||'---',
+          model:veh?.model||'---',
+          year:veh?.year,
+          color:veh?.color||'---',
+          owner:veh?.owner||'Não identificado',
+          driver:veh?.driver||'---',
+          category:veh?.category||'---',
+          district:veh?.district||'---',
+          legalStatus:veh?.legalStatus||'Regular',
+          taxDue:veh?.taxDue||0
+        },
+        stolenAlert:{
+          isStolen:Boolean(stolen),
+          reportNumber:stolen?.theftReportNumber,
+          priority:stolen?.priorityLevel,
+          victim:stolen?.victimName,
+          victimContact:stolen?.victimContact
+        },
+        pendingFines:{
+          count:pendingFinesList.length,
+          totalAmount:pendingFinesList.reduce((acc,f)=>acc+f.amount,0),
+          items:pendingFinesList.map(f=>({code:f.id,description:f.infraction,amount:f.amount,date:f.date}))
+        }
+      });
+    }finally{
+      setLoading(false);
+    }
+  }
+
+  const filteredHistory=useMemo(()=>queries.filter(q=>{
+    return [q.plate,q.ownerName||'',q.status,q.officerName,q.location||''].join(' ').toLowerCase().includes(searchHistory.toLowerCase());
+  }),[queries,searchHistory]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Consulta de matrícula em tempo real" description="Cruzamento imediato de dados veiculares, mandados de captura, inspeção periódica e cobrança de imposto." icon={Radar}/>
+    <SmartInspectionSubmenuBar/>
+
+    <div className="grid gap-6 lg:grid-cols-12 mb-8">
+      {/* Box de Pesquisa Estilizada */}
+      <div className="lg:col-span-5 border border-[#dcd9cc] bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-2 font-serif text-base font-bold text-[#1c3024] mb-4 border-b border-[#e9e6dc] pb-2">
+          <Search size={18} className="text-[#006B35]"/> Terminal de Pesquisa Tática
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Chapa de Matrícula (Padrão Nacional GB)</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={inputPlate}
+                onChange={e=>setInputPlate(e.target.value.toUpperCase())}
+                placeholder="GB-00-AA"
+                className="w-full border-2 border-[#173d2b] bg-[#FCD116] px-4 py-3 text-xl font-mono font-black uppercase text-[#1c3024] tracking-widest placeholder-[#1c3024]/40 shadow-inner outline-none focus:ring-2 focus:ring-[#006B35]"
+              />
+              <span className="absolute right-3 top-3.5 text-xs font-black text-[#CE1126] border border-[#CE1126] px-1 bg-white">GB</span>
+            </div>
+            <p className="mt-1 text-[11px] text-[#737a70]">Exemplos rápidos: GB-24-BC (imposto atrasado), GB-21-XX (alerta de roubo), GB-19-AA (regular)</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Posto de Fiscalização / Ponto de Controlo</label>
+            <select value={selectedStation} onChange={e=>setSelectedStation(e.target.value)} className={inputClass}>
+              <option>Posto Fixo Titina Silá, Bissau</option>
+              <option>Rotunda de Safim - Estrada Nacional N1</option>
+              <option>Aeroporto Internacional Osvaldo Vieira</option>
+              <option>Ponte Amílcar Cabral (João Landim)</option>
+              <option>Acesso ao Porto de Bissau (Pidjiguiti)</option>
+              <option>Posto de Fiscalização Regional de Bafatá</option>
+              <option>Posto de Fronteira de São Domingos</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Agente Operacional Responsável</label>
+            <input type="text" value={officerName} onChange={e=>setOfficerName(e.target.value)} className={inputClass}/>
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={()=>handleQuery()}
+              disabled={loading||!inputPlate.trim()}
+              className={`${primaryClass} w-full py-3 text-base`}
+            >
+              {loading?<><Radio size={18} className="animate-spin"/> Consultando Base de Dados...</>:<><Radar size={18}/> Consultar em Tempo Real</>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Painel de Resultados */}
+      <div className="lg:col-span-7">
+        {queryResult?(
+          <div className="border border-[#dcd9cc] bg-white shadow-sm overflow-hidden">
+            {/* Status Banner */}
+            <div className={`p-4 text-white flex items-center justify-between ${
+              queryResult.stolenAlert?.isStolen?'bg-[#CE1126] animate-pulse':
+              queryResult.query?.status==='Irregular'?'bg-[#836300]':
+              queryResult.query?.status==='Regular'?'bg-[#006B35]':'bg-[#52644f]'
+            }`}>
+              <div className="flex items-center gap-3">
+                {queryResult.stolenAlert?.isStolen?<Siren size={24}/>:queryResult.query?.status==='Regular'?<ShieldCheck size={24}/>:<AlertTriangle size={24}/>}
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-white/80">Resultado da Fiscalização</div>
+                  <h3 className="font-serif text-lg font-bold">{queryResult.query?.status.toUpperCase()}</h3>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="font-mono text-xs bg-black/20 px-2 py-1 rounded">{queryResult.query?.id}</span>
+                <div className="text-[10px] text-white/80 mt-0.5">{queryResult.query?.queryDateTime}</div>
+              </div>
+            </div>
+
+            {queryResult.stolenAlert?.isStolen&&(
+              <div className="bg-[#fff5f5] border-b border-[#CE1126]/30 p-4 text-xs text-[#CE1126]">
+                <b className="text-sm block mb-1">🚨 ALERTA CRÍTICO: MANDADO DE APREENSÃO POR ROUBO</b>
+                <p>Veículo sinalizado no Cadastro Nacional de Furtos e Roubos sob o BO n.º <b>{queryResult.stolenAlert.reportNumber}</b>.</p>
+                <p>Proprietário / Vítima: <b>{queryResult.stolenAlert.victim}</b> · Contacto: <b>{queryResult.stolenAlert.victimContact}</b>.</p>
+                <p className="font-bold mt-1">Ação Imediata: Reter o veículo, deter preventivamente os ocupantes e notificar o Comissariado da POP.</p>
+              </div>
+            )}
+
+            {queryResult.query?.irregularityReason&&!queryResult.stolenAlert?.isStolen&&(
+              <div className="bg-[#fcf8e3] border-b border-[#FCD116] p-3 text-xs text-[#836300]">
+                <b>Atenção:</b> {queryResult.query.irregularityReason}
+              </div>
+            )}
+
+            {/* Vehicle Card */}
+            <div className="p-5 space-y-4">
+              <div className="flex justify-between items-start border-b border-[#e9e6dc] pb-3">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#737a70]">Veículo Inspecionado</span>
+                  <div className="font-serif text-xl font-bold text-[#1c3024]">
+                    {queryResult.vehicle?.make} {queryResult.vehicle?.model} {queryResult.vehicle?.year&&`(${queryResult.vehicle.year})`}
+                  </div>
+                  <div className="text-xs text-[#697168]">Cor: <b>{queryResult.vehicle?.color}</b> · Categoria: <b>{queryResult.vehicle?.category}</b></div>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-black text-lg bg-[#FCD116] px-2 py-1 border border-black/20 text-[#1c3024]">
+                    {queryResult.vehicle?.plate}
+                  </span>
+                  <div className="text-[10px] text-[#737a70] mt-1">Delegação: {queryResult.vehicle?.district}</div>
+                </div>
+              </div>
+
+              {/* Status Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="border border-[#e9e6dc] p-2.5 bg-[#fbfaf6]">
+                  <span className="text-[#737a70] block text-[10px] uppercase font-bold">Seguro Obrigatório</span>
+                  <b className="text-[#006B35]">Válido e Vigente</b>
+                </div>
+                <div className="border border-[#e9e6dc] p-2.5 bg-[#fbfaf6]">
+                  <span className="text-[#737a70] block text-[10px] uppercase font-bold">Inspeção Periódica</span>
+                  <b className={queryResult.query?.inspectionValid?'text-[#006B35]':'text-[#CE1126]'}>
+                    {queryResult.query?.inspectionValid?'Aprovada':'Vencida / Falta'}
+                  </b>
+                </div>
+                <div className="border border-[#e9e6dc] p-2.5 bg-[#fbfaf6]">
+                  <span className="text-[#737a70] block text-[10px] uppercase font-bold">Imposto de Circulação</span>
+                  <b className={queryResult.query?.circulationTaxPaid?'text-[#006B35]':'text-[#CE1126]'}>
+                    {queryResult.query?.circulationTaxPaid?'Liquidado':`${currency(queryResult.vehicle?.taxDue||41500)} em dívida`}
+                  </b>
+                </div>
+                <div className="border border-[#e9e6dc] p-2.5 bg-[#fbfaf6]">
+                  <span className="text-[#737a70] block text-[10px] uppercase font-bold">Bloqueio Admin.</span>
+                  <b className={queryResult.query?.administrativeBlock?'text-[#CE1126]':'text-[#006B35]'}>
+                    {queryResult.query?.administrativeBlock?'ATIVO':'Nada Consta'}
+                  </b>
+                </div>
+              </div>
+
+              {/* Owner and Fines */}
+              <div className="grid sm:grid-cols-2 gap-4 text-xs pt-1">
+                <div className="border border-[#e9e6dc] p-3">
+                  <div className="font-bold text-[#173d2b] mb-1 uppercase text-[10px] tracking-wide">Proprietário / Titular Registado</div>
+                  <p className="text-sm font-semibold text-[#1c3024]">{queryResult.vehicle?.owner}</p>
+                  <p className="text-[#737a70] text-[11px] mt-0.5">Condutor habitual: {queryResult.vehicle?.driver||'Mesmo proprietário'}</p>
+                  <p className="text-[#737a70] text-[11px]">Situação cadastral: {queryResult.vehicle?.legalStatus}</p>
+                </div>
+
+                <div className="border border-[#e9e6dc] p-3">
+                  <div className="font-bold text-[#173d2b] mb-1 uppercase text-[10px] tracking-wide">Histórico de Infrações Pendentes</div>
+                  {queryResult.pendingFines?.count>0?(
+                    <div>
+                      <p className="font-bold text-[#CE1126]">{queryResult.pendingFines.count} auto(s) pendente(s) de pagamento</p>
+                      <p className="text-xs text-[#52644f]">Total em dívida: <b>{currency(queryResult.pendingFines.totalAmount)}</b></p>
+                    </div>
+                  ):(
+                    <p className="text-[#006B35] font-medium">Nenhum auto pendente registado no sistema.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="border-t border-[#e9e6dc] pt-3 flex flex-wrap gap-2 justify-end">
+                <Link to="/smart-inspection/gps-infractions" className={primaryClass}>
+                  <Camera size={14}/> Lavrar Auto em Campo
+                </Link>
+                <Link to="/smart-inspection/qr-check" className={secondaryClass}>
+                  <QrCode size={14}/> Validar Documentos QR
+                </Link>
+                <button onClick={()=>window.print()} className={secondaryClass}>
+                  <Printer size={14}/> Imprimir Ficha de Fiscalização
+                </button>
+              </div>
+            </div>
+          </div>
+        ):(
+          <div className="border border-dashed border-[#cfcbbc] bg-white p-12 text-center text-[#737a70]">
+            <Radar size={48} className="mx-auto text-[#006B35]/40 mb-3"/>
+            <h3 className="font-serif text-lg font-bold text-[#1c3024]">Pronto para Fiscalização</h3>
+            <p className="max-w-md mx-auto text-xs mt-1">Insira uma matrícula ao lado ou clique num dos registos do histórico para carregar a situação jurídica e cadastral completa em tempo real.</p>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Histórico Recente de Consultas */}
+    <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#e9e6dc] pb-3 mb-4">
+        <div>
+          <h3 className="font-serif text-base font-bold text-[#1c3024]">Histórico Recente de Consultas pelos Postos Operacionais</h3>
+          <p className="text-xs text-[#737a70]">Registo de auditoria de consultas efetuadas em tempo real pelas brigadas e postos fixos</p>
+        </div>
+        <input
+          type="text"
+          value={searchHistory}
+          onChange={e=>setSearchHistory(e.target.value)}
+          placeholder="Pesquisar por matrícula, agente ou posto..."
+          className={`max-w-xs ${inputClass}`}
+        />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-[#dcd9cc] bg-[#f9f8f4] text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>
+              <th className="px-3 py-2.5">Código</th>
+              <th className="px-3 py-2.5">Matrícula</th>
+              <th className="px-3 py-2.5">Veículo / Proprietário</th>
+              <th className="px-3 py-2.5">Posto / Localização</th>
+              <th className="px-3 py-2.5">Agente</th>
+              <th className="px-3 py-2.5">Situação</th>
+              <th className="px-3 py-2.5">Data/Hora</th>
+              <th className="px-3 py-2.5 text-right">Ação</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0eee7]">
+            {filteredHistory.map(q=><tr key={q.id} className="hover:bg-[#fbfaf6]">
+              <td className="px-3 py-2.5 font-mono text-[#006B35] font-semibold">{q.id}</td>
+              <td className="px-3 py-2.5 font-mono font-bold bg-[#FCD116]/20">{q.plate}</td>
+              <td className="px-3 py-2.5">
+                <div className="font-semibold text-[#1c3024]">{q.vehicleDetails||'Veículo'}</div>
+                <div className="text-[10px] text-[#737a70]">{q.ownerName}</div>
+              </td>
+              <td className="px-3 py-2.5">{q.location||'Bissau'}</td>
+              <td className="px-3 py-2.5">{q.officerName}</td>
+              <td className="px-3 py-2.5"><Status value={q.status}/></td>
+              <td className="px-3 py-2.5 font-mono text-[11px] text-[#697168]">{q.queryDateTime}</td>
+              <td className="px-3 py-2.5 text-right">
+                <button
+                  onClick={()=>{setInputPlate(q.plate);handleQuery(q.plate);}}
+                  className="text-[#006B35] hover:underline font-semibold"
+                >
+                  Consultar novamente
+                </button>
+              </td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function SmartLprAnprPage(){
+  const [lprReadings,setLprReadings]=useSaved('smart-inspection-lpr',seedSmartLpr);
+  const [stolenAlerts]=useSaved('smart-inspection-stolen',seedSmartStolen);
+  const [selectedCamera,setSelectedCamera]=useState('CAM-SAFIM-NORTE-02');
+  const [filterAlertOnly,setFilterAlertOnly]=useState(false);
+  const [search,setSearch]=useState('');
+  const [simulating,setSimulating]=useState(false);
+  const [testPlate,setTestPlate]=useState('GB-21-XX');
+
+  const cameras=[
+    {id:'CAM-SAFIM-NORTE-02',name:'Rotunda de Safim - Estrada Nacional N1',region:'Biombo',speedLimit:80},
+    {id:'CAM-BISSAU-AEROPORTO-01',name:'Av. Combatentes (Sentido Aeroporto)',region:'Bissau',speedLimit:60},
+    {id:'CAM-PONTE-JOAOLANDIM-01',name:'Ponte Amílcar Cabral (João Landim)',region:'Biombo',speedLimit:50},
+    {id:'CAM-PORTO-BISSAU-03',name:'Acesso ao Porto de Bissau (Pidjiguiti)',region:'Bissau',speedLimit:40},
+    {id:'CAM-BAFATA-ENTRADA-01',name:'Entrada Poente de Bafatá - EN2',region:'Bafatá',speedLimit:60},
+  ];
+
+  const currentCam=cameras.find(c=>c.id===selectedCamera)||cameras[0];
+
+  async function triggerSimulation(){
+    setSimulating(true);
+    const plate=testPlate.toUpperCase().trim()||'GB-24-BC';
+    const isStolen=stolenAlerts.some(s=>s.plate.toUpperCase()===plate&&s.status.includes('Ativo'));
+    const speed=Math.floor(Math.random()*40)+currentCam.speedLimit;
+    const isOverSpeed=speed>currentCam.speedLimit+15;
+
+    let alertTriggered=false;
+    let alertType='Nenhum';
+    let statusInterception='Livre / Sem Restrições';
+
+    if(isStolen){
+      alertTriggered=true;
+      alertType='Veículo Roubado';
+      statusInterception='ALERTA VERMELHO - Notificar Patrulha Imediatamente';
+    }else if(isOverSpeed){
+      alertTriggered=true;
+      alertType='Excesso de Velocidade';
+      statusInterception='Auto de Notícia Automático Emitido';
+    }
+
+    const payload:SmartLprReading={
+      id:`LPR-${Date.now().toString().slice(-6)}`,
+      detectedPlate:plate,
+      cameraId:currentCam.id,
+      cameraLocation:currentCam.name,
+      gpsCoordinates:'11.9542, -15.6511',
+      speedKmh:speed,
+      confidence:(98.0+Math.random()*1.8).toFixed(1),
+      captureImageUrl:`/media/lpr/lpr_${plate.toLowerCase().replace(/-/g,'_')}.jpg`,
+      alertTriggered,
+      alertType,
+      interceptionStatus:statusInterception,
+      timestamp:new Date().toISOString().replace('T',' ').slice(0,19)
+    };
+
+    try{
+      await api.post('/smart-inspection/lpr',payload);
+    }catch{/* ignore */}
+
+    setLprReadings(prev=>[payload,...prev]);
+    setTimeout(()=>setSimulating(false),600);
+  }
+
+  const filtered=useMemo(()=>lprReadings.filter(r=>{
+    const matchesAlert=!filterAlertOnly||r.alertTriggered;
+    const matchesSearch=[r.detectedPlate,r.cameraId,r.cameraLocation,r.alertType].join(' ').toLowerCase().includes(search.toLowerCase());
+    return matchesAlert&&matchesSearch;
+  }),[lprReadings,filterAlertOnly,search]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Leitura automática de placas (LPR / ANPR)" description="Monitorização e reconhecimento ótico de caracteres (OCR) em pontos estratégicos da rede viária nacional." icon={ScanLine}/>
+    <SmartInspectionSubmenuBar/>
+
+    {/* Live Camera Viewport & Controls */}
+    <div className="grid gap-6 lg:grid-cols-12 mb-8">
+      <div className="lg:col-span-8 border border-[#173d2b] bg-[#0d1f15] text-white shadow-lg overflow-hidden">
+        {/* Top Camera Bar */}
+        <div className="bg-[#173d2b] px-4 py-2 flex justify-between items-center text-xs border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#CE1126] animate-ping"/>
+            <span className="font-mono font-bold text-[#FCD116]">AO VIVO · CÂMARA OCR</span>
+            <span className="text-[#9fb7a4]">| {currentCam.name}</span>
+          </div>
+          <div className="font-mono text-[11px] text-white/70">LIMITE: {currentCam.speedLimit} KM/H</div>
+        </div>
+
+        {/* Video Canvas Simulation */}
+        <div className="relative h-64 sm:h-80 bg-gradient-to-b from-[#11241a] via-[#173d2b]/80 to-[#0b1710] flex items-center justify-center overflow-hidden">
+          {/* Grid lines */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:32px_32px]"/>
+
+          {/* Crosshair target overlay */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="relative border-2 border-dashed border-[#009E49] p-6 sm:p-10 bg-black/40 shadow-2xl">
+              <span className="absolute -top-3 -left-3 text-[#009E49] font-mono text-[10px] bg-black px-1">[LPR SCANNER]</span>
+              <div className="font-mono font-black text-3xl sm:text-4xl text-[#FCD116] bg-[#173d2b] px-6 py-2 border-2 border-[#FCD116] tracking-widest shadow-lg">
+                {lprReadings[0]?.detectedPlate||'GB-24-BC'}
+              </div>
+              <div className="mt-2 text-center text-xs font-mono text-[#009E49]">
+                CONF: {lprReadings[0]?.confidence||'99.2'}% · RADAR: {lprReadings[0]?.speedKmh||54} KM/H
+              </div>
+            </div>
+            {lprReadings[0]?.alertTriggered&&(
+              <div className="mt-3 bg-[#CE1126] text-white font-bold text-xs uppercase px-4 py-1 tracking-wider animate-bounce">
+                ⚠ ALERTA DISPARADO: {lprReadings[0]?.alertType}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom HUD */}
+          <div className="absolute bottom-2 left-3 right-3 flex justify-between text-[11px] font-mono text-white/60">
+            <span>GPS: {currentCam.id} · REG: {currentCam.region}</span>
+            <span>SIGETRAN LPR CORE v2.4</span>
+          </div>
+        </div>
+
+        {/* Camera Selector Buttons */}
+        <div className="bg-[#12281c] p-3 flex flex-wrap gap-2 border-t border-white/10">
+          {cameras.map(c=><button
+            key={c.id}
+            onClick={()=>setSelectedCamera(c.id)}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition ${selectedCamera===c.id?'bg-[#009E49] text-white':'bg-white/10 text-[#d8e2d9] hover:bg-white/20'}`}
+          >
+            {c.name.split('-')[0]}
+          </button>)}
+        </div>
+      </div>
+
+      {/* Simulator Trigger Box */}
+      <div className="lg:col-span-4 border border-[#dcd9cc] bg-white p-5 shadow-sm space-y-4">
+        <div className="font-serif text-base font-bold text-[#1c3024] border-b border-[#e9e6dc] pb-2 flex items-center gap-2">
+          <Scan size={18} className="text-[#006B35]"/> Simulação de Deteção LPR
+        </div>
+        <p className="text-xs text-[#737a70]">
+          Simule a passagem de um veículo diante da câmara de reconhecimento automático de placas para testar disparos de alertas.
+        </p>
+
+        <div>
+          <label className="block text-xs font-semibold text-[#1c3024] mb-1">Matrícula de Teste</label>
+          <input
+            type="text"
+            value={testPlate}
+            onChange={e=>setTestPlate(e.target.value.toUpperCase())}
+            placeholder="GB-00-AA"
+            className={`font-mono font-bold uppercase ${inputClass}`}
+          />
+        </div>
+
+        <div className="space-y-1.5 text-xs">
+          <span className="text-[#737a70] block font-semibold">Testes predefinidos:</span>
+          <div className="flex flex-wrap gap-1">
+            <button onClick={()=>setTestPlate('GB-21-XX')} className="border border-[#CE1126] px-2 py-1 text-[11px] bg-[#fff5f5] text-[#CE1126] font-bold">GB-21-XX (Roubado)</button>
+            <button onClick={()=>setTestPlate('GB-08-TT')} className="border border-[#836300] px-2 py-1 text-[11px] bg-[#fdfbe9] text-[#836300] font-bold">GB-08-TT (Velocidade)</button>
+            <button onClick={()=>setTestPlate('GB-19-AA')} className="border border-[#006B35] px-2 py-1 text-[11px] bg-[#f2f9f4] text-[#006B35] font-bold">GB-19-AA (Regular)</button>
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <button
+            onClick={triggerSimulation}
+            disabled={simulating}
+            className={`${primaryClass} w-full py-2.5`}
+          >
+            {simulating?<><Radio size={16} className="animate-spin"/> Capturando Imagem...</>:<><ScanLine size={16}/> Disparar Leitura de Placa</>}
+          </button>
+        </div>
+
+        <div className="border-t border-[#e9e6dc] pt-3 text-xs text-[#52644f] space-y-1">
+          <div className="flex justify-between"><span>Total de Leituras Registadas:</span><b>{lprReadings.length}</b></div>
+          <div className="flex justify-between"><span>Alertas Críticos Ativados:</span><b className="text-[#CE1126]">{lprReadings.filter(r=>r.alertTriggered).length}</b></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Feed de Passagens Recentes */}
+    <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#e9e6dc] pb-3 mb-4">
+        <div>
+          <h3 className="font-serif text-base font-bold text-[#1c3024]">Fluxo de Passagens Detectadas por Reconhecimento Ótico</h3>
+          <p className="text-xs text-[#737a70]">Histórico em tempo real de viaturas identificadas nas vias monitoradas</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={()=>setFilterAlertOnly(!filterAlertOnly)}
+            className={`border px-3 py-1.5 text-xs font-semibold ${filterAlertOnly?'border-[#CE1126] bg-[#CE1126] text-white':'border-[#d5d1c2] bg-white text-[#26372b]'}`}
+          >
+            {filterAlertOnly?'Exibindo apenas alertas':'Filtrar apenas alertas'}
+          </button>
+          <input
+            type="text"
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+            placeholder="Pesquisar matrícula..."
+            className={`max-w-xs ${inputClass}`}
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-[#dcd9cc] bg-[#f9f8f4] text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>
+              <th className="px-3 py-2.5">Registo LPR</th>
+              <th className="px-3 py-2.5">Matrícula Reconhecida</th>
+              <th className="px-3 py-2.5">Ponto de Captura</th>
+              <th className="px-3 py-2.5">Velocidade</th>
+              <th className="px-3 py-2.5">Confiança OCR</th>
+              <th className="px-3 py-2.5">Alerta</th>
+              <th className="px-3 py-2.5">Procedimento / Despacho</th>
+              <th className="px-3 py-2.5">Data e Hora</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0eee7]">
+            {filtered.map(r=><tr key={r.id} className={r.alertTriggered?'bg-[#fff9f9] hover:bg-[#fff0f0]':'hover:bg-[#fbfaf6]'}>
+              <td className="px-3 py-2.5 font-mono text-[#006B35] font-semibold">{r.id}</td>
+              <td className="px-3 py-2.5">
+                <span className="font-mono font-bold text-xs bg-[#FCD116] text-[#1c3024] px-1.5 py-0.5 border border-black/20">
+                  {r.detectedPlate}
+                </span>
+              </td>
+              <td className="px-3 py-2.5 font-medium">{r.cameraLocation}</td>
+              <td className="px-3 py-2.5 font-mono">{r.speedKmh} km/h</td>
+              <td className="px-3 py-2.5 font-mono">{r.confidence}%</td>
+              <td className="px-3 py-2.5">
+                {r.alertTriggered?<span className="inline-flex items-center gap-1 font-bold text-[#CE1126]"><AlertTriangle size={12}/>{r.alertType}</span>:<span className="text-[#006B35]">Livre</span>}
+              </td>
+              <td className="px-3 py-2.5 font-semibold text-[#1c3024]">{r.interceptionStatus}</td>
+              <td className="px-3 py-2.5 font-mono text-[11px] text-[#697168]">{r.timestamp}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function SmartQrCheckPage(){
+  const [qrChecks,setQrChecks]=useSaved('smart-inspection-qr',seedSmartQr);
+  const [docType,setDocType]=useState('Certificado de Matrícula (DUA)');
+  const [docNumber,setDocNumber]=useState('DUA-GB-2024-009841');
+  const [holderName,setHolderName]=useState('Mamadu Embaló');
+  const [plate,setPlate]=useState('GB-24-BC');
+  const [verifiedResult,setVerifiedResult]=useState<SmartQrVerification|null>(null);
+  const [verifying,setVerifying]=useState(false);
+  const [search,setSearch]=useState('');
+
+  async function handleVerify(overrideData?:Partial<SmartQrVerification>){
+    setVerifying(true);
+    const payload={
+      documentType:overrideData?.documentType||docType,
+      documentNumber:overrideData?.documentNumber||docNumber,
+      holderName:overrideData?.holderName||holderName,
+      associatedPlate:overrideData?.associatedPlate||plate,
+      cryptographicHash:overrideData?.cryptographicHash||'a7b9c1d3e5f7028149adbcde82410948',
+      verifiedBy:'Agente Fiscalizador BNT',
+      deviceUsed:'Terminal Móvel Zebra TC26'
+    };
+
+    try{
+      const res=await api.post('/smart-inspection/qr-verify',payload);
+      setVerifiedResult(res.data);
+      setQrChecks(prev=>[res.data,...prev]);
+    }catch{
+      // Fallback
+      const isExpired=payload.documentNumber.includes('44102')||payload.documentNumber.includes('EXP');
+      const mock:SmartQrVerification={
+        id:`QR-${Date.now().toString().slice(-6)}`,
+        documentType:payload.documentType,
+        documentNumber:payload.documentNumber,
+        holderName:payload.holderName,
+        associatedPlate:payload.associatedPlate,
+        cryptographicHash:payload.cryptographicHash,
+        validityStatus:isExpired?'Documento Expirado':'Autêntico e Válido',
+        issueDate:'2024-01-15',
+        expiryDate:isExpired?'2025-01-15':'2029-01-15',
+        verifiedBy:payload.verifiedBy,
+        deviceUsed:payload.deviceUsed,
+        verificationDate:new Date().toISOString().replace('T',' ').slice(0,19)
+      };
+      setVerifiedResult(mock);
+      setQrChecks(prev=>[mock,...prev]);
+    }finally{
+      setVerifying(false);
+    }
+  }
+
+  const filtered=useMemo(()=>qrChecks.filter(q=>{
+    return [q.documentNumber,q.holderName,q.documentType,q.associatedPlate||'',q.validityStatus].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[qrChecks,search]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Consulta de documentos através de QR Code" description="Validação criptográfica de certificados de matrícula (DUA), cartas digitais e inspeções periciais." icon={QrCode}/>
+    <SmartInspectionSubmenuBar/>
+
+    <div className="grid gap-6 lg:grid-cols-12 mb-8">
+      {/* QR Scanner Viewfinder & Controls */}
+      <div className="lg:col-span-5 border border-[#dcd9cc] bg-white p-6 shadow-sm space-y-4">
+        <div className="font-serif text-base font-bold text-[#1c3024] border-b border-[#e9e6dc] pb-2 flex items-center gap-2">
+          <QrCode size={18} className="text-[#006B35]"/> Leitor de Código QR / Código de Barras
+        </div>
+
+        {/* Viewfinder Mockup */}
+        <div className="relative h-44 bg-[#11241a] rounded-sm flex items-center justify-center border-2 border-[#006B35] overflow-hidden">
+          <div className="absolute inset-4 border-2 border-dashed border-[#FCD116] flex items-center justify-center">
+            <div className="w-full h-0.5 bg-[#009E49] shadow-[0_0_8px_#009E49] animate-pulse"/>
+          </div>
+          <div className="relative z-10 text-center text-white/80 text-xs">
+            <QrCode size={36} className="mx-auto mb-1 text-[#FCD116]"/>
+            <span className="font-mono text-[10px]">APONTE A CÂMARA PARA O QR DO DOCUMENTO</span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Tipo de Documento Oficial</label>
+            <select value={docType} onChange={e=>setDocType(e.target.value)} className={inputClass}>
+              <option>Certificado de Matrícula (DUA)</option>
+              <option>Carta de Condução Digital</option>
+              <option>Certificado de Inspeção Periódica</option>
+              <option>Apólice de Seguro Automóvel</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Número do Documento / Hash</label>
+            <input type="text" value={docNumber} onChange={e=>setDocNumber(e.target.value)} className={inputClass}/>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-semibold text-[#1c3024] mb-1">Titular</label>
+              <input type="text" value={holderName} onChange={e=>setHolderName(e.target.value)} className={inputClass}/>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#1c3024] mb-1">Matrícula</label>
+              <input type="text" value={plate} onChange={e=>setPlate(e.target.value.toUpperCase())} className={inputClass}/>
+            </div>
+          </div>
+
+          <div className="space-y-1 text-xs">
+            <span className="text-[#737a70] block font-semibold">Testes rápidos:</span>
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={()=>{
+                  setDocType('Certificado de Matrícula (DUA)');
+                  setDocNumber('DUA-GB-2024-009841');
+                  setHolderName('Mamadu Embaló');
+                  setPlate('GB-24-BC');
+                  handleVerify({documentType:'Certificado de Matrícula (DUA)',documentNumber:'DUA-GB-2024-009841',holderName:'Mamadu Embaló',associatedPlate:'GB-24-BC'});
+                }}
+                className="border border-[#006B35] px-2 py-1 text-[11px] bg-[#f2f9f4] text-[#006B35] font-semibold"
+              >
+                DUA Mamadu Embaló
+              </button>
+              <button
+                onClick={()=>{
+                  setDocType('Carta de Condução Digital');
+                  setDocNumber('CND-GB-B-849201');
+                  setHolderName('Bacar Camará');
+                  setPlate('GB-19-AA');
+                  handleVerify({documentType:'Carta de Condução Digital',documentNumber:'CND-GB-B-849201',holderName:'Bacar Camará',associatedPlate:'GB-19-AA'});
+                }}
+                className="border border-[#006B35] px-2 py-1 text-[11px] bg-[#f2f9f4] text-[#006B35] font-semibold"
+              >
+                Carta Bacar Camará
+              </button>
+              <button
+                onClick={()=>{
+                  setDocType('Certificado de Inspeção Periódica');
+                  setDocNumber('IPO-GB-2024-44102');
+                  setHolderName('Mariama Djabi');
+                  setPlate('GB-22-CD');
+                  handleVerify({documentType:'Certificado de Inspeção Periódica',documentNumber:'IPO-GB-2024-44102',holderName:'Mariama Djabi',associatedPlate:'GB-22-CD'});
+                }}
+                className="border border-[#CE1126] px-2 py-1 text-[11px] bg-[#fff5f5] text-[#CE1126] font-semibold"
+              >
+                Inspeção Expirada
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={()=>handleVerify()}
+            disabled={verifying||!docNumber.trim()}
+            className={`${primaryClass} w-full py-2.5`}
+          >
+            {verifying?<><Radio size={16} className="animate-spin"/> Descodificando Hash...</>:<><Check size={16}/> Validar Autenticidade Digital</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Verification Result Panel */}
+      <div className="lg:col-span-7">
+        {verifiedResult?(
+          <div className="border border-[#dcd9cc] bg-white p-6 shadow-sm space-y-5">
+            <div className={`p-4 border-2 flex items-center justify-between ${
+              verifiedResult.validityStatus.includes('Autêntico')
+                ?'border-[#009E49] bg-[#f2f9f4] text-[#006B35]'
+                :'border-[#CE1126] bg-[#fff5f5] text-[#CE1126]'
+            }`}>
+              <div className="flex items-center gap-3">
+                {verifiedResult.validityStatus.includes('Autêntico')?<ShieldCheck size={32}/>:<AlertTriangle size={32}/>}
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider">Selo de Verificação Criptográfica</div>
+                  <h3 className="font-serif text-lg font-bold">{verifiedResult.validityStatus.toUpperCase()}</h3>
+                </div>
+              </div>
+              <div className="text-right font-mono text-xs">
+                <span>{verifiedResult.id}</span>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4 text-xs">
+              <div className="border border-[#e9e6dc] p-3 bg-[#fdfcf8]">
+                <span className="text-[#737a70] block uppercase text-[10px] font-bold">Tipo de Documento</span>
+                <b className="text-sm text-[#1c3024]">{verifiedResult.documentType}</b>
+                <div className="mt-2 text-[#737a70]">N.º Oficial: <b className="font-mono text-[#1c3024]">{verifiedResult.documentNumber}</b></div>
+                <div className="text-[#737a70]">Matrícula Vinculada: <b className="font-mono bg-[#FCD116] px-1 text-[#1c3024]">{verifiedResult.associatedPlate||'N/A'}</b></div>
+              </div>
+
+              <div className="border border-[#e9e6dc] p-3 bg-[#fdfcf8]">
+                <span className="text-[#737a70] block uppercase text-[10px] font-bold">Titular dos Direitos</span>
+                <b className="text-sm text-[#1c3024]">{verifiedResult.holderName}</b>
+                <div className="mt-2 text-[#737a70]">Data de Emissão: <b>{verifiedResult.issueDate}</b></div>
+                <div className="text-[#737a70]">Data de Validade: <b className={verifiedResult.validityStatus.includes('Expirado')?'text-[#CE1126]':'text-[#006B35]'}>{verifiedResult.expiryDate}</b></div>
+              </div>
+            </div>
+
+            <div className="border border-[#e9e6dc] p-3 text-xs bg-[#fbfaf6]">
+              <span className="text-[#737a70] block uppercase text-[10px] font-bold mb-1">Assinatura Digital SHA-256 e Auditoria</span>
+              <div className="font-mono text-[11px] break-all bg-white p-2 border border-[#d5d1c2] text-[#52644f]">
+                {verifiedResult.cryptographicHash}
+              </div>
+              <div className="mt-2 flex justify-between text-[11px] text-[#737a70]">
+                <span>Verificado por: <b>{verifiedResult.verifiedBy}</b></span>
+                <span>Dispositivo: <b>{verifiedResult.deviceUsed}</b></span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#e9e6dc]">
+              <button onClick={()=>window.print()} className={secondaryClass}><Printer size={15}/> Imprimir Comprovativo</button>
+            </div>
+          </div>
+        ):(
+          <div className="border border-dashed border-[#cfcbbc] bg-white p-12 text-center text-[#737a70]">
+            <QrCode size={48} className="mx-auto text-[#006B35]/40 mb-3"/>
+            <h3 className="font-serif text-lg font-bold text-[#1c3024]">Validação Segura por QR Code</h3>
+            <p className="max-w-md mx-auto text-xs mt-1">Selecione um documento ao lado ou simule a leitura do código QR para atestar a assinatura digital e validade jurídica perante as autoridades.</p>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Histórico de Leituras QR */}
+    <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#e9e6dc] pb-3 mb-4">
+        <div>
+          <h3 className="font-serif text-base font-bold text-[#1c3024]">Histórico de Documentos Validados via QR Code</h3>
+          <p className="text-xs text-[#737a70]">Auditoria de conferências digitais realizadas por terminais de patrulha</p>
+        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          placeholder="Pesquisar por documento ou titular..."
+          className={`max-w-xs ${inputClass}`}
+        />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-[#dcd9cc] bg-[#f9f8f4] text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>
+              <th className="px-3 py-2.5">Código</th>
+              <th className="px-3 py-2.5">Tipo de Documento</th>
+              <th className="px-3 py-2.5">N.º do Documento</th>
+              <th className="px-3 py-2.5">Titular</th>
+              <th className="px-3 py-2.5">Matrícula</th>
+              <th className="px-3 py-2.5">Resultado</th>
+              <th className="px-3 py-2.5">Validade</th>
+              <th className="px-3 py-2.5">Agente Leitor</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0eee7]">
+            {filtered.map(q=><tr key={q.id} className="hover:bg-[#fbfaf6]">
+              <td className="px-3 py-2.5 font-mono text-[#006B35] font-semibold">{q.id}</td>
+              <td className="px-3 py-2.5 font-semibold text-[#1c3024]">{q.documentType}</td>
+              <td className="px-3 py-2.5 font-mono">{q.documentNumber}</td>
+              <td className="px-3 py-2.5 font-medium">{q.holderName}</td>
+              <td className="px-3 py-2.5 font-mono font-bold">{q.associatedPlate||'---'}</td>
+              <td className="px-3 py-2.5"><Status value={q.validityStatus}/></td>
+              <td className="px-3 py-2.5">{q.expiryDate}</td>
+              <td className="px-3 py-2.5 text-[#697168]">{q.verifiedBy}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function SmartMobileAppPage(){
+  const [devices,setDevices]=useSaved('smart-inspection-devices',seedSmartDevices);
+  const [activeDevice,setActiveDevice]=useState(devices[0]||seedSmartDevices[0]);
+  const [isOffline,setIsOffline]=useState(false);
+  const [syncing,setSyncing]=useState(false);
+  const [toastMsg,setToastMsg]=useState('');
+
+  function triggerDeviceSync(){
+    setSyncing(true);
+    setTimeout(()=>{
+      setSyncing(false);
+      setToastMsg('Terminal sincronizado com o Servidor Central do SIGETRAN!');
+      setTimeout(()=>setToastMsg(''),4000);
+    },1200);
+  }
+
+  function triggerSOS(){
+    alert(`🚨 ALERTA SOS POLICIAL DISPARADO!\nCoordenadas: ${activeDevice.lastGps}\nAgente: ${activeDevice.assignedOfficer} (${activeDevice.officerBadge})\nPatrulhas de apoio mais próximas acionadas com prioridade máxima!`);
+  }
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Aplicação móvel para agentes policiais" description="Interface tática móvel para terminais de campo da Brigada Nacional de Trânsito e Polícia de Ordem Pública." icon={Smartphone}/>
+    <SmartInspectionSubmenuBar/>
+
+    <div className="grid gap-6 lg:grid-cols-12 mb-8">
+      {/* Smartphone Mockup Frame */}
+      <div className="lg:col-span-5 flex justify-center">
+        <div className="w-full max-w-[360px] bg-[#1a1c1a] p-3 rounded-[36px] shadow-2xl border-4 border-[#2f332f]">
+          {/* Phone Speaker & Camera Notch */}
+          <div className="flex justify-center mb-2">
+            <div className="h-4 w-28 bg-[#111] rounded-b-xl flex items-center justify-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#333]"/>
+              <span className="h-1 w-10 bg-[#222] rounded-full"/>
+            </div>
+          </div>
+
+          {/* Phone Screen Container */}
+          <div className="bg-[#f4f3ed] rounded-[24px] overflow-hidden text-[#1c3024] flex flex-col h-[580px] shadow-inner border border-black/10">
+            {/* Status Bar */}
+            <div className="bg-[#173d2b] text-white px-4 py-1.5 flex justify-between items-center text-[11px] font-mono">
+              <span>18:30</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-sans font-bold">{isOffline?'OFFLINE':'4G LTE'}</span>
+                {isOffline?<WifiOff size={13} className="text-[#CE1126]"/>:<Wifi size={13} className="text-[#FCD116]"/>}
+                <div className="flex items-center gap-0.5">
+                  <Battery size={14}/>
+                  <span>{activeDevice.batteryLevel}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Officer Header */}
+            <div className="bg-[#173d2b] text-white px-4 pb-4 pt-2 border-b border-white/10">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-[.18em] text-[#FCD116]">SIGETRAN Mobile Agente</div>
+                  <h3 className="font-bold text-sm leading-tight text-white">{activeDevice.assignedOfficer}</h3>
+                  <div className="text-[11px] text-[#bdcdbf]">NIP: {activeDevice.officerBadge} · BNT Bissau</div>
+                </div>
+                <div className="grid h-8 w-8 place-items-center bg-[#009E49] text-xs font-black text-white rounded-full">
+                  GB
+                </div>
+              </div>
+
+              {/* Mode Toggle inside phone */}
+              <div className="mt-3 flex justify-between items-center bg-black/25 px-2.5 py-1.5 rounded text-xs">
+                <span className="text-[11px]">Modo de Rede:</span>
+                <button
+                  onClick={()=>setIsOffline(!isOffline)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isOffline?'bg-[#CE1126] text-white':'bg-[#009E49] text-white'}`}
+                >
+                  {isOffline?'Modo Offline':'Modo Online'}
+                </button>
+              </div>
+            </div>
+
+            {/* Phone Body / Scrollable Content */}
+            <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-xs">
+              {toastMsg&&(
+                <div className="bg-[#006B35] text-white p-2 rounded text-[11px] font-semibold text-center animate-fade-in">
+                  ✓ {toastMsg}
+                </div>
+              )}
+
+              {/* Shift Stats Card */}
+              <div className="bg-white border border-[#d5d1c2] p-2.5 rounded shadow-sm">
+                <div className="text-[10px] uppercase font-bold text-[#737a70] mb-1">Atividade do Turno</div>
+                <div className="grid grid-cols-3 text-center divide-x divide-[#e9e6dc]">
+                  <div><span className="font-bold text-base text-[#1c3024]">{activeDevice.ticketsIssuedShift}</span><span className="block text-[9px] text-[#737a70]">Autos</span></div>
+                  <div><span className="font-bold text-base text-[#1c3024]">{activeDevice.queriesDoneShift}</span><span className="block text-[9px] text-[#737a70]">Consultas</span></div>
+                  <div><span className="font-bold text-base text-[#006B35]">{activeDevice.pendingSyncCount}</span><span className="block text-[9px] text-[#737a70]">Pendentes</span></div>
+                </div>
+              </div>
+
+              {/* Tactical Action Grid */}
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#697168]">Ações Rápidas em Estrada</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Link to="/smart-inspection" className="bg-white border border-[#d5d1c2] p-2.5 rounded flex flex-col items-center justify-center gap-1.5 hover:bg-[#f2f9f4] hover:border-[#009E49] transition">
+                  <Search size={20} className="text-[#006B35]"/>
+                  <span className="font-semibold text-[11px] text-center">Consultar Matrícula</span>
+                </Link>
+                <Link to="/smart-inspection/qr-check" className="bg-white border border-[#d5d1c2] p-2.5 rounded flex flex-col items-center justify-center gap-1.5 hover:bg-[#f2f9f4] hover:border-[#009E49] transition">
+                  <QrCode size={20} className="text-[#006B35]"/>
+                  <span className="font-semibold text-[11px] text-center">Validar QR Code</span>
+                </Link>
+                <Link to="/smart-inspection/gps-infractions" className="bg-white border border-[#d5d1c2] p-2.5 rounded flex flex-col items-center justify-center gap-1.5 hover:bg-[#f2f9f4] hover:border-[#009E49] transition">
+                  <FileText size={20} className="text-[#006B35]"/>
+                  <span className="font-semibold text-[11px] text-center">Auto com Foto</span>
+                </Link>
+                <button onClick={()=>alert('Teste de Etilómetro acionado via Bluetooth do terminal!\nConectando ao Alcotest 6820...')} className="bg-white border border-[#d5d1c2] p-2.5 rounded flex flex-col items-center justify-center gap-1.5 hover:bg-[#f2f9f4] hover:border-[#009E49] transition">
+                  <Gauge size={20} className="text-[#836300]"/>
+                  <span className="font-semibold text-[11px] text-center">Etilómetro Digital</span>
+                </button>
+              </div>
+
+              {/* SOS Emergency Button */}
+              <button
+                onClick={triggerSOS}
+                className="w-full bg-[#CE1126] text-white p-3 rounded font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow hover:bg-[#b00e20] active:scale-95 transition"
+              >
+                <Siren size={18}/> Pedido de Apoio SOS Policial
+              </button>
+
+              {/* Sync Button */}
+              <button
+                onClick={triggerDeviceSync}
+                disabled={syncing}
+                className="w-full border border-[#d5d1c2] bg-white text-[#26372b] p-2 rounded font-semibold flex items-center justify-center gap-1.5 hover:bg-[#f3f1e8]"
+              >
+                <Radio size={14} className={syncing?'animate-spin':''}/> {syncing?'Sincronizando...':'Sincronizar com Base Central'}
+              </button>
+            </div>
+
+            {/* Phone Bottom Nav Simulation */}
+            <div className="bg-white border-t border-[#d5d1c2] px-4 py-2 flex justify-around text-[#737a70] text-[10px]">
+              <span className="text-[#006B35] font-bold">Principal</span>
+              <span>Histórico</span>
+              <span>Avisos</span>
+              <span>Perfil</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Fleet of Mobile Devices Overview */}
+      <div className="lg:col-span-7 space-y-5">
+        <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm">
+          <div className="font-serif text-base font-bold text-[#1c3024] border-b border-[#e9e6dc] pb-2 flex justify-between items-center">
+            <span>Parque de Terminais Móveis Registados</span>
+            <span className="text-xs font-sans text-[#006B35] font-semibold">{devices.length} dispositivos ativos</span>
+          </div>
+
+          <p className="text-xs text-[#737a70] mt-2 mb-4">
+            Monitorização central de segurança, estado de bateria, versão da aplicação e bloqueio remoto de terminais Zebra e Honeywell distribuídos aos efetivos de fiscalização.
+          </p>
+
+          <div className="space-y-3">
+            {devices.map(dev=><div
+              key={dev.id}
+              onClick={()=>setActiveDevice(dev)}
+              className={`p-3.5 border cursor-pointer transition ${activeDevice.id===dev.id?'border-[#006B35] bg-[#f2f9f4] shadow-sm':'border-[#e9e6dc] bg-white hover:bg-[#fdfcf8]'}`}
+            >
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-xs text-[#006B35]">{dev.id}</span>
+                    <span className="text-xs font-semibold text-[#1c3024]">{dev.assignedOfficer}</span>
+                    <span className="text-[10px] text-[#737a70]">({dev.officerBadge})</span>
+                  </div>
+                  <div className="text-[11px] text-[#52644f] mt-0.5">{dev.policeUnit} · Modelo: {dev.deviceModel}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-xs font-mono font-bold text-[#1c3024]">{dev.batteryLevel}% bateria</div>
+                    <div className="text-[10px] text-[#737a70]">{dev.networkStatus}</div>
+                  </div>
+                  <button
+                    onClick={(e)=>{e.stopPropagation();alert(`Terminal ${dev.id} bloqueado remotamente com sucesso!`);}}
+                    className="border border-[#CE1126] px-2 py-1 text-[10px] text-[#CE1126] font-bold hover:bg-[#fff5f5]"
+                  >
+                    Bloqueio Remoto
+                  </button>
+                </div>
+              </div>
+            </div>)}
+          </div>
+        </div>
+
+        <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm text-xs text-[#52644f] space-y-2">
+          <h4 className="font-serif font-bold text-[#1c3024] text-sm">Normas Técnicas do Terminal Policial SIGETRAN</h4>
+          <p>• Os autos emitidos em modo offline permanecem criptografados na memória segura do terminal até ao restabelecimento do sinal 4G/Wi-Fi.</p>
+          <p>• Em caso de perda, furto ou extravio do terminal, o bloqueio remoto desativa imediatamente o acesso biométrico e limpa o cache tático local.</p>
+        </div>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function SmartGpsInfractionsPage(){
+  const [infractions,setInfractions]=useSaved('smart-inspection-infractions',seedSmartInfractions);
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [openDrawer,setOpenDrawer]=useState(false);
+  const [selectedInfraction,setSelectedInfraction]=useState<SmartFieldInfraction|null>(null);
+  const [search,setSearch]=useState('');
+  const [gpsLoading,setGpsLoading]=useState(false);
+
+  // Form states
+  const [plate,setPlate]=useState('GB-22-CD');
+  const [driverName,setDriverName]=useState('');
+  const [driverDoc,setDriverDoc]=useState('');
+  const [driverLicense,setDriverLicense]=useState('');
+  const [infractionCode,setInfractionCode]=useState('INF-001 - Excesso de Velocidade Gravíssimo');
+  const [legalArticle,setLegalArticle]=useState('Artigo 24.º do Código da Estrada');
+  const [fineAmount,setFineAmount]=useState(50000);
+  const [gpsCoordinates,setGpsCoordinates]=useState('11.8682, -15.5921');
+  const [locationAddress,setLocationAddress]=useState('Avenida dos Combatentes da Liberdade da Pátria, Bissau');
+  const [description,setDescription]=useState('Velocidade excessiva detectada pelo radar móvel.');
+  const [evidencePhotoUrl,setEvidencePhotoUrl]=useState('/media/infracoes/radar_excesso_bor.jpg');
+  const [vehicleImpounded,setVehicleImpounded]=useState(false);
+
+  function captureGps(){
+    setGpsLoading(true);
+    setTimeout(()=>{
+      setGpsCoordinates('11.8641, -15.5892');
+      setLocationAddress('Rotunda de Titina Silá, Bissau');
+      setGpsLoading(false);
+    },500);
+  }
+
+  function handleInfractionChange(code:string){
+    setInfractionCode(code);
+    if(code.includes('Velocidade')){setLegalArticle('Artigo 24.º do Código da Estrada');setFineAmount(50000);setDescription('Velocidade excessiva detectada pelo radar móvel.');}
+    else if(code.includes('Álcool')){setLegalArticle('Artigo 81.º do Código da Estrada');setFineAmount(75000);setDescription('Condução sob efeito de álcool detectada por etilómetro.');}
+    else if(code.includes('Lotação')){setLegalArticle('Artigo 45.º do Código da Estrada');setFineAmount(35000);setDescription('Transporte público de passageiros com lotação acima do limite.');}
+    else if(code.includes('Documento')){setLegalArticle('Artigo 30.º do Código da Estrada');setFineAmount(25000);setDescription('Falta de apresentação de livrete ou carta de condução.');}
+    else{setLegalArticle('Artigo 14.º do Código da Estrada');setFineAmount(25000);setDescription('Infração regulamentar constatada pela patrulha.');}
+  }
+
+  async function submitInfraction(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const veh=vehicles.find(v=>v.plate.toUpperCase()===plate.toUpperCase());
+    const newAuto:SmartFieldInfraction={
+      id:`AIF-2026-${String(Date.now()).slice(-5)}`,
+      plate:plate.toUpperCase(),
+      vehicleLabel:veh?`${veh.make} ${veh.model}`:'Veículo Particular',
+      color:veh?.color||'Branco',
+      driverName:driverName||veh?.driver||veh?.owner||'Condutor Não Identificado',
+      driverDocument:driverDoc||'BI N.º 400192/2022',
+      driverLicense:driverLicense||'CND-GB-B-1094',
+      infractionCode,
+      legalArticle,
+      description,
+      fineAmount,
+      gpsCoordinates,
+      locationAddress,
+      region:'Bissau',
+      evidencePhotoUrl,
+      officerName:'Agente Malam Pereira',
+      officerBadge:'BNT-1044',
+      policeDepartment:'Brigada Nacional de Trânsito (BNT)',
+      paymentStatus:'Pendente',
+      vehicleImpounded,
+      timestamp:new Date().toISOString().replace('T',' ').slice(0,19)
+    };
+
+    try{
+      await api.post('/smart-inspection/field-infractions',newAuto);
+    }catch{/* ignore */}
+
+    setInfractions(prev=>[newAuto,...prev]);
+    setOpenDrawer(false);
+  }
+
+  const filtered=useMemo(()=>infractions.filter(i=>{
+    return [i.id,i.plate,i.driverName,i.infractionCode,i.locationAddress].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[infractions,search]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Registo de infrações com fotografias e localização GPS" description="Emissão digital de autos de notícia em campo com prova fotográfica pericial e coordenadas satelitais." icon={Camera}/>
+    <SmartInspectionSubmenuBar/>
+
+    <div className="mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <input
+        type="text"
+        value={search}
+        onChange={e=>setSearch(e.target.value)}
+        placeholder="Pesquisar por auto, matrícula, condutor ou via..."
+        className={`max-w-md ${inputClass}`}
+      />
+      <button onClick={()=>setOpenDrawer(true)} className={primaryClass}>
+        <FilePlus2 size={16}/> Lavrar Auto em Campo
+      </button>
+    </div>
+
+    {/* Drawer de Cadastro de Auto */}
+    {openDrawer&&(
+      <Drawer title="Emissão de Auto de Notícia em Campo" onClose={()=>setOpenDrawer(false)}>
+        <form onSubmit={submitInfraction} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="block text-xs font-semibold mb-1">Matrícula</label>
+            <input type="text" value={plate} onChange={e=>setPlate(e.target.value.toUpperCase())} className={inputClass} required/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Nome do Condutor</label>
+            <input type="text" value={driverName} onChange={e=>setDriverName(e.target.value)} placeholder="Nome completo" className={inputClass} required/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Documento (BI/Passaporte)</label>
+            <input type="text" value={driverDoc} onChange={e=>setDriverDoc(e.target.value)} placeholder="BI N.º..." className={inputClass} required/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Carta de Condução</label>
+            <input type="text" value={driverLicense} onChange={e=>setDriverLicense(e.target.value)} placeholder="CND-GB-..." className={inputClass}/>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold mb-1">Infração Constatada</label>
+            <select value={infractionCode} onChange={e=>handleInfractionChange(e.target.value)} className={inputClass}>
+              <option>INF-001 - Excesso de Velocidade Gravíssimo</option>
+              <option>INF-003 - Condução sob Influência do Álcool</option>
+              <option>INF-008 - Lotação Excedida em Transporte Coletivo</option>
+              <option>INF-004 - Falta de Seguro Obrigatório</option>
+              <option>INF-002 - Desobediência a Sinal de Paragem Obrigatória</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Montante da Coima (XOF)</label>
+            <input type="number" value={fineAmount} onChange={e=>setFineAmount(Number(e.target.value))} className={inputClass}/>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold mb-1">Local / Artéria Rodoviária</label>
+            <input type="text" value={locationAddress} onChange={e=>setLocationAddress(e.target.value)} className={inputClass}/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Coordenadas GPS</label>
+            <div className="flex gap-1">
+              <input type="text" value={gpsCoordinates} onChange={e=>setGpsCoordinates(e.target.value)} className={inputClass}/>
+              <button type="button" onClick={captureGps} className={secondaryClass} title="Capturar GPS Atual">
+                <MapPin size={15} className={gpsLoading?'animate-ping':''}/>
+              </button>
+            </div>
+          </div>
+
+          <div className="sm:col-span-3">
+            <label className="block text-xs font-semibold mb-1">Descrição dos Factos</label>
+            <textarea value={description} onChange={e=>setDescription(e.target.value)} rows={2} className={inputClass}/>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold mb-1">Fotografia de Evidência / URL</label>
+            <input type="text" value={evidencePhotoUrl} onChange={e=>setEvidencePhotoUrl(e.target.value)} className={inputClass}/>
+          </div>
+
+          <div className="flex items-center gap-2 pt-6">
+            <label className="flex items-center gap-2 text-xs font-bold text-[#CE1126] cursor-pointer">
+              <input type="checkbox" checked={vehicleImpounded} onChange={e=>setVehicleImpounded(e.target.checked)}/>
+              Apreensão Cautelar do Veículo
+            </label>
+          </div>
+
+          <div className="sm:col-span-3 flex justify-end gap-2 pt-3 border-t border-[#e9e6dc]">
+            <button type="button" onClick={()=>setOpenDrawer(false)} className={secondaryClass}>Cancelar</button>
+            <button type="submit" className={primaryClass}>Emitir Auto de Notícia</button>
+          </div>
+        </form>
+      </Drawer>
+    )}
+
+    {/* Lista de Autos de Campo */}
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {filtered.map(item=><div key={item.id} className="border border-[#dcd9cc] bg-white p-4 shadow-sm flex flex-col justify-between">
+        <div>
+          <div className="flex justify-between items-start border-b border-[#e9e6dc] pb-2 mb-2">
+            <div>
+              <span className="font-mono font-bold text-xs text-[#006B35]">{item.id}</span>
+              <div className="font-mono font-black text-sm bg-[#FCD116] px-1.5 py-0.5 inline-block text-[#1c3024] border border-black/20 mt-1">
+                {item.plate}
+              </div>
+            </div>
+            <Status value={item.paymentStatus}/>
+          </div>
+
+          <div className="space-y-1 text-xs">
+            <div className="font-bold text-[#CE1126]">{item.infractionCode}</div>
+            <p className="text-[#52644f] text-[11px]">{item.description}</p>
+            <div className="mt-2 text-[#737a70]">Condutor: <b className="text-[#1c3024]">{item.driverName}</b></div>
+            <div className="text-[#737a70]">Local: <b>{item.locationAddress}</b></div>
+            <div className="text-[#737a70]">GPS: <b className="font-mono text-[11px]">{item.gpsCoordinates}</b></div>
+            <div className="text-[#737a70]">Agente: <b>{item.officerName} ({item.officerBadge})</b></div>
+          </div>
+
+          {item.vehicleImpounded&&(
+            <div className="mt-2 text-[10px] bg-[#fff5f5] text-[#CE1126] font-bold px-2 py-1 border border-[#CE1126]/30">
+              VEÍCULO APREENDIDO CAUTELARMENTE
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-[#e9e6dc] flex justify-between items-center">
+          <span className="font-mono font-bold text-sm text-[#CE1126]">{currency(Number(item.fineAmount))}</span>
+          <button
+            onClick={()=>setSelectedInfraction(item)}
+            className="flex items-center gap-1 text-xs font-semibold text-[#006B35] hover:underline"
+          >
+            <Printer size={13}/> Ver Auto
+          </button>
+        </div>
+      </div>)}
+    </div>
+
+    {selectedInfraction&&(
+      <FieldInfractionPrintModal infraction={selectedInfraction} onClose={()=>setSelectedInfraction(null)}/>
+    )}
+  </Shell>;
+}
+
+export function SmartExpiredDocsPage(){
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [filterType,setFilterType]=useState('all');
+  const [search,setSearch]=useState('');
+
+  const expiredList=useMemo(()=>{
+    return vehicles.map(v=>{
+      const reasons:string[]=[];
+      const hasTaxDebt=v.taxDue&&v.taxDue>0;
+      if(hasTaxDebt)reasons.push(`Imposto de circulação em dívida (${currency(v.taxDue)})`);
+      if(v.category.includes('colectivo')||hasTaxDebt)reasons.push('Inspeção periódica obrigatória vencida');
+
+      return {
+        plate:v.plate,
+        make:v.make,
+        model:v.model,
+        year:v.year,
+        color:v.color||'Branco',
+        owner:v.owner,
+        driver:v.driver,
+        district:v.district,
+        category:v.category,
+        taxDue:v.taxDue||0,
+        reasons,
+        hasIssues:reasons.length>0,
+        riskLevel:reasons.length>1?'Alto':'Médio'
+      };
+    }).filter(v=>v.hasIssues);
+  },[vehicles]);
+
+  const filtered=useMemo(()=>expiredList.filter(item=>{
+    const matchesFilter=filterType==='all'||(filterType==='high'&&item.riskLevel==='Alto')||(filterType==='tax'&&item.taxDue>0);
+    const matchesSearch=[item.plate,item.owner,item.make,item.model,item.district].join(' ').toLowerCase().includes(search.toLowerCase());
+    return matchesFilter&&matchesSearch;
+  }),[expiredList,filterType,search]);
+
+  const totalDebt=useMemo(()=>expiredList.reduce((acc,curr)=>acc+curr.taxDue,0),[expiredList]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Identificação de veículos com documentos vencidos" description="Varredura de conformidade sobre inspeção técnica, seguro e taxas de circulação atrasadas." icon={AlertTriangle}/>
+    <SmartInspectionSubmenuBar/>
+
+    {/* Summary Metric Cards */}
+    <div className="grid gap-4 sm:grid-cols-3 mb-6">
+      <div className="border border-[#dcd9cc] bg-white p-4 shadow-sm">
+        <span className="text-[10px] uppercase font-bold text-[#737a70]">Veículos em Incumprimento</span>
+        <div className="font-serif text-2xl font-bold text-[#CE1126] mt-1">{expiredList.length}</div>
+        <p className="text-[11px] text-[#737a70] mt-0.5">Com pendências ativas na base</p>
+      </div>
+      <div className="border border-[#dcd9cc] bg-white p-4 shadow-sm">
+        <span className="text-[10px] uppercase font-bold text-[#737a70]">Receita Tributária Retida</span>
+        <div className="font-serif text-2xl font-bold text-[#836300] mt-1">{currency(totalDebt)}</div>
+        <p className="text-[11px] text-[#737a70] mt-0.5">Em imposto de circulação devido</p>
+      </div>
+      <div className="border border-[#dcd9cc] bg-white p-4 shadow-sm">
+        <span className="text-[10px] uppercase font-bold text-[#737a70]">Prioridade para Bloqueio em Estrada</span>
+        <div className="font-serif text-2xl font-bold text-[#1c3024] mt-1">{expiredList.filter(x=>x.riskLevel==='Alto').length}</div>
+        <p className="text-[11px] text-[#737a70] mt-0.5">Risco de circulação imediato</p>
+      </div>
+    </div>
+
+    {/* Table Panel */}
+    <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#e9e6dc] pb-3 mb-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={()=>setFilterType('all')}
+            className={`px-3 py-1.5 text-xs font-semibold border ${filterType==='all'?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-white text-[#26372b]'}`}
+          >
+            Todos ({expiredList.length})
+          </button>
+          <button
+            onClick={()=>setFilterType('high')}
+            className={`px-3 py-1.5 text-xs font-semibold border ${filterType==='high'?'border-[#CE1126] bg-[#CE1126] text-white':'border-[#d5d1c2] bg-white text-[#26372b]'}`}
+          >
+            Risco Alto
+          </button>
+          <button
+            onClick={()=>setFilterType('tax')}
+            className={`px-3 py-1.5 text-xs font-semibold border ${filterType==='tax'?'border-[#836300] bg-[#836300] text-white':'border-[#d5d1c2] bg-white text-[#26372b]'}`}
+          >
+            Imposto em Dívida
+          </button>
+        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          placeholder="Pesquisar por matrícula ou proprietário..."
+          className={`max-w-xs ${inputClass}`}
+        />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-[#dcd9cc] bg-[#f9f8f4] text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>
+              <th className="px-3 py-2.5">Matrícula</th>
+              <th className="px-3 py-2.5">Veículo</th>
+              <th className="px-3 py-2.5">Proprietário / Titular</th>
+              <th className="px-3 py-2.5">Delegação</th>
+              <th className="px-3 py-2.5">Pendências Detetadas</th>
+              <th className="px-3 py-2.5">Nível de Risco</th>
+              <th className="px-3 py-2.5 text-right">Ação Tática</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0eee7]">
+            {filtered.map(v=><tr key={v.plate} className="hover:bg-[#fbfaf6]">
+              <td className="px-3 py-2.5">
+                <span className="font-mono font-bold text-xs bg-[#FCD116] text-[#1c3024] px-1.5 py-0.5 border border-black/20">
+                  {v.plate}
+                </span>
+              </td>
+              <td className="px-3 py-2.5">
+                <div className="font-semibold text-[#1c3024]">{v.make} {v.model} ({v.year})</div>
+                <div className="text-[10px] text-[#737a70]">{v.category}</div>
+              </td>
+              <td className="px-3 py-2.5 font-medium">{v.owner}</td>
+              <td className="px-3 py-2.5">{v.district}</td>
+              <td className="px-3 py-2.5">
+                <ul className="list-disc pl-3 text-[#CE1126] font-medium space-y-0.5">
+                  {v.reasons.map((r,i)=><li key={i}>{r}</li>)}
+                </ul>
+              </td>
+              <td className="px-3 py-2.5">
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${v.riskLevel==='Alto'?'bg-[#fff0f0] text-[#CE1126] border border-[#CE1126]/30':'bg-[#fcf8e3] text-[#836300] border border-[#836300]/30'}`}>
+                  {v.riskLevel}
+                </span>
+              </td>
+              <td className="px-3 py-2.5 text-right space-x-1.5">
+                <button
+                  onClick={()=>alert(`Notificação digital enviada ao proprietário ${v.owner} com prazo de 10 dias para regularização.`)}
+                  className="text-[#006B35] font-semibold hover:underline"
+                >
+                  Notificar
+                </button>
+                <button
+                  onClick={()=>alert(`Matrícula ${v.plate} inserida na lista de apreensão prioritária para os postos fixos de Safim e Titina Silá.`)}
+                  className="text-[#CE1126] font-semibold hover:underline"
+                >
+                  Sinalizar
+                </button>
+              </td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function SmartStolenAlertsPage(){
+  const [stolenAlerts,setStolenAlerts]=useSaved('smart-inspection-stolen',seedSmartStolen);
+  const [openDrawer,setOpenDrawer]=useState(false);
+  const [search,setSearch]=useState('');
+  const [statusFilter,setStatusFilter]=useState('all');
+
+  // Form states
+  const [plate,setPlate]=useState('');
+  const [vehicleLabel,setVehicleLabel]=useState('');
+  const [color,setColor]=useState('Branco');
+  const [vin,setVin]=useState('');
+  const [reportNumber,setReportNumber]=useState(`BO-FURTO-${new Date().getFullYear()}-`);
+  const [theftLocation,setTheftLocation]=useState('');
+  const [victimName,setVictimName]=useState('');
+  const [victimContact,setVictimContact]=useState('+245 ');
+  const [priorityLevel,setPriorityLevel]=useState('Crítica / Vermelho');
+  const [notes,setNotes]=useState('');
+
+  async function submitAlert(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const newAlert:SmartStolenAlert={
+      id:`ALR-2026-${String(Date.now()).slice(-5)}`,
+      plate:plate.toUpperCase().trim(),
+      vehicleLabel,
+      color,
+      vin:vin||'VIN-DESCONHECIDO',
+      theftReportNumber:reportNumber,
+      theftDateTime:new Date().toISOString().replace('T',' ').slice(0,16),
+      theftLocation,
+      region:'Bissau',
+      victimName,
+      victimContact,
+      priorityLevel,
+      status:'Ativo - Veículo Procurado',
+      policeNotes:notes
+    };
+
+    try{
+      await api.post('/smart-inspection/stolen-alerts',newAlert);
+    }catch{/* ignore */}
+
+    setStolenAlerts(prev=>[newAlert,...prev]);
+    setOpenDrawer(false);
+  }
+
+  async function markRecovered(alertId:string){
+    const recoveringOfficer='Sargento Braima Mané (BNT)';
+    const recoveryLocation='Posto de Fiscalização BNT Safim';
+    const recoveryDate=new Date().toISOString().replace('T',' ').slice(0,16);
+
+    try{
+      await api.post(`/smart-inspection/stolen-alerts/${alertId}/resolve`,{
+        recoveringOfficer,
+        recoveryLocation,
+        recoveryDate
+      });
+    }catch{/* ignore */}
+
+    setStolenAlerts(prev=>prev.map(a=>a.id===alertId?{
+      ...a,
+      status:'Intercetado / Recuperado',
+      recoveringOfficer,
+      recoveryLocation,
+      recoveryDate
+    }:a));
+  }
+
+  const filtered=useMemo(()=>stolenAlerts.filter(a=>{
+    const matchesStatus=statusFilter==='all'||(statusFilter==='active'&&a.status.includes('Ativo'))||(statusFilter==='recovered'&&a.status.includes('Recuperado'));
+    const matchesSearch=[a.id,a.plate,a.vehicleLabel,a.theftReportNumber,a.victimName,a.theftLocation].join(' ').toLowerCase().includes(search.toLowerCase());
+    return matchesStatus&&matchesSearch;
+  }),[stolenAlerts,statusFilter,search]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Alertas de veículos roubados" description="Rede nacional de alerta vermelho, mandados de apreensão e difusão tática às patrulhas rodoviárias." icon={Siren}/>
+    <SmartInspectionSubmenuBar/>
+
+    {/* Top Alert Banner */}
+    <div className="bg-[#CE1126] text-white p-5 shadow-md mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex items-center gap-3">
+        <div className="grid h-12 w-12 place-items-center bg-black/20 rounded-full shrink-0">
+          <Siren size={28} className="animate-pulse"/>
+        </div>
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#FCD116]">Hotlist Policial Nacional</div>
+          <h2 className="font-serif text-xl font-bold">Mandados de Apreensão e Veículos Furtados/Roubados</h2>
+          <p className="text-xs text-white/80">Sincronizado com os postos de fronteira, terminais móveis e câmaras LPR</p>
+        </div>
+      </div>
+      <button onClick={()=>setOpenDrawer(true)} className="bg-[#FCD116] text-[#1c3024] px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-white shadow">
+        + Emitir Novo Alerta Nacional
+      </button>
+    </div>
+
+    {/* Filter and Search Bar */}
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={()=>setStatusFilter('all')}
+          className={`px-3 py-1.5 text-xs font-semibold border ${statusFilter==='all'?'border-[#CE1126] bg-[#CE1126] text-white':'border-[#d5d1c2] bg-white text-[#26372b]'}`}
+        >
+          Todos ({stolenAlerts.length})
+        </button>
+        <button
+          onClick={()=>setStatusFilter('active')}
+          className={`px-3 py-1.5 text-xs font-semibold border ${statusFilter==='active'?'border-[#CE1126] bg-[#CE1126] text-white':'border-[#d5d1c2] bg-white text-[#26372b]'}`}
+        >
+          Procurados Ativos ({stolenAlerts.filter(a=>a.status.includes('Ativo')).length})
+        </button>
+        <button
+          onClick={()=>setStatusFilter('recovered')}
+          className={`px-3 py-1.5 text-xs font-semibold border ${statusFilter==='recovered'?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-white text-[#26372b]'}`}
+        >
+          Recuperados ({stolenAlerts.filter(a=>a.status.includes('Recuperado')).length})
+        </button>
+      </div>
+
+      <input
+        type="text"
+        value={search}
+        onChange={e=>setSearch(e.target.value)}
+        placeholder="Pesquisar por matrícula, BO, proprietário..."
+        className={`max-w-xs ${inputClass}`}
+      />
+    </div>
+
+    {/* Drawer de Cadastro de Alerta */}
+    {openDrawer&&(
+      <Drawer title="Emissão de Alerta Nacional de Furto/Roubo" onClose={()=>setOpenDrawer(false)}>
+        <form onSubmit={submitAlert} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="block text-xs font-semibold mb-1">Matrícula</label>
+            <input type="text" value={plate} onChange={e=>setPlate(e.target.value.toUpperCase())} placeholder="GB-00-AA" className={inputClass} required/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Marca e Modelo</label>
+            <input type="text" value={vehicleLabel} onChange={e=>setVehicleLabel(e.target.value)} placeholder="Ex: Toyota Hilux D-4D" className={inputClass} required/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Cor</label>
+            <input type="text" value={color} onChange={e=>setColor(e.target.value)} className={inputClass}/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Número de Chassis / VIN</label>
+            <input type="text" value={vin} onChange={e=>setVin(e.target.value)} placeholder="VIN do veículo" className={inputClass}/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">N.º do Boletim de Furto (POP/PJ)</label>
+            <input type="text" value={reportNumber} onChange={e=>setReportNumber(e.target.value)} className={inputClass} required/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Prioridade Tática</label>
+            <select value={priorityLevel} onChange={e=>setPriorityLevel(e.target.value)} className={inputClass}>
+              <option>Crítica / Vermelho</option>
+              <option>Alta</option>
+              <option>Média</option>
+            </select>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold mb-1">Localidade do Furto/Roubo</label>
+            <input type="text" value={theftLocation} onChange={e=>setTheftLocation(e.target.value)} placeholder="Bairro, rua ou referência" className={inputClass} required/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Nome da Vítima / Queixoso</label>
+            <input type="text" value={victimName} onChange={e=>setVictimName(e.target.value)} className={inputClass} required/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold mb-1">Contacto Telefónico</label>
+            <input type="text" value={victimContact} onChange={e=>setVictimContact(e.target.value)} className={inputClass}/>
+          </div>
+
+          <div className="sm:col-span-3">
+            <label className="block text-xs font-semibold mb-1">Observações Policiais e Circunstâncias</label>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Armas envolvidas, suspeitos, sentido de fuga..." className={inputClass}/>
+          </div>
+
+          <div className="sm:col-span-3 flex justify-end gap-2 pt-3 border-t border-[#e9e6dc]">
+            <button type="button" onClick={()=>setOpenDrawer(false)} className={secondaryClass}>Cancelar</button>
+            <button type="submit" className={primaryClass}>Difundir Alerta Nacional</button>
+          </div>
+        </form>
+      </Drawer>
+    )}
+
+    {/* Lista de Alertas */}
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {filtered.map(item=>{
+        const isActive=item.status.includes('Ativo');
+        return <div key={item.id} className={`border-2 p-5 shadow-sm flex flex-col justify-between ${isActive?'border-[#CE1126] bg-[#fffbfb]':'border-[#006B35] bg-white'}`}>
+          <div>
+            <div className="flex justify-between items-start border-b border-[#e9e6dc] pb-2 mb-3">
+              <div>
+                <span className="font-mono font-bold text-xs text-[#006B35]">{item.id}</span>
+                <div className="mt-1 font-mono font-black text-base bg-[#FCD116] px-2 py-0.5 inline-block text-[#1c3024] border border-black/20">
+                  {item.plate}
+                </div>
+              </div>
+              <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded ${isActive?'bg-[#CE1126] text-white animate-pulse':'bg-[#009E49] text-white'}`}>
+                {item.status}
+              </span>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-[#202820]">
+              <div className="font-serif font-bold text-base text-[#1c3024]">{item.vehicleLabel}</div>
+              <div className="text-[#697168]">Cor: <b>{item.color}</b> · VIN: <span className="font-mono text-[11px]">{item.vin}</span></div>
+              <div className="text-[#697168]">Boletim de Ocorrência: <b className="text-[#CE1126] font-mono">{item.theftReportNumber}</b></div>
+              <div className="text-[#697168]">Data/Hora do Roubo: <b>{item.theftDateTime}</b></div>
+              <div className="text-[#697168]">Local: <b>{item.theftLocation}</b></div>
+              <div className="text-[#697168]">Queixoso / Vítima: <b>{item.victimName}</b> ({item.victimContact})</div>
+              {item.policeNotes&&<p className="mt-2 text-[11px] bg-white p-2 border border-[#e5e2d6] italic text-[#555]">{item.policeNotes}</p>}
+
+              {!isActive&&item.recoveryDate&&(
+                <div className="mt-3 p-2 bg-[#f2f9f4] border border-[#009E49]/30 text-[11px] text-[#006B35]">
+                  <b>Recuperado em:</b> {item.recoveryDate} no {item.recoveryLocation} por {item.recoveringOfficer}.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-5 pt-3 border-t border-[#e9e6dc] flex justify-between items-center">
+            <span className="text-[10px] font-bold uppercase text-[#737a70]">{item.priorityLevel}</span>
+            {isActive?(
+              <button
+                onClick={()=>markRecovered(item.id)}
+                className="bg-[#006B35] text-white px-3 py-1.5 text-xs font-semibold hover:bg-[#00552b]"
+              >
+                ✓ Registar Recuperação
+              </button>
+            ):(
+              <span className="text-xs font-bold text-[#006B35]">Processo Concluído</span>
+            )}
+          </div>
+        </div>;
+      })}
+    </div>
+  </Shell>;
+}
+
+// ==============================================================================
+// Fiscalização Inteligente (Smart Enforcement & Road Inspection)
+// ==============================================================================
+
+function SmartInspectionSubmenuBar(){
+  const {pathname}=useLocation();
+  return <div className="mb-6 flex flex-wrap gap-1.5 border-b border-[#dcd9cc] pb-4">
+    {smartInspectionSubmenus.map(sub=>{
+      const active=pathname===sub.path;
+      return <Link key={sub.path} to={sub.path} className={`border px-3 py-1.5 text-xs font-semibold transition ${active?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-white text-[#26372b] hover:border-[#006B35] hover:bg-[#f4f3ed]'}`}>{sub.label}</Link>;
+    })}
+  </div>;
+}
+
+function FieldInfractionPrintModal({infraction,onClose}:{infraction:SmartFieldInfraction;onClose:()=>void}){
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#10251a]/65">
+    <div className="relative w-full max-w-2xl bg-white border-2 border-[#006B35] shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+      <div className="flex justify-between items-start border-b-2 border-[#d5d1c2] pb-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 place-items-center border border-[#006B35] bg-[#173d2b] text-base font-black text-[#FCD116]">GB</div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#836300]">República da Guiné-Bissau</div>
+            <h3 className="font-serif text-lg font-bold text-[#173d2b]">Ministério do Interior · Brigada Nacional de Trânsito</h3>
+            <p className="text-xs text-[#52644f]">Auto de Notícia de Infração Rodoviária em Campo</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-1 hover:bg-[#f4f3ed]"><X size={20}/></button>
+      </div>
+
+      <div className="space-y-4 text-xs text-[#202820]">
+        <div className="grid grid-cols-2 gap-3 bg-[#f9f8f4] p-3 border border-[#e5e2d6]">
+          <div><span className="text-[#697168] block">N.º do Auto de Infração:</span><b className="font-mono text-sm text-[#006B35]">{infraction.id}</b></div>
+          <div><span className="text-[#697168] block">Data e Hora da Constatação:</span><b>{infraction.timestamp}</b></div>
+          <div><span className="text-[#697168] block">Força Policial / Unidade:</span><b>{infraction.policeDepartment||'Brigada Nacional de Trânsito (BNT)'}</b></div>
+          <div><span className="text-[#697168] block">Agente Autuante (NIP):</span><b>{infraction.officerName} ({infraction.officerBadge})</b></div>
+        </div>
+
+        <div className="border border-[#e5e2d6] p-3">
+          <h4 className="font-bold text-[#173d2b] mb-2 uppercase text-[11px] tracking-wide">Identificação do Veículo e Condutor</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <div><span className="text-[#697168]">Matrícula:</span> <b className="font-mono bg-[#FCD116] text-[#1c3024] px-1.5 py-0.5 border border-black/20">{infraction.plate}</b></div>
+            <div><span className="text-[#697168]">Veículo:</span> <b>{infraction.vehicleLabel||'Não especificado'} ({infraction.color||'Branco'})</b></div>
+            <div><span className="text-[#697168]">Condutor Autuado:</span> <b>{infraction.driverName}</b></div>
+            <div><span className="text-[#697168]">Documento (BI/Passaporte):</span> <b>{infraction.driverDocument}</b></div>
+            <div><span className="text-[#697168]">Carta de Condução:</span> <b>{infraction.driverLicense||'Não apresentada'}</b></div>
+            <div><span className="text-[#697168]">Apreensão Cautelar do Veículo:</span> <b>{infraction.vehicleImpounded?'SIM - Veículo Apreendido':'NÃO'}</b></div>
+          </div>
+        </div>
+
+        <div className="border border-[#e5e2d6] p-3 bg-[#fdfcf8]">
+          <h4 className="font-bold text-[#173d2b] mb-2 uppercase text-[11px] tracking-wide">Tipificação Legal e Coima</h4>
+          <div className="space-y-1">
+            <p><b className="text-[#CE1126]">{infraction.infractionCode}</b> - {infraction.legalArticle}</p>
+            <p className="text-[#555]">{infraction.description}</p>
+            <div className="mt-2 pt-2 border-t border-[#e5e2d6] flex justify-between items-center">
+              <span className="font-semibold text-sm">Montante da Coima Fixada:</span>
+              <span className="font-mono font-bold text-base text-[#CE1126]">{currency(Number(infraction.fineAmount))}</span>
+            </div>
+            <div className="flex justify-between text-xs text-[#697168] pt-1">
+              <span>Estado do Pagamento:</span>
+              <Status value={infraction.paymentStatus}/>
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-[#e5e2d6] p-3">
+          <h4 className="font-bold text-[#173d2b] mb-2 uppercase text-[11px] tracking-wide">Localização GPS e Fotografia de Evidência</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <div><span className="text-[#697168]">Local:</span> <b>{infraction.locationAddress}</b></div>
+            <div><span className="text-[#697168]">Coordenadas GPS:</span> <b className="font-mono">{infraction.gpsCoordinates}</b></div>
+          </div>
+          {infraction.evidencePhotoUrl&&(
+            <div className="mt-2 pt-2 border-t border-[#e5e2d6] flex items-center gap-3">
+              <Camera size={16} className="text-[#006B35]"/>
+              <span className="text-[#697168]">Registo fotográfico anexado ao auto:</span>
+              <span className="font-mono text-[11px] text-[#006B35]">{infraction.evidencePhotoUrl}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-[#d5d1c2] pt-4 text-[10px] text-[#737a70] space-y-1">
+          <p>O autuado dispõe do prazo legal de 15 dias para liquidar a coima voluntariamente ou apresentar defesa escrita à Direção-Geral de Viação e Transportes Terrestres.</p>
+          <p>Validação eletrónica via SIGETRAN · República da Guiné-Bissau.</p>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2 print:hidden">
+          <button onClick={()=>window.print()} className={primaryClass}><Printer size={15}/> Imprimir Auto Oficial</button>
+          <button onClick={onClose} className={secondaryClass}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+export function SmartPlateQueryPage(){
+  const [vehicles]=useSaved('vehicles',seedVehicles);
+  const [queries,setQueries]=useSaved('smart-inspection-queries',seedSmartQueries);
+  const [stolenAlerts]=useSaved('smart-inspection-stolen',seedSmartStolen);
+  const [fines]=useSaved('fines',seedFines);
+
+  const [inputPlate,setInputPlate]=useState('GB-24-BC');
+  const [selectedStation,setSelectedStation]=useState('Posto Fixo Titina Silá, Bissau');
+  const [officerName,setOfficerName]=useState('Agente Malam Pereira');
+  const [loading,setLoading]=useState(false);
+  const [searchHistory,setSearchHistory]=useState('');
+  const [queryResult,setQueryResult]=useState<any>(null);
+
+  async function handleQuery(plateToQuery?:string){
+    const plate=(plateToQuery||inputPlate).toUpperCase().trim();
+    if(!plate)return;
+    setLoading(true);
+    try{
+      const res=await api.post('/smart-inspection/plate-query',{
+        plate,
+        officerName,
+        location:selectedStation,
+        gpsCoordinates:'11.8682, -15.5921'
+      });
+      setQueryResult(res.data);
+      if(res.data?.query){
+        setQueries(prev=>[res.data.query,...prev.filter(q=>q.id!==res.data.query.id)]);
+      }
+    }catch(err){
+      // Fallback local logic
+      const veh=vehicles.find(v=>v.plate.toUpperCase()===plate);
+      const stolen=stolenAlerts.find(s=>s.plate.toUpperCase()===plate&&s.status.includes('Ativo'));
+      const pendingFinesList=fines.filter(f=>f.plate.toUpperCase()===plate&&f.status==='Pendente');
+      const isTaxDue=veh?.taxDue&&veh.taxDue>0;
+
+      let status='Regular';
+      let reason='';
+      if(stolen){status='Alerta de Roubo';reason=`Veículo com Mandado de Apreensão por Furto (BO: ${stolen.theftReportNumber})`;}
+      else if(isTaxDue){status='Irregular';reason='Imposto de Circulação / Vinheta em atraso';}
+      else if(!veh){status='Não Registado';reason='Matrícula não consta na base nacional';}
+
+      const mockQuery:SmartInspectionQuery={
+        id:`CMP-${Date.now().toString().slice(-6)}`,
+        plate,
+        queryDateTime:new Date().toISOString().replace('T',' ').slice(0,19),
+        officerName,
+        policeDepartment:'Brigada Nacional de Trânsito (BNT)',
+        location:selectedStation,
+        gpsCoordinates:'11.8682, -15.5921',
+        status,
+        irregularityReason:reason,
+        vehicleDetails:veh?`${veh.make} ${veh.model} (${veh.year}) - ${veh.color||'Branco'}`:'Desconhecido',
+        ownerName:veh?.owner||'Não identificado',
+        insuranceValid:true,
+        inspectionValid:!isTaxDue,
+        circulationTaxPaid:!isTaxDue,
+        administrativeBlock:Boolean(stolen)
+      };
+
+      setQueries(prev=>[mockQuery,...prev]);
+      setQueryResult({
+        query:mockQuery,
+        vehicle:{
+          plate,
+          found:Boolean(veh),
+          make:veh?.make||'---',
+          model:veh?.model||'---',
+          year:veh?.year,
+          color:veh?.color||'---',
+          owner:veh?.owner||'Não identificado',
+          driver:veh?.driver||'---',
+          category:veh?.category||'---',
+          district:veh?.district||'---',
+          legalStatus:veh?.legalStatus||'Regular',
+          taxDue:veh?.taxDue||0
+        },
+        stolenAlert:{
+          isStolen:Boolean(stolen),
+          reportNumber:stolen?.theftReportNumber,
+          priority:stolen?.priorityLevel,
+          victim:stolen?.victimName,
+          victimContact:stolen?.victimContact
+        },
+        pendingFines:{
+          count:pendingFinesList.length,
+          totalAmount:pendingFinesList.reduce((acc,f)=>acc+f.amount,0),
+          items:pendingFinesList.map(f=>({code:f.id,description:f.infraction,amount:f.amount,date:f.date}))
+        }
+      });
+    }finally{
+      setLoading(false);
+    }
+  }
+
+  const filteredHistory=useMemo(()=>queries.filter(q=>{
+    return [q.plate,q.ownerName||'',q.status,q.officerName,q.location||''].join(' ').toLowerCase().includes(searchHistory.toLowerCase());
+  }),[queries,searchHistory]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Consulta de matrícula em tempo real" description="Cruzamento imediato de dados veiculares, mandados de captura, inspeção periódica e cobrança de imposto." icon={Radar}/>
+    <SmartInspectionSubmenuBar/>
+
+    <div className="grid gap-6 lg:grid-cols-12 mb-8">
+      {/* Box de Pesquisa Estilizada */}
+      <div className="lg:col-span-5 border border-[#dcd9cc] bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-2 font-serif text-base font-bold text-[#1c3024] mb-4 border-b border-[#e9e6dc] pb-2">
+          <Search size={18} className="text-[#006B35]"/> Terminal de Pesquisa Tática
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Chapa de Matrícula (Padrão Nacional GB)</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={inputPlate}
+                onChange={e=>setInputPlate(e.target.value.toUpperCase())}
+                placeholder="GB-00-AA"
+                className="w-full border-2 border-[#173d2b] bg-[#FCD116] px-4 py-3 text-xl font-mono font-black uppercase text-[#1c3024] tracking-widest placeholder-[#1c3024]/40 shadow-inner outline-none focus:ring-2 focus:ring-[#006B35]"
+              />
+              <span className="absolute right-3 top-3.5 text-xs font-black text-[#CE1126] border border-[#CE1126] px-1 bg-white">GB</span>
+            </div>
+            <p className="mt-1 text-[11px] text-[#737a70]">Exemplos rápidos: GB-24-BC (imposto atrasado), GB-21-XX (alerta de roubo), GB-19-AA (regular)</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Posto de Fiscalização / Ponto de Controlo</label>
+            <select value={selectedStation} onChange={e=>setSelectedStation(e.target.value)} className={inputClass}>
+              <option>Posto Fixo Titina Silá, Bissau</option>
+              <option>Rotunda de Safim - Estrada Nacional N1</option>
+              <option>Aeroporto Internacional Osvaldo Vieira</option>
+              <option>Ponte Amílcar Cabral (João Landim)</option>
+              <option>Acesso ao Porto de Bissau (Pidjiguiti)</option>
+              <option>Posto de Fiscalização Regional de Bafatá</option>
+              <option>Posto de Fronteira de São Domingos</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Agente Operacional Responsável</label>
+            <input type="text" value={officerName} onChange={e=>setOfficerName(e.target.value)} className={inputClass}/>
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={()=>handleQuery()}
+              disabled={loading||!inputPlate.trim()}
+              className={`${primaryClass} w-full py-3 text-base`}
+            >
+              {loading?<><Radio size={18} className="animate-spin"/> Consultando Base de Dados...</>:<><Radar size={18}/> Consultar em Tempo Real</>}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Painel de Resultados */}
+      <div className="lg:col-span-7">
+        {queryResult?(
+          <div className="border border-[#dcd9cc] bg-white shadow-sm overflow-hidden">
+            {/* Status Banner */}
+            <div className={`p-4 text-white flex items-center justify-between ${
+              queryResult.stolenAlert?.isStolen?'bg-[#CE1126] animate-pulse':
+              queryResult.query?.status==='Irregular'?'bg-[#836300]':
+              queryResult.query?.status==='Regular'?'bg-[#006B35]':'bg-[#52644f]'
+            }`}>
+              <div className="flex items-center gap-3">
+                {queryResult.stolenAlert?.isStolen?<Siren size={24}/>:queryResult.query?.status==='Regular'?<ShieldCheck size={24}/>:<AlertTriangle size={24}/>}
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-white/80">Resultado da Fiscalização</div>
+                  <h3 className="font-serif text-lg font-bold">{queryResult.query?.status.toUpperCase()}</h3>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="font-mono text-xs bg-black/20 px-2 py-1 rounded">{queryResult.query?.id}</span>
+                <div className="text-[10px] text-white/80 mt-0.5">{queryResult.query?.queryDateTime}</div>
+              </div>
+            </div>
+
+            {queryResult.stolenAlert?.isStolen&&(
+              <div className="bg-[#fff5f5] border-b border-[#CE1126]/30 p-4 text-xs text-[#CE1126]">
+                <b className="text-sm block mb-1">🚨 ALERTA CRÍTICO: MANDADO DE APREENSÃO POR ROUBO</b>
+                <p>Veículo sinalizado no Cadastro Nacional de Furtos e Roubos sob o BO n.º <b>{queryResult.stolenAlert.reportNumber}</b>.</p>
+                <p>Proprietário / Vítima: <b>{queryResult.stolenAlert.victim}</b> · Contacto: <b>{queryResult.stolenAlert.victimContact}</b>.</p>
+                <p className="font-bold mt-1">Ação Imediata: Reter o veículo, deter preventivamente os ocupantes e notificar o Comissariado da POP.</p>
+              </div>
+            )}
+
+            {queryResult.query?.irregularityReason&&!queryResult.stolenAlert?.isStolen&&(
+              <div className="bg-[#fcf8e3] border-b border-[#FCD116] p-3 text-xs text-[#836300]">
+                <b>Atenção:</b> {queryResult.query.irregularityReason}
+              </div>
+            )}
+
+            {/* Vehicle Card */}
+            <div className="p-5 space-y-4">
+              <div className="flex justify-between items-start border-b border-[#e9e6dc] pb-3">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#737a70]">Veículo Inspecionado</span>
+                  <div className="font-serif text-xl font-bold text-[#1c3024]">
+                    {queryResult.vehicle?.make} {queryResult.vehicle?.model} {queryResult.vehicle?.year&&`(${queryResult.vehicle.year})`}
+                  </div>
+                  <div className="text-xs text-[#697168]">Cor: <b>{queryResult.vehicle?.color}</b> · Categoria: <b>{queryResult.vehicle?.category}</b></div>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-black text-lg bg-[#FCD116] px-2 py-1 border border-black/20 text-[#1c3024]">
+                    {queryResult.vehicle?.plate}
+                  </span>
+                  <div className="text-[10px] text-[#737a70] mt-1">Delegação: {queryResult.vehicle?.district}</div>
+                </div>
+              </div>
+
+              {/* Status Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="border border-[#e9e6dc] p-2.5 bg-[#fbfaf6]">
+                  <span className="text-[#737a70] block text-[10px] uppercase font-bold">Seguro Obrigatório</span>
+                  <b className="text-[#006B35]">Válido e Vigente</b>
+                </div>
+                <div className="border border-[#e9e6dc] p-2.5 bg-[#fbfaf6]">
+                  <span className="text-[#737a70] block text-[10px] uppercase font-bold">Inspeção Periódica</span>
+                  <b className={queryResult.query?.inspectionValid?'text-[#006B35]':'text-[#CE1126]'}>
+                    {queryResult.query?.inspectionValid?'Aprovada':'Vencida / Falta'}
+                  </b>
+                </div>
+                <div className="border border-[#e9e6dc] p-2.5 bg-[#fbfaf6]">
+                  <span className="text-[#737a70] block text-[10px] uppercase font-bold">Imposto de Circulação</span>
+                  <b className={queryResult.query?.circulationTaxPaid?'text-[#006B35]':'text-[#CE1126]'}>
+                    {queryResult.query?.circulationTaxPaid?'Liquidado':`${currency(queryResult.vehicle?.taxDue||41500)} em dívida`}
+                  </b>
+                </div>
+                <div className="border border-[#e9e6dc] p-2.5 bg-[#fbfaf6]">
+                  <span className="text-[#737a70] block text-[10px] uppercase font-bold">Bloqueio Admin.</span>
+                  <b className={queryResult.query?.administrativeBlock?'text-[#CE1126]':'text-[#006B35]'}>
+                    {queryResult.query?.administrativeBlock?'ATIVO':'Nada Consta'}
+                  </b>
+                </div>
+              </div>
+
+              {/* Owner and Fines */}
+              <div className="grid sm:grid-cols-2 gap-4 text-xs pt-1">
+                <div className="border border-[#e9e6dc] p-3">
+                  <div className="font-bold text-[#173d2b] mb-1 uppercase text-[10px] tracking-wide">Proprietário / Titular Registado</div>
+                  <p className="text-sm font-semibold text-[#1c3024]">{queryResult.vehicle?.owner}</p>
+                  <p className="text-[#737a70] text-[11px] mt-0.5">Condutor habitual: {queryResult.vehicle?.driver||'Mesmo proprietário'}</p>
+                  <p className="text-[#737a70] text-[11px]">Situação cadastral: {queryResult.vehicle?.legalStatus}</p>
+                </div>
+
+                <div className="border border-[#e9e6dc] p-3">
+                  <div className="font-bold text-[#173d2b] mb-1 uppercase text-[10px] tracking-wide">Histórico de Infrações Pendentes</div>
+                  {queryResult.pendingFines?.count>0?(
+                    <div>
+                      <p className="font-bold text-[#CE1126]">{queryResult.pendingFines.count} auto(s) pendente(s) de pagamento</p>
+                      <p className="text-xs text-[#52644f]">Total em dívida: <b>{currency(queryResult.pendingFines.totalAmount)}</b></p>
+                    </div>
+                  ):(
+                    <p className="text-[#006B35] font-medium">Nenhum auto pendente registado no sistema.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="border-t border-[#e9e6dc] pt-3 flex flex-wrap gap-2 justify-end">
+                <Link to="/smart-inspection/gps-infractions" className={primaryClass}>
+                  <Camera size={14}/> Lavrar Auto em Campo
+                </Link>
+                <Link to="/smart-inspection/qr-check" className={secondaryClass}>
+                  <QrCode size={14}/> Validar Documentos QR
+                </Link>
+                <button onClick={()=>window.print()} className={secondaryClass}>
+                  <Printer size={14}/> Imprimir Ficha de Fiscalização
+                </button>
+              </div>
+            </div>
+          </div>
+        ):(
+          <div className="border border-dashed border-[#cfcbbc] bg-white p-12 text-center text-[#737a70]">
+            <Radar size={48} className="mx-auto text-[#006B35]/40 mb-3"/>
+            <h3 className="font-serif text-lg font-bold text-[#1c3024]">Pronto para Fiscalização</h3>
+            <p className="max-w-md mx-auto text-xs mt-1">Insira uma matrícula ao lado ou clique num dos registos do histórico para carregar a situação jurídica e cadastral completa em tempo real.</p>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Histórico Recente de Consultas */}
+    <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#e9e6dc] pb-3 mb-4">
+        <div>
+          <h3 className="font-serif text-base font-bold text-[#1c3024]">Histórico Recente de Consultas pelos Postos Operacionais</h3>
+          <p className="text-xs text-[#737a70]">Registo de auditoria de consultas efetuadas em tempo real pelas brigadas e postos fixos</p>
+        </div>
+        <input
+          type="text"
+          value={searchHistory}
+          onChange={e=>setSearchHistory(e.target.value)}
+          placeholder="Pesquisar por matrícula, agente ou posto..."
+          className={`max-w-xs ${inputClass}`}
+        />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-[#dcd9cc] bg-[#f9f8f4] text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>
+              <th className="px-3 py-2.5">Código</th>
+              <th className="px-3 py-2.5">Matrícula</th>
+              <th className="px-3 py-2.5">Veículo / Proprietário</th>
+              <th className="px-3 py-2.5">Posto / Localização</th>
+              <th className="px-3 py-2.5">Agente</th>
+              <th className="px-3 py-2.5">Situação</th>
+              <th className="px-3 py-2.5">Data/Hora</th>
+              <th className="px-3 py-2.5 text-right">Ação</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0eee7]">
+            {filteredHistory.map(q=><tr key={q.id} className="hover:bg-[#fbfaf6]">
+              <td className="px-3 py-2.5 font-mono text-[#006B35] font-semibold">{q.id}</td>
+              <td className="px-3 py-2.5 font-mono font-bold bg-[#FCD116]/20">{q.plate}</td>
+              <td className="px-3 py-2.5">
+                <div className="font-semibold text-[#1c3024]">{q.vehicleDetails||'Veículo'}</div>
+                <div className="text-[10px] text-[#737a70]">{q.ownerName}</div>
+              </td>
+              <td className="px-3 py-2.5">{q.location||'Bissau'}</td>
+              <td className="px-3 py-2.5">{q.officerName}</td>
+              <td className="px-3 py-2.5"><Status value={q.status}/></td>
+              <td className="px-3 py-2.5 font-mono text-[11px] text-[#697168]">{q.queryDateTime}</td>
+              <td className="px-3 py-2.5 text-right">
+                <button
+                  onClick={()=>{setInputPlate(q.plate);handleQuery(q.plate);}}
+                  className="text-[#006B35] hover:underline font-semibold"
+                >
+                  Consultar novamente
+                </button>
+              </td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function SmartLprAnprPage(){
+  const [lprReadings,setLprReadings]=useSaved('smart-inspection-lpr',seedSmartLpr);
+  const [stolenAlerts]=useSaved('smart-inspection-stolen',seedSmartStolen);
+  const [selectedCamera,setSelectedCamera]=useState('CAM-SAFIM-NORTE-02');
+  const [filterAlertOnly,setFilterAlertOnly]=useState(false);
+  const [search,setSearch]=useState('');
+  const [simulating,setSimulating]=useState(false);
+  const [testPlate,setTestPlate]=useState('GB-21-XX');
+
+  const cameras=[
+    {id:'CAM-SAFIM-NORTE-02',name:'Rotunda de Safim - Estrada Nacional N1',region:'Biombo',speedLimit:80},
+    {id:'CAM-BISSAU-AEROPORTO-01',name:'Av. Combatentes (Sentido Aeroporto)',region:'Bissau',speedLimit:60},
+    {id:'CAM-PONTE-JOAOLANDIM-01',name:'Ponte Amílcar Cabral (João Landim)',region:'Biombo',speedLimit:50},
+    {id:'CAM-PORTO-BISSAU-03',name:'Acesso ao Porto de Bissau (Pidjiguiti)',region:'Bissau',speedLimit:40},
+    {id:'CAM-BAFATA-ENTRADA-01',name:'Entrada Poente de Bafatá - EN2',region:'Bafatá',speedLimit:60},
+  ];
+
+  const currentCam=cameras.find(c=>c.id===selectedCamera)||cameras[0];
+
+  async function triggerSimulation(){
+    setSimulating(true);
+    const plate=testPlate.toUpperCase().trim()||'GB-24-BC';
+    const isStolen=stolenAlerts.some(s=>s.plate.toUpperCase()===plate&&s.status.includes('Ativo'));
+    const speed=Math.floor(Math.random()*40)+currentCam.speedLimit;
+    const isOverSpeed=speed>currentCam.speedLimit+15;
+
+    let alertTriggered=false;
+    let alertType='Nenhum';
+    let statusInterception='Livre / Sem Restrições';
+
+    if(isStolen){
+      alertTriggered=true;
+      alertType='Veículo Roubado';
+      statusInterception='ALERTA VERMELHO - Notificar Patrulha Imediatamente';
+    }else if(isOverSpeed){
+      alertTriggered=true;
+      alertType='Excesso de Velocidade';
+      statusInterception='Auto de Notícia Automático Emitido';
+    }
+
+    const payload:SmartLprReading={
+      id:`LPR-${Date.now().toString().slice(-6)}`,
+      detectedPlate:plate,
+      cameraId:currentCam.id,
+      cameraLocation:currentCam.name,
+      gpsCoordinates:'11.9542, -15.6511',
+      speedKmh:speed,
+      confidence:(98.0+Math.random()*1.8).toFixed(1),
+      captureImageUrl:`/media/lpr/lpr_${plate.toLowerCase().replace(/-/g,'_')}.jpg`,
+      alertTriggered,
+      alertType,
+      interceptionStatus:statusInterception,
+      timestamp:new Date().toISOString().replace('T',' ').slice(0,19)
+    };
+
+    try{
+      await api.post('/smart-inspection/lpr',payload);
+    }catch{/* ignore */}
+
+    setLprReadings(prev=>[payload,...prev]);
+    setTimeout(()=>setSimulating(false),600);
+  }
+
+  const filtered=useMemo(()=>lprReadings.filter(r=>{
+    const matchesAlert=!filterAlertOnly||r.alertTriggered;
+    const matchesSearch=[r.detectedPlate,r.cameraId,r.cameraLocation,r.alertType].join(' ').toLowerCase().includes(search.toLowerCase());
+    return matchesAlert&&matchesSearch;
+  }),[lprReadings,filterAlertOnly,search]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Leitura automática de placas (LPR / ANPR)" description="Monitorização e reconhecimento ótico de caracteres (OCR) em pontos estratégicos da rede viária nacional." icon={ScanLine}/>
+    <SmartInspectionSubmenuBar/>
+
+    {/* Live Camera Viewport & Controls */}
+    <div className="grid gap-6 lg:grid-cols-12 mb-8">
+      <div className="lg:col-span-8 border border-[#173d2b] bg-[#0d1f15] text-white shadow-lg overflow-hidden">
+        {/* Top Camera Bar */}
+        <div className="bg-[#173d2b] px-4 py-2 flex justify-between items-center text-xs border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#CE1126] animate-ping"/>
+            <span className="font-mono font-bold text-[#FCD116]">AO VIVO · CÂMARA OCR</span>
+            <span className="text-[#9fb7a4]">| {currentCam.name}</span>
+          </div>
+          <div className="font-mono text-[11px] text-white/70">LIMITE: {currentCam.speedLimit} KM/H</div>
+        </div>
+
+        {/* Video Canvas Simulation */}
+        <div className="relative h-64 sm:h-80 bg-gradient-to-b from-[#11241a] via-[#173d2b]/80 to-[#0b1710] flex items-center justify-center overflow-hidden">
+          {/* Grid lines */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:32px_32px]"/>
+
+          {/* Crosshair target overlay */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="relative border-2 border-dashed border-[#009E49] p-6 sm:p-10 bg-black/40 shadow-2xl">
+              <span className="absolute -top-3 -left-3 text-[#009E49] font-mono text-[10px] bg-black px-1">[LPR SCANNER]</span>
+              <div className="font-mono font-black text-3xl sm:text-4xl text-[#FCD116] bg-[#173d2b] px-6 py-2 border-2 border-[#FCD116] tracking-widest shadow-lg">
+                {lprReadings[0]?.detectedPlate||'GB-24-BC'}
+              </div>
+              <div className="mt-2 text-center text-xs font-mono text-[#009E49]">
+                CONF: {lprReadings[0]?.confidence||'99.2'}% · RADAR: {lprReadings[0]?.speedKmh||54} KM/H
+              </div>
+            </div>
+            {lprReadings[0]?.alertTriggered&&(
+              <div className="mt-3 bg-[#CE1126] text-white font-bold text-xs uppercase px-4 py-1 tracking-wider animate-bounce">
+                ⚠ ALERTA DISPARADO: {lprReadings[0]?.alertType}
+              </div>
+            )}
+          </div>
+
+          {/* Bottom HUD */}
+          <div className="absolute bottom-2 left-3 right-3 flex justify-between text-[11px] font-mono text-white/60">
+            <span>GPS: {currentCam.id} · REG: {currentCam.region}</span>
+            <span>SIGETRAN LPR CORE v2.4</span>
+          </div>
+        </div>
+
+        {/* Camera Selector Buttons */}
+        <div className="bg-[#12281c] p-3 flex flex-wrap gap-2 border-t border-white/10">
+          {cameras.map(c=><button
+            key={c.id}
+            onClick={()=>setSelectedCamera(c.id)}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-sm transition ${selectedCamera===c.id?'bg-[#009E49] text-white':'bg-white/10 text-[#d8e2d9] hover:bg-white/20'}`}
+          >
+            {c.name.split('-')[0]}
+          </button>)}
+        </div>
+      </div>
+
+      {/* Simulator Trigger Box */}
+      <div className="lg:col-span-4 border border-[#dcd9cc] bg-white p-5 shadow-sm space-y-4">
+        <div className="font-serif text-base font-bold text-[#1c3024] border-b border-[#e9e6dc] pb-2 flex items-center gap-2">
+          <Scan size={18} className="text-[#006B35]"/> Simulação de Deteção LPR
+        </div>
+        <p className="text-xs text-[#737a70]">
+          Simule a passagem de um veículo diante da câmara de reconhecimento automático de placas para testar disparos de alertas.
+        </p>
+
+        <div>
+          <label className="block text-xs font-semibold text-[#1c3024] mb-1">Matrícula de Teste</label>
+          <input
+            type="text"
+            value={testPlate}
+            onChange={e=>setTestPlate(e.target.value.toUpperCase())}
+            placeholder="GB-00-AA"
+            className={`font-mono font-bold uppercase ${inputClass}`}
+          />
+        </div>
+
+        <div className="space-y-1.5 text-xs">
+          <span className="text-[#737a70] block font-semibold">Testes predefinidos:</span>
+          <div className="flex flex-wrap gap-1">
+            <button onClick={()=>setTestPlate('GB-21-XX')} className="border border-[#CE1126] px-2 py-1 text-[11px] bg-[#fff5f5] text-[#CE1126] font-bold">GB-21-XX (Roubado)</button>
+            <button onClick={()=>setTestPlate('GB-08-TT')} className="border border-[#836300] px-2 py-1 text-[11px] bg-[#fdfbe9] text-[#836300] font-bold">GB-08-TT (Velocidade)</button>
+            <button onClick={()=>setTestPlate('GB-19-AA')} className="border border-[#006B35] px-2 py-1 text-[11px] bg-[#f2f9f4] text-[#006B35] font-bold">GB-19-AA (Regular)</button>
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <button
+            onClick={triggerSimulation}
+            disabled={simulating}
+            className={`${primaryClass} w-full py-2.5`}
+          >
+            {simulating?<><Radio size={16} className="animate-spin"/> Capturando Imagem...</>:<><ScanLine size={16}/> Disparar Leitura de Placa</>}
+          </button>
+        </div>
+
+        <div className="border-t border-[#e9e6dc] pt-3 text-xs text-[#52644f] space-y-1">
+          <div className="flex justify-between"><span>Total de Leituras Registadas:</span><b>{lprReadings.length}</b></div>
+          <div className="flex justify-between"><span>Alertas Críticos Ativados:</span><b className="text-[#CE1126]">{lprReadings.filter(r=>r.alertTriggered).length}</b></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Feed de Passagens Recentes */}
+    <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#e9e6dc] pb-3 mb-4">
+        <div>
+          <h3 className="font-serif text-base font-bold text-[#1c3024]">Fluxo de Passagens Detectadas por Reconhecimento Ótico</h3>
+          <p className="text-xs text-[#737a70]">Histórico em tempo real de viaturas identificadas nas vias monitoradas</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={()=>setFilterAlertOnly(!filterAlertOnly)}
+            className={`border px-3 py-1.5 text-xs font-semibold ${filterAlertOnly?'border-[#CE1126] bg-[#CE1126] text-white':'border-[#d5d1c2] bg-white text-[#26372b]'}`}
+          >
+            {filterAlertOnly?'Exibindo apenas alertas':'Filtrar apenas alertas'}
+          </button>
+          <input
+            type="text"
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+            placeholder="Pesquisar matrícula..."
+            className={`max-w-xs ${inputClass}`}
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-[#dcd9cc] bg-[#f9f8f4] text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>
+              <th className="px-3 py-2.5">Registo LPR</th>
+              <th className="px-3 py-2.5">Matrícula Reconhecida</th>
+              <th className="px-3 py-2.5">Ponto de Captura</th>
+              <th className="px-3 py-2.5">Velocidade</th>
+              <th className="px-3 py-2.5">Confiança OCR</th>
+              <th className="px-3 py-2.5">Alerta</th>
+              <th className="px-3 py-2.5">Procedimento / Despacho</th>
+              <th className="px-3 py-2.5">Data e Hora</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0eee7]">
+            {filtered.map(r=><tr key={r.id} className={r.alertTriggered?'bg-[#fff9f9] hover:bg-[#fff0f0]':'hover:bg-[#fbfaf6]'}>
+              <td className="px-3 py-2.5 font-mono text-[#006B35] font-semibold">{r.id}</td>
+              <td className="px-3 py-2.5">
+                <span className="font-mono font-bold text-xs bg-[#FCD116] text-[#1c3024] px-1.5 py-0.5 border border-black/20">
+                  {r.detectedPlate}
+                </span>
+              </td>
+              <td className="px-3 py-2.5 font-medium">{r.cameraLocation}</td>
+              <td className="px-3 py-2.5 font-mono">{r.speedKmh} km/h</td>
+              <td className="px-3 py-2.5 font-mono">{r.confidence}%</td>
+              <td className="px-3 py-2.5">
+                {r.alertTriggered?<span className="inline-flex items-center gap-1 font-bold text-[#CE1126]"><AlertTriangle size={12}/>{r.alertType}</span>:<span className="text-[#006B35]">Livre</span>}
+              </td>
+              <td className="px-3 py-2.5 font-semibold text-[#1c3024]">{r.interceptionStatus}</td>
+              <td className="px-3 py-2.5 font-mono text-[11px] text-[#697168]">{r.timestamp}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function SmartQrCheckPage(){
+  const [qrChecks,setQrChecks]=useSaved('smart-inspection-qr',seedSmartQr);
+  const [docType,setDocType]=useState('Certificado de Matrícula (DUA)');
+  const [docNumber,setDocNumber]=useState('DUA-GB-2024-009841');
+  const [holderName,setHolderName]=useState('Mamadu Embaló');
+  const [plate,setPlate]=useState('GB-24-BC');
+  const [verifiedResult,setVerifiedResult]=useState<SmartQrVerification|null>(null);
+  const [verifying,setVerifying]=useState(false);
+  const [search,setSearch]=useState('');
+
+  async function handleVerify(overrideData?:Partial<SmartQrVerification>){
+    setVerifying(true);
+    const payload={
+      documentType:overrideData?.documentType||docType,
+      documentNumber:overrideData?.documentNumber||docNumber,
+      holderName:overrideData?.holderName||holderName,
+      associatedPlate:overrideData?.associatedPlate||plate,
+      cryptographicHash:overrideData?.cryptographicHash||'a7b9c1d3e5f7028149adbcde82410948',
+      verifiedBy:'Agente Fiscalizador BNT',
+      deviceUsed:'Terminal Móvel Zebra TC26'
+    };
+
+    try{
+      const res=await api.post('/smart-inspection/qr-verify',payload);
+      setVerifiedResult(res.data);
+      setQrChecks(prev=>[res.data,...prev]);
+    }catch{
+      // Fallback
+      const isExpired=payload.documentNumber.includes('44102')||payload.documentNumber.includes('EXP');
+      const mock:SmartQrVerification={
+        id:`QR-${Date.now().toString().slice(-6)}`,
+        documentType:payload.documentType,
+        documentNumber:payload.documentNumber,
+        holderName:payload.holderName,
+        associatedPlate:payload.associatedPlate,
+        cryptographicHash:payload.cryptographicHash,
+        validityStatus:isExpired?'Documento Expirado':'Autêntico e Válido',
+        issueDate:'2024-01-15',
+        expiryDate:isExpired?'2025-01-15':'2029-01-15',
+        verifiedBy:payload.verifiedBy,
+        deviceUsed:payload.deviceUsed,
+        verificationDate:new Date().toISOString().replace('T',' ').slice(0,19)
+      };
+      setVerifiedResult(mock);
+      setQrChecks(prev=>[mock,...prev]);
+    }finally{
+      setVerifying(false);
+    }
+  }
+
+  const filtered=useMemo(()=>qrChecks.filter(q=>{
+    return [q.documentNumber,q.holderName,q.documentType,q.associatedPlate||'',q.validityStatus].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[qrChecks,search]);
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Consulta de documentos através de QR Code" description="Validação criptográfica de certificados de matrícula (DUA), cartas digitais e inspeções periciais." icon={QrCode}/>
+    <SmartInspectionSubmenuBar/>
+
+    <div className="grid gap-6 lg:grid-cols-12 mb-8">
+      {/* QR Scanner Viewfinder & Controls */}
+      <div className="lg:col-span-5 border border-[#dcd9cc] bg-white p-6 shadow-sm space-y-4">
+        <div className="font-serif text-base font-bold text-[#1c3024] border-b border-[#e9e6dc] pb-2 flex items-center gap-2">
+          <QrCode size={18} className="text-[#006B35]"/> Leitor de Código QR / Código de Barras
+        </div>
+
+        {/* Viewfinder Mockup */}
+        <div className="relative h-44 bg-[#11241a] rounded-sm flex items-center justify-center border-2 border-[#006B35] overflow-hidden">
+          <div className="absolute inset-4 border-2 border-dashed border-[#FCD116] flex items-center justify-center">
+            <div className="w-full h-0.5 bg-[#009E49] shadow-[0_0_8px_#009E49] animate-pulse"/>
+          </div>
+          <div className="relative z-10 text-center text-white/80 text-xs">
+            <QrCode size={36} className="mx-auto mb-1 text-[#FCD116]"/>
+            <span className="font-mono text-[10px]">APONTE A CÂMARA PARA O QR DO DOCUMENTO</span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Tipo de Documento Oficial</label>
+            <select value={docType} onChange={e=>setDocType(e.target.value)} className={inputClass}>
+              <option>Certificado de Matrícula (DUA)</option>
+              <option>Carta de Condução Digital</option>
+              <option>Certificado de Inspeção Periódica</option>
+              <option>Apólice de Seguro Automóvel</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#1c3024] mb-1">Número do Documento / Hash</label>
+            <input type="text" value={docNumber} onChange={e=>setDocNumber(e.target.value)} className={inputClass}/>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-semibold text-[#1c3024] mb-1">Titular</label>
+              <input type="text" value={holderName} onChange={e=>setHolderName(e.target.value)} className={inputClass}/>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-[#1c3024] mb-1">Matrícula</label>
+              <input type="text" value={plate} onChange={e=>setPlate(e.target.value.toUpperCase())} className={inputClass}/>
+            </div>
+          </div>
+
+          <div className="space-y-1 text-xs">
+            <span className="text-[#737a70] block font-semibold">Testes rápidos:</span>
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={()=>{
+                  setDocType('Certificado de Matrícula (DUA)');
+                  setDocNumber('DUA-GB-2024-009841');
+                  setHolderName('Mamadu Embaló');
+                  setPlate('GB-24-BC');
+                  handleVerify({documentType:'Certificado de Matrícula (DUA)',documentNumber:'DUA-GB-2024-009841',holderName:'Mamadu Embaló',associatedPlate:'GB-24-BC'});
+                }}
+                className="border border-[#006B35] px-2 py-1 text-[11px] bg-[#f2f9f4] text-[#006B35] font-semibold"
+              >
+                DUA Mamadu Embaló
+              </button>
+              <button
+                onClick={()=>{
+                  setDocType('Carta de Condução Digital');
+                  setDocNumber('CND-GB-B-849201');
+                  setHolderName('Bacar Camará');
+                  setPlate('GB-19-AA');
+                  handleVerify({documentType:'Carta de Condução Digital',documentNumber:'CND-GB-B-849201',holderName:'Bacar Camará',associatedPlate:'GB-19-AA'});
+                }}
+                className="border border-[#006B35] px-2 py-1 text-[11px] bg-[#f2f9f4] text-[#006B35] font-semibold"
+              >
+                Carta Bacar Camará
+              </button>
+              <button
+                onClick={()=>{
+                  setDocType('Certificado de Inspeção Periódica');
+                  setDocNumber('IPO-GB-2024-44102');
+                  setHolderName('Mariama Djabi');
+                  setPlate('GB-22-CD');
+                  handleVerify({documentType:'Certificado de Inspeção Periódica',documentNumber:'IPO-GB-2024-44102',holderName:'Mariama Djabi',associatedPlate:'GB-22-CD'});
+                }}
+                className="border border-[#CE1126] px-2 py-1 text-[11px] bg-[#fff5f5] text-[#CE1126] font-semibold"
+              >
+                Inspeção Expirada
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={()=>handleVerify()}
+            disabled={verifying||!docNumber.trim()}
+            className={`${primaryClass} w-full py-2.5`}
+          >
+            {verifying?<><Radio size={16} className="animate-spin"/> Descodificando Hash...</>:<><Check size={16}/> Validar Autenticidade Digital</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Verification Result Panel */}
+      <div className="lg:col-span-7">
+        {verifiedResult?(
+          <div className="border border-[#dcd9cc] bg-white p-6 shadow-sm space-y-5">
+            <div className={`p-4 border-2 flex items-center justify-between ${
+              verifiedResult.validityStatus.includes('Autêntico')
+                ?'border-[#009E49] bg-[#f2f9f4] text-[#006B35]'
+                :'border-[#CE1126] bg-[#fff5f5] text-[#CE1126]'
+            }`}>
+              <div className="flex items-center gap-3">
+                {verifiedResult.validityStatus.includes('Autêntico')?<ShieldCheck size={32}/>:<AlertTriangle size={32}/>}
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider">Selo de Verificação Criptográfica</div>
+                  <h3 className="font-serif text-lg font-bold">{verifiedResult.validityStatus.toUpperCase()}</h3>
+                </div>
+              </div>
+              <div className="text-right font-mono text-xs">
+                <span>{verifiedResult.id}</span>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4 text-xs">
+              <div className="border border-[#e9e6dc] p-3 bg-[#fdfcf8]">
+                <span className="text-[#737a70] block uppercase text-[10px] font-bold">Tipo de Documento</span>
+                <b className="text-sm text-[#1c3024]">{verifiedResult.documentType}</b>
+                <div className="mt-2 text-[#737a70]">N.º Oficial: <b className="font-mono text-[#1c3024]">{verifiedResult.documentNumber}</b></div>
+                <div className="text-[#737a70]">Matrícula Vinculada: <b className="font-mono bg-[#FCD116] px-1 text-[#1c3024]">{verifiedResult.associatedPlate||'N/A'}</b></div>
+              </div>
+
+              <div className="border border-[#e9e6dc] p-3 bg-[#fdfcf8]">
+                <span className="text-[#737a70] block uppercase text-[10px] font-bold">Titular dos Direitos</span>
+                <b className="text-sm text-[#1c3024]">{verifiedResult.holderName}</b>
+                <div className="mt-2 text-[#737a70]">Data de Emissão: <b>{verifiedResult.issueDate}</b></div>
+                <div className="text-[#737a70]">Data de Validade: <b className={verifiedResult.validityStatus.includes('Expirado')?'text-[#CE1126]':'text-[#006B35]'}>{verifiedResult.expiryDate}</b></div>
+              </div>
+            </div>
+
+            <div className="border border-[#e9e6dc] p-3 text-xs bg-[#fbfaf6]">
+              <span className="text-[#737a70] block uppercase text-[10px] font-bold mb-1">Assinatura Digital SHA-256 e Auditoria</span>
+              <div className="font-mono text-[11px] break-all bg-white p-2 border border-[#d5d1c2] text-[#52644f]">
+                {verifiedResult.cryptographicHash}
+              </div>
+              <div className="mt-2 flex justify-between text-[11px] text-[#737a70]">
+                <span>Verificado por: <b>{verifiedResult.verifiedBy}</b></span>
+                <span>Dispositivo: <b>{verifiedResult.deviceUsed}</b></span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#e9e6dc]">
+              <button onClick={()=>window.print()} className={secondaryClass}><Printer size={15}/> Imprimir Comprovativo</button>
+            </div>
+          </div>
+        ):(
+          <div className="border border-dashed border-[#cfcbbc] bg-white p-12 text-center text-[#737a70]">
+            <QrCode size={48} className="mx-auto text-[#006B35]/40 mb-3"/>
+            <h3 className="font-serif text-lg font-bold text-[#1c3024]">Validação Segura por QR Code</h3>
+            <p className="max-w-md mx-auto text-xs mt-1">Selecione um documento ao lado ou simule a leitura do código QR para atestar a assinatura digital e validade jurídica perante as autoridades.</p>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Histórico de Leituras QR */}
+    <div className="border border-[#dcd9cc] bg-white p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#e9e6dc] pb-3 mb-4">
+        <div>
+          <h3 className="font-serif text-base font-bold text-[#1c3024]">Histórico de Documentos Validados via QR Code</h3>
+          <p className="text-xs text-[#737a70]">Auditoria de conferências digitais realizadas por terminais de patrulha</p>
+        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          placeholder="Pesquisar por documento ou titular..."
+          className={`max-w-xs ${inputClass}`}
+        />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="border-b border-[#dcd9cc] bg-[#f9f8f4] text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>
+              <th className="px-3 py-2.5">Código</th>
+              <th className="px-3 py-2.5">Tipo de Documento</th>
+              <th className="px-3 py-2.5">N.º do Documento</th>
+              <th className="px-3 py-2.5">Titular</th>
+              <th className="px-3 py-2.5">Matrícula</th>
+              <th className="px-3 py-2.5">Resultado</th>
+              <th className="px-3 py-2.5">Validade</th>
+              <th className="px-3 py-2.5">Agente Leitor</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#f0eee7]">
+            {filtered.map(q=><tr key={q.id} className="hover:bg-[#fbfaf6]">
+              <td className="px-3 py-2.5 font-mono text-[#006B35] font-semibold">{q.id}</td>
+              <td className="px-3 py-2.5 font-semibold text-[#1c3024]">{q.documentType}</td>
+              <td className="px-3 py-2.5 font-mono">{q.documentNumber}</td>
+              <td className="px-3 py-2.5 font-medium">{q.holderName}</td>
+              <td className="px-3 py-2.5 font-mono font-bold">{q.associatedPlate||'---'}</td>
+              <td className="px-3 py-2.5"><Status value={q.validityStatus}/></td>
+              <td className="px-3 py-2.5">{q.expiryDate}</td>
+              <td className="px-3 py-2.5 text-[#697168]">{q.verifiedBy}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function SmartMobileAppPage(){
+  const [devices,setDevices]=useSaved('smart-inspection-devices',seedSmartDevices);
+  const [activeDevice,setActiveDevice]=useState(devices[0]||seedSmartDevices[0]);
+  const [isOffline,setIsOffline]=useState(false);
+  const [syncing,setSyncing]=useState(false);
+  const [toastMsg,setToastMsg]=useState('');
+
+  function triggerDeviceSync(){
+    setSyncing(true);
+    setTimeout(()=>{
+      setSyncing(false);
+      setToastMsg('Terminal sincronizado com o Servidor Central do SIGETRAN!');
+      setTimeout(()=>setToastMsg(''),4000);
+    },1200);
+  }
+
+  function triggerSOS(){
+    alert(`🚨 ALERTA SOS POLICIAL DISPARADO!\nCoordenadas: ${activeDevice.lastGps}\nAgente: ${activeDevice.assignedOfficer} (${activeDevice.officerBadge})\nPatrulhas de apoio mais próximas acionadas com prioridade máxima!`);
+  }
+
+  return <Shell>
+    <Title eyebrow="Fiscalização inteligente" title="Aplicação móvel para agentes policiais" description="Interface tática móvel para terminais de campo da Brigada Nacional de Trânsito e Polícia de Ordem Pública." icon={Smartphone}/>
+    <SmartInspectionSubmenuBar/>
+
+    <div className="grid gap-6 lg:grid-cols-12 mb-8">
+      {/* Smartphone Mockup Frame */}
+      <div className="lg:col-span-5 flex justify-center">
+        <div className="w-full max-w-[360px] bg-[#1a1c1a] p-3 rounded-[36px] shadow-2xl border-4 border-[#2f332f]">
+          {/* Phone Speaker & Camera Notch */}
+          <div className="flex justify-center mb-2">
+            <div className="h-4 w-28 bg-[#111] rounded-b-xl flex items-center justify-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#333]"/>
+              <span className="h-1 w-10 bg-[#222] rounded-full"/>
+            </div>
+          </div>
+
+          {/* Phone Screen Container */}
+          <div className="bg-[#f4f3ed] rounded-[24px] overflow-hidden text-[#1c3024] flex flex-col h-[580px] shadow-inner border border-black/10">
+            {/* Status Bar */}
+            <div className="bg-[#173d2b] text-white px-4 py-1.5 flex justify-between items-center text-[11px] font-mono">
+              <span>18:30</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-sans font-bold">{isOffline?'OFFLINE':'4G LTE'}</span>
+                {isOffline?<WifiOff size={13} className="text-[#CE1126]"/>:<Wifi size={13} className="text-[#FCD116]"/>}
+                <div className="flex items-center gap-0.5">
+                  <Battery size={14}/>
+                  <span>{activeDevice.batteryLevel}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Officer Header */}
+            <div className="bg-[#173d2b] text-white px-4 pb-4 pt-2 border-b border-white/10">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-[.18em] text-[#FCD116]">SIGETRAN Mobile Agente</div>
+                  <h3 className="font-bold text-sm leading-tight text-white">{activeDevice.assignedOfficer}</h3>
+                  <div className="text-[11px] text-[#bdcdbf]">NIP: {activeDevice.officerBadge} · BNT Bissau</div>
+                </div>
+                <div className="grid h-8 w-8 place-items-center bg-[#009E49] text-xs font-black text-white rounded-full">
+                  GB
+                </div>
+              </div>
+
+              {/* Mode Toggle inside phone */}
+              <div className="mt-3 flex justify-between items-center bg-black/25 px-2.5 py-1.5 rounded text-xs">
+                <span className="text-[11px]">Modo de Rede:</span>
+                <button
+                  onClick={()=>setIsOffline(!isOffline)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${isOffline?'bg-[#CE1126] text-white':'bg-[#009E49] text-white'}`}
+                >
+                  {isOffline?'Modo Offline':'Modo Online'}
+                </button>
+              </div>
+            </div>
+
+            {/* Phone Body / Scrollable Content */}
+            <div className="flex-1 p-3.5 overflow-y-auto space-y-3 text-xs">
+              {toastMsg&&(
+                <div className="bg-[#006B35] text-white p-2 rounded text-[11px] font-semibold text-center animate-fade-in">
+                  ✓ {toastMsg}
+                </div>
+              )}
+
+              {/* Shift Stats Card */}
+              <div className="bg-white border border-[#d5d1c2] p-2.5 rounded shadow-sm">
+                <div className="text-[10px] uppercase font-bold text-[#737a70] mb-1">Atividade do Turno</div>
+                <div className="grid grid-cols-3 text-center divide-x divide-[#e9e6dc]">
+                  <div><span className="font-bold text-base text-[#1c3024]">{activeDevice.ticketsIssuedShift}</span><span className="block text-[9px] text-[#737a70]">Autos</span></div>
+                  <div><span className="font-bold text-base text-[#1c3024]">{activeDevice.queriesDoneShift}</span><span className="block text-[9px] text-[#737a70]">Consultas</span></div>
+                  <div><span className="font-bold text-base text-[#006B35]">{activeDevice.pendingSyncCount}</span><span className="block text-[9px] text-[#737a70]">Pendentes</span></div>
+                </div>
+              </div>
+
+              {/* Tactical Action Grid */}
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#697168]">Ações Rápidas em Estrada</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Link to="/smart-inspection" className="bg-white border border-[#d5d1c2] p-2.5 rounded flex flex-col items-center justify-center gap-1.5 hover:bg-[#f2f9f4] hover:border-[#009E49] transition">
+      
+... [truncated for diff preview]

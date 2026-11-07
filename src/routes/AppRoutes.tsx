@@ -49,6 +49,13 @@ import {
   QRCodeValidationPage,
   RegistrationCertificatePage,
   ReportsManagement,
+  SmartExpiredDocsPage,
+  SmartGpsInfractionsPage,
+  SmartLprAnprPage,
+  SmartMobileAppPage,
+  SmartPlateQueryPage,
+  SmartQrCheckPage,
+  SmartStolenAlertsPage,
   SystemAdministration,
   TransportDashboard,
   TransportLanding,
@@ -117,6 +124,14 @@ export function AppRoutes() {
     <Route path="/accidents/police-reports" element={<Protected><AccidentPoliceReportsPage/></Protected>}/>
     <Route path="/accidents/witnesses" element={<Protected><AccidentWitnessesPage/></Protected>}/>
     <Route path="/accidents/statistics" element={<Protected><AccidentStatisticsPage/></Protected>}/>
+    <Route path="/smart-inspection" element={<Protected><SmartPlateQueryPage/></Protected>}/>
+    <Route path="/smart-inspection/plate-query" element={<Protected><SmartPlateQueryPage/></Protected>}/>
+    <Route path="/smart-inspection/lpr-anpr" element={<Protected><SmartLprAnprPage/></Protected>}/>
+    <Route path="/smart-inspection/qr-check" element={<Protected><SmartQrCheckPage/></Protected>}/>
+    <Route path="/smart-inspection/mobile-app" element={<Protected><SmartMobileAppPage/></Protected>}/>
+    <Route path="/smart-inspection/gps-infractions" element={<Protected><SmartGpsInfractionsPage/></Protected>}/>
+    <Route path="/smart-inspection/expired-docs" element={<Protected><SmartExpiredDocsPage/></Protected>}/>
+    <Route path="/smart-inspection/stolen-alerts" element={<Protected><SmartStolenAlertsPage/></Protected>}/>
     <Route path="/inspections" element={<Protected><InspectionManagement/></Protected>}/>
     <Route path="/reports" element={<Protected><ReportsManagement/></Protected>}/>
     <Route path="/users" element={<Protected><SystemAdministration/></Protected>}/>
