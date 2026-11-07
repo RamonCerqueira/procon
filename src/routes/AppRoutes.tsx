@@ -3,6 +3,14 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import {
+  AccidentEvidencePage,
+  AccidentLocationsPage,
+  AccidentPoliceReportsPage,
+  AccidentRegistryPage,
+  AccidentStatisticsPage,
+  AccidentVehiclesDriversPage,
+  AccidentVictimsPage,
+  AccidentWitnessesPage,
   CirculationTax,
   DigitalDrivingLicensePage,
   DocumentAdministrativeBlockPage,
@@ -25,12 +33,19 @@ import {
   FinePaymentsPage,
   FineRecidivismPage,
   FineSeverityPage,
+  FleetExpensesControlPage,
+  FleetFuelPage,
+  FleetInstitutionsPage,
+  FleetMaintenancePage,
+  FleetMissionsHistoryPage,
+  FleetOfficersPage,
   InfractionCatalog,
   InspectionManagement,
   OwnershipCertificatePage,
   OwnershipTransferAndHistory,
   PlateCheck,
   PublicAuthenticityVerificationPage,
+  PublicVehicleRegistryPage,
   QRCodeValidationPage,
   RegistrationCertificatePage,
   ReportsManagement,
@@ -87,6 +102,21 @@ export function AppRoutes() {
     <Route path="/documents-certificates/qr-validation" element={<Protected><QRCodeValidationPage/></Protected>}/>
     <Route path="/documents-certificates/authenticity" element={<PublicAuthenticityVerificationPage/>}/>
     <Route path="/documents-certificates/administrative-blocks" element={<Protected><DocumentAdministrativeBlockPage/></Protected>}/>
+    <Route path="/state-fleet" element={<Protected><PublicVehicleRegistryPage/></Protected>}/>
+    <Route path="/state-fleet/institutions" element={<Protected><FleetInstitutionsPage/></Protected>}/>
+    <Route path="/state-fleet/officers" element={<Protected><FleetOfficersPage/></Protected>}/>
+    <Route path="/state-fleet/missions" element={<Protected><FleetMissionsHistoryPage/></Protected>}/>
+    <Route path="/state-fleet/fuel" element={<Protected><FleetFuelPage/></Protected>}/>
+    <Route path="/state-fleet/maintenance" element={<Protected><FleetMaintenancePage/></Protected>}/>
+    <Route path="/state-fleet/expenses" element={<Protected><FleetExpensesControlPage/></Protected>}/>
+    <Route path="/accidents" element={<Protected><AccidentRegistryPage/></Protected>}/>
+    <Route path="/accidents/vehicles-drivers" element={<Protected><AccidentVehiclesDriversPage/></Protected>}/>
+    <Route path="/accidents/victims" element={<Protected><AccidentVictimsPage/></Protected>}/>
+    <Route path="/accidents/locations" element={<Protected><AccidentLocationsPage/></Protected>}/>
+    <Route path="/accidents/evidence" element={<Protected><AccidentEvidencePage/></Protected>}/>
+    <Route path="/accidents/police-reports" element={<Protected><AccidentPoliceReportsPage/></Protected>}/>
+    <Route path="/accidents/witnesses" element={<Protected><AccidentWitnessesPage/></Protected>}/>
+    <Route path="/accidents/statistics" element={<Protected><AccidentStatisticsPage/></Protected>}/>
     <Route path="/inspections" element={<Protected><InspectionManagement/></Protected>}/>
     <Route path="/reports" element={<Protected><ReportsManagement/></Protected>}/>
     <Route path="/users" element={<Protected><SystemAdministration/></Protected>}/>

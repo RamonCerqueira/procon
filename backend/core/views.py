@@ -3,15 +3,25 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
-from .controllers import AuthController, VehicleController, DriverController, FineController, InfractionController, OwnershipController, VehicleStatusController, DocumentController
+from .controllers import (
+    AuthController, VehicleController, DriverController, FineController,
+    InfractionController, OwnershipController, VehicleStatusController,
+    DocumentController, StateFleetController, AccidentController
+)
 from .models import (
-    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado, UsuarioSistema, ConfiguracaoSistema,
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado,
+    VeiculoPublico, UtilizacaoVeiculoPublico, AbastecimentoFrota, ManutencaoFrota,
+    AcidenteTransito, VeiculoCondutorAcidente, VitimaAcidente, TestemunhaAcidente, RelatorioPolicialAcidente, DocumentoFotografiaAcidente,
+    UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
 )
 from .serializers import (
     VeiculoSerializer, OcorrenciaVeicularSerializer, HistoricoProprietarioSerializer, CondutorSerializer, RegistoCartaConducaoSerializer, ExameCondutorSerializer, MultaSerializer, RecursoMultaSerializer, AgenteFiscalizadorSerializer, TipoInfracaoSerializer,
-    InspecaoVeicularSerializer, DocumentoCertificadoSerializer, UsuarioSistemaSerializer, ConfiguracaoSistemaSerializer,
+    InspecaoVeicularSerializer, DocumentoCertificadoSerializer,
+    VeiculoPublicoSerializer, UtilizacaoVeiculoPublicoSerializer, AbastecimentoFrotaSerializer, ManutencaoFrotaSerializer,
+    AcidenteTransitoSerializer, VeiculoCondutorAcidenteSerializer, VitimaAcidenteSerializer, TestemunhaAcidenteSerializer, RelatorioPolicialAcidenteSerializer, DocumentoFotografiaAcidenteSerializer,
+    UsuarioSistemaSerializer, ConfiguracaoSistemaSerializer,
     ConsumidorSerializer, FornecedorSerializer, ProcessoSerializer,
     MensagemProcessoSerializer, DocumentoSerializer, FiscalizacaoSerializer,
     SuperendividamentoSerializer, AudienciaSerializer
@@ -431,6 +441,345 @@ def sigetran_state(request, key):
                 DocumentoCertificado.objects.exclude(codigo__in=codigos).delete()
             return Response(DocumentoCertificadoSerializer(DocumentoCertificado.objects.all(), many=True).data)
 
+    elif key == 'state-fleet':
+        if request.method == 'GET':
+            items = VeiculoPublico.objects.all()
+            return Response(VeiculoPublicoSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    placa = str(item.get('plate', '')).strip().upper()
+                    if not codigo or not placa:
+                        continue
+                    codigos.append(codigo)
+                    VeiculoPublico.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'placa': placa,
+                            'marca': item.get('make', ''),
+                            'modelo': item.get('model', ''),
+                            'ano': int(item.get('year') or 2024),
+                            'cor': item.get('color', 'Branco') or 'Branco',
+                            'categoria': item.get('category', 'Serviço Operacional') or 'Serviço Operacional',
+                            'ministerio_instituicao': item.get('institution', ''),
+                            'sigla_instituicao': item.get('institutionAcronym', '') or '',
+                            'departamento_direcao': item.get('department', '') or '',
+                            'funcionario_responsavel': item.get('responsibleOfficer', '') or '',
+                            'funcionario_cargo': item.get('officerRole', '') or '',
+                            'funcionario_contacto': item.get('officerContact', '') or '',
+                            'quilometragem_atual': int(item.get('currentMileage') or 0),
+                            'capacidade_tanque': int(item.get('tankCapacity') or 65),
+                            'tipo_combustivel': item.get('fuelType', 'Gasóleo (Diesel)') or 'Gasóleo (Diesel)',
+                            'status': item.get('status', 'Em Serviço') or 'Em Serviço',
+                            'numero_chassi': item.get('chassisNumber', '') or '',
+                            'data_afetacao': item.get('assignmentDate', '') or '',
+                            'observacoes': item.get('notes', '') or '',
+                        }
+                    )
+                VeiculoPublico.objects.exclude(codigo__in=codigos).delete()
+            return Response(VeiculoPublicoSerializer(VeiculoPublico.objects.all(), many=True).data)
+
+    elif key == 'fleet-missions':
+        if request.method == 'GET':
+            items = UtilizacaoVeiculoPublico.objects.all()
+            return Response(UtilizacaoVeiculoPublicoSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    UtilizacaoVeiculoPublico.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'veiculo_placa': item.get('plate', ''),
+                            'ministerio_instituicao': item.get('institution', ''),
+                            'funcionario_nome': item.get('officerName', ''),
+                            'funcionario_matricula': item.get('officerBadge', '') or '',
+                            'motivo_missao': item.get('missionPurpose', ''),
+                            'origem': item.get('origin', 'Bissau') or 'Bissau',
+                            'destino': item.get('destination', ''),
+                            'data_saida': item.get('departureDate', ''),
+                            'hora_saida': item.get('departureTime', '08:00') or '08:00',
+                            'data_retorno': item.get('returnDate', '') or '',
+                            'hora_retorno': item.get('returnTime', '18:00') or '18:00',
+                            'km_saida': int(item.get('departureKm') or 0),
+                            'km_retorno': int(item.get('returnKm') or 0),
+                            'km_percorridos': int(item.get('totalKm') or 0),
+                            'status': item.get('status', 'Concluída') or 'Concluída',
+                            'observacoes': item.get('notes', '') or '',
+                        }
+                    )
+                UtilizacaoVeiculoPublico.objects.exclude(codigo__in=codigos).delete()
+            return Response(UtilizacaoVeiculoPublicoSerializer(UtilizacaoVeiculoPublico.objects.all(), many=True).data)
+
+    elif key == 'fleet-fuel':
+        if request.method == 'GET':
+            items = AbastecimentoFrota.objects.all()
+            return Response(AbastecimentoFrotaSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    AbastecimentoFrota.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'veiculo_placa': item.get('plate', ''),
+                            'ministerio_instituicao': item.get('institution', ''),
+                            'funcionario_condutor': item.get('driverName', ''),
+                            'data_abastecimento': item.get('date', ''),
+                            'posto_combustivel': item.get('station', 'Petroguin - Luanda') or 'Petroguin - Luanda',
+                            'tipo_combustivel': item.get('fuelType', 'Gasóleo') or 'Gasóleo',
+                            'quantidade_litros': float(item.get('liters') or 0.0),
+                            'preco_por_litro': int(item.get('unitPrice') or 950),
+                            'valor_total': int(item.get('totalAmount') or 0),
+                            'km_momento': int(item.get('mileageAtFuel') or 0),
+                            'numero_talao': item.get('voucherNumber', '') or '',
+                        }
+                    )
+                AbastecimentoFrota.objects.exclude(codigo__in=codigos).delete()
+            return Response(AbastecimentoFrotaSerializer(AbastecimentoFrota.objects.all(), many=True).data)
+
+    elif key == 'fleet-maintenance':
+        if request.method == 'GET':
+            items = ManutencaoFrota.objects.all()
+            return Response(ManutencaoFrotaSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    ManutencaoFrota.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'veiculo_placa': item.get('plate', ''),
+                            'ministerio_instituicao': item.get('institution', ''),
+                            'tipo_manutencao': item.get('maintenanceType', 'Preventiva / Revisão Periódica') or 'Preventiva / Revisão Periódica',
+                            'oficina_prestador': item.get('garage', 'Garagem Central do Estado') or 'Garagem Central do Estado',
+                            'data_entrada': item.get('entryDate', ''),
+                            'data_conclusao': item.get('completionDate', '') or '',
+                            'km_manutencao': int(item.get('mileageAtService') or 0),
+                            'descricao_servico': item.get('serviceDescription', ''),
+                            'pecas_substituidas': item.get('partsReplaced', '') or '',
+                            'custo_total': int(item.get('totalCost') or 0),
+                            'status': item.get('status', 'Concluída') or 'Concluída',
+                        }
+                    )
+                ManutencaoFrota.objects.exclude(codigo__in=codigos).delete()
+            return Response(ManutencaoFrotaSerializer(ManutencaoFrota.objects.all(), many=True).data)
+
+    elif key == 'accidents':
+        if request.method == 'GET':
+            items = AcidenteTransito.objects.all()
+            return Response(AcidenteTransitoSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    road = str(item.get('road', '')).strip()
+                    if not codigo or not road:
+                        continue
+                    codigos.append(codigo)
+                    AcidenteTransito.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'data_acidente': item.get('date', ''),
+                            'hora_acidente': item.get('time', '12:00') or '12:00',
+                            'gravidade': item.get('severity', 'Com Feridos') or 'Com Feridos',
+                            'tipo_acidente': item.get('type', 'Colisão') or 'Colisão',
+                            'regiao': item.get('region', 'Setor Autónomo de Bissau') or 'Setor Autónomo de Bissau',
+                            'local_via': road,
+                            'latitude': float(item.get('latitude') or 11.8632),
+                            'longitude': float(item.get('longitude') or -15.5984),
+                            'ponto_referencia': item.get('landmark', '') or '',
+                            'condicoes_meteorologicas': item.get('weather', 'Bom tempo / Sol') or 'Bom tempo / Sol',
+                            'estado_piso': item.get('roadCondition', 'Seco e limpo') or 'Seco e limpo',
+                            'quantidade_veiculos': int(item.get('vehiclesInvolved') or 2),
+                            'quantidade_vitimas': int(item.get('victimsCount') or 0),
+                            'quantidade_mortos': int(item.get('fatalitiesCount') or 0),
+                            'quantidade_feridos': int(item.get('injuredCount') or 0),
+                            'causa_provavel': item.get('probableCause', 'Excesso de velocidade') or 'Excesso de velocidade',
+                            'descricao_circunstancias': item.get('description', '') or '',
+                            'status': item.get('status', 'Em Investigação') or 'Em Investigação',
+                        }
+                    )
+                AcidenteTransito.objects.exclude(codigo__in=codigos).delete()
+            return Response(AcidenteTransitoSerializer(AcidenteTransito.objects.all(), many=True).data)
+
+    elif key == 'accident-vehicles-drivers':
+        if request.method == 'GET':
+            items = VeiculoCondutorAcidente.objects.all()
+            return Response(VeiculoCondutorAcidenteSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    VeiculoCondutorAcidente.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'acidente_codigo': item.get('accidentId', ''),
+                            'veiculo_placa': str(item.get('plate', '')).upper().strip(),
+                            'veiculo_marca_modelo': item.get('vehicleLabel', '') or '',
+                            'veiculo_categoria': item.get('vehicleCategory', 'Ligeiro particular') or 'Ligeiro particular',
+                            'veiculo_seguradora': item.get('insuranceCompany', 'Garantia Seguros GB') or 'Garantia Seguros GB',
+                            'veiculo_apolice': item.get('insurancePolicy', '') or '',
+                            'danos_materiais': item.get('damageDescription', '') or '',
+                            'condutor_nome': item.get('driverName', ''),
+                            'condutor_documento': item.get('driverDocument', '') or '',
+                            'condutor_carta': item.get('driverLicense', '') or '',
+                            'condutor_categoria_carta': item.get('driverCategory', 'B') or 'B',
+                            'condutor_telefone': item.get('driverPhone', '') or '',
+                            'teste_alcoolemia': item.get('alcoholTest', '0.00 g/l (Negativo)') or '0.00 g/l (Negativo)',
+                            'responsabilidade_apurada': item.get('liability', 'Sob Peritagem') or 'Sob Peritagem',
+                            'observacoes': item.get('notes', '') or '',
+                        }
+                    )
+                VeiculoCondutorAcidente.objects.exclude(codigo__in=codigos).delete()
+            return Response(VeiculoCondutorAcidenteSerializer(VeiculoCondutorAcidente.objects.all(), many=True).data)
+
+    elif key == 'accident-victims':
+        if request.method == 'GET':
+            items = VitimaAcidente.objects.all()
+            return Response(VitimaAcidenteSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    VitimaAcidente.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'acidente_codigo': item.get('accidentId', ''),
+                            'nome': item.get('name', ''),
+                            'documento_identificacao': item.get('document', '') or '',
+                            'idade': int(item.get('age') or 30),
+                            'sexo': item.get('gender', 'Masculino') or 'Masculino',
+                            'condicao_vitima': item.get('condition', 'Passageiro') or 'Passageiro',
+                            'veiculo_placa': str(item.get('associatedPlate', '')).upper().strip(),
+                            'gravidade_lesao': item.get('injurySeverity', 'Ferimentos Leves') or 'Ferimentos Leves',
+                            'hospital_destino': item.get('hospital', 'Hospital Nacional Simão Mendes') or 'Hospital Nacional Simão Mendes',
+                            'contacto_emergencia': item.get('emergencyContact', '') or '',
+                            'observacoes_medicas': item.get('medicalNotes', '') or '',
+                        }
+                    )
+                VitimaAcidente.objects.exclude(codigo__in=codigos).delete()
+            return Response(VitimaAcidenteSerializer(VitimaAcidente.objects.all(), many=True).data)
+
+    elif key == 'accident-witnesses':
+        if request.method == 'GET':
+            items = TestemunhaAcidente.objects.all()
+            return Response(TestemunhaAcidenteSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    TestemunhaAcidente.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'acidente_codigo': item.get('accidentId', ''),
+                            'nome': item.get('name', ''),
+                            'documento_identificacao': item.get('document', '') or '',
+                            'telefone': item.get('phone', '') or '',
+                            'endereco': item.get('address', '') or '',
+                            'posicao_momento': item.get('locationAtMoment', 'Peão no local') or 'Peão no local',
+                            'depoimento': item.get('statement', '') or '',
+                            'data_depoimento': item.get('statementDate', ''),
+                        }
+                    )
+                TestemunhaAcidente.objects.exclude(codigo__in=codigos).delete()
+            return Response(TestemunhaAcidenteSerializer(TestemunhaAcidente.objects.all(), many=True).data)
+
+    elif key == 'accident-police-reports':
+        if request.method == 'GET':
+            items = RelatorioPolicialAcidente.objects.all()
+            return Response(RelatorioPolicialAcidenteSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    RelatorioPolicialAcidente.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'acidente_codigo': item.get('accidentId', ''),
+                            'numero_boletim': item.get('reportNumber', '') or f"BO/BNT/2026/{codigo}",
+                            'orgao_policial': item.get('policeDepartment', 'Brigada Nacional de Trânsito (BNT)') or 'Brigada Nacional de Trânsito (BNT)',
+                            'agente_responsavel': item.get('officerName', ''),
+                            'agente_matricula': item.get('officerBadge', ''),
+                            'data_relatorio': item.get('reportDate', ''),
+                            'conclusao_pericial': item.get('investigationSummary', ''),
+                            'infracoes_constatadas': item.get('infractionsFound', '') or '',
+                            'encaminhamento': item.get('legalReferral', 'Remetido ao Ministério Público') or 'Remetido ao Ministério Público',
+                            'status_processo': item.get('procedureStatus', 'Concluído') or 'Concluído',
+                            'observacoes': item.get('notes', '') or '',
+                        }
+                    )
+                RelatorioPolicialAcidente.objects.exclude(codigo__in=codigos).delete()
+            return Response(RelatorioPolicialAcidenteSerializer(RelatorioPolicialAcidente.objects.all(), many=True).data)
+
+    elif key == 'accident-evidence':
+        if request.method == 'GET':
+            items = DocumentoFotografiaAcidente.objects.all()
+            return Response(DocumentoFotografiaAcidenteSerializer(items, many=True).data)
+        elif request.method == 'PUT':
+            data = request.data if isinstance(request.data, list) else []
+            with transaction.atomic():
+                codigos = []
+                for item in data:
+                    codigo = str(item.get('id', '')).strip()
+                    if not codigo:
+                        continue
+                    codigos.append(codigo)
+                    DocumentoFotografiaAcidente.objects.update_or_create(
+                        codigo=codigo,
+                        defaults={
+                            'acidente_codigo': item.get('accidentId', ''),
+                            'tipo_anexo': item.get('evidenceType', 'Fotografia do Local') or 'Fotografia do Local',
+                            'titulo': item.get('title', ''),
+                            'arquivo_url': item.get('fileUrl', '') or '',
+                            'descricao': item.get('description', '') or '',
+                            'autor_anexo': item.get('registeredBy', 'Brigada de Peritagem BNT') or 'Brigada de Peritagem BNT',
+                            'data_registo': item.get('registrationDate', ''),
+                        }
+                    )
+                DocumentoFotografiaAcidente.objects.exclude(codigo__in=codigos).delete()
+            return Response(DocumentoFotografiaAcidenteSerializer(DocumentoFotografiaAcidente.objects.all(), many=True).data)
+
     elif key == 'users':
         if request.method == 'GET':
             items = UsuarioSistema.objects.all()
@@ -685,6 +1034,230 @@ def transport_document_detail(request, code):
 @api_view(['GET'])
 def transport_document_verify(request):
     result = DocumentController.verify_authenticity(request.GET.get('q', ''))
+    return Response(result['data'], status=result['status_code'])
+
+
+# ==============================================================================
+# Endpoints REST Frota do Estado (MVC: View -> StateFleetController)
+# ==============================================================================
+
+@api_view(['GET', 'POST'])
+def public_vehicles_list(request):
+    if request.method == 'GET':
+        result = StateFleetController.list_public_vehicles(
+            institution=request.GET.get('institution', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = StateFleetController.create_public_vehicle(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def public_vehicle_detail(request, code):
+    if request.method == 'GET':
+        ensure_seed_data()
+        veiculo = VeiculoPublico.objects.filter(Q(codigo__iexact=code.strip()) | Q(placa__iexact=code.strip())).first()
+        if not veiculo:
+            return Response({'error': 'Veículo não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(VeiculoPublicoSerializer(veiculo).data)
+    elif request.method == 'PUT':
+        result = StateFleetController.update_public_vehicle(code, request.data)
+        return Response(result['data'], status=result['status_code'])
+    result = StateFleetController.delete_public_vehicle(code)
+    return Response(status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def fleet_missions_list(request):
+    if request.method == 'GET':
+        result = StateFleetController.list_missions(
+            plate=request.GET.get('plate', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = StateFleetController.create_mission(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['PUT', 'DELETE'])
+def fleet_mission_detail(request, code):
+    if request.method == 'PUT':
+        result = StateFleetController.update_mission(code, request.data)
+        return Response(result['data'], status=result['status_code'])
+    result = StateFleetController.delete_mission(code)
+    return Response(status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def fleet_fuel_list(request):
+    if request.method == 'GET':
+        result = StateFleetController.list_fuel_logs(
+            plate=request.GET.get('plate', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = StateFleetController.create_fuel_log(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def fleet_fuel_detail(request, code):
+    result = StateFleetController.delete_fuel_log(code)
+    return Response(status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def fleet_maintenance_list(request):
+    if request.method == 'GET':
+        result = StateFleetController.list_maintenances(
+            plate=request.GET.get('plate', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = StateFleetController.create_maintenance(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['PUT', 'DELETE'])
+def fleet_maintenance_detail(request, code):
+    if request.method == 'PUT':
+        result = StateFleetController.update_maintenance(code, request.data)
+        return Response(result['data'], status=result['status_code'])
+    result = StateFleetController.delete_maintenance(code)
+    return Response(status=result['status_code'])
+
+
+@api_view(['GET'])
+def fleet_expenses_stats(request):
+    result = StateFleetController.get_fleet_expenses()
+    return Response(result['data'], status=result['status_code'])
+
+
+# ==============================================================================
+# Endpoints REST Gestão de Acidentes Rodoviários (SIGETRAN - MVC)
+# ==============================================================================
+
+@api_view(['GET', 'POST'])
+def accidents_list(request):
+    if request.method == 'GET':
+        result = AccidentController.list_accidents(
+            region=request.GET.get('region', ''),
+            severity=request.GET.get('severity', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = AccidentController.create_accident(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def accident_detail(request, code):
+    if request.method == 'GET':
+        qs = AcidenteTransito.objects.filter(codigo__iexact=code.strip())
+        if not qs.exists():
+            return Response({'error': 'Acidente não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(AcidenteTransitoSerializer(qs.first()).data)
+    elif request.method == 'PUT':
+        result = AccidentController.update_accident(code, request.data)
+        return Response(result['data'], status=result['status_code'])
+    result = AccidentController.delete_accident(code)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def accident_vehicles_drivers_list(request):
+    if request.method == 'GET':
+        result = AccidentController.list_vehicles_drivers(
+            accident_id=request.GET.get('accidentId', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = AccidentController.create_vehicle_driver(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def accident_vehicle_driver_detail(request, code):
+    result = AccidentController.delete_vehicle_driver(code)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def accident_victims_list(request):
+    if request.method == 'GET':
+        result = AccidentController.list_victims(
+            accident_id=request.GET.get('accidentId', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = AccidentController.create_victim(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def accident_victim_detail(request, code):
+    result = AccidentController.delete_victim(code)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def accident_witnesses_list(request):
+    if request.method == 'GET':
+        result = AccidentController.list_witnesses(
+            accident_id=request.GET.get('accidentId', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = AccidentController.create_witness(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def accident_witness_detail(request, code):
+    result = AccidentController.delete_witness(code)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def accident_police_reports_list(request):
+    if request.method == 'GET':
+        result = AccidentController.list_police_reports(
+            accident_id=request.GET.get('accidentId', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = AccidentController.create_police_report(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def accident_police_report_detail(request, code):
+    result = AccidentController.delete_police_report(code)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET', 'POST'])
+def accident_evidence_list(request):
+    if request.method == 'GET':
+        result = AccidentController.list_evidence(
+            accident_id=request.GET.get('accidentId', ''),
+            search=request.GET.get('search', ''),
+        )
+        return Response(result['data'], status=result['status_code'])
+    result = AccidentController.create_evidence(request.data)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['DELETE'])
+def accident_evidence_detail(request, code):
+    result = AccidentController.delete_evidence(code)
+    return Response(result['data'], status=result['status_code'])
+
+
+@api_view(['GET'])
+def accident_statistics_view(request):
+    result = AccidentController.get_accident_statistics()
     return Response(result['data'], status=result['status_code'])
 
 

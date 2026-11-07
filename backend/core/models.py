@@ -293,6 +293,123 @@ class DocumentoCertificado(models.Model):
         return f"{self.codigo} - {self.tipo_documento} ({self.referencia_vinculada})"
 
 
+# ==============================================================================
+# Modelos de Gestão da Frota do Estado (SIGETRAN / Setor Público)
+# ==============================================================================
+
+class VeiculoPublico(models.Model):
+    codigo = models.CharField('N.º de Frota', max_length=50, unique=True)
+    placa = models.CharField('Matrícula Oficial', max_length=32, unique=True)
+    marca = models.CharField('Marca', max_length=100)
+    modelo = models.CharField('Modelo', max_length=100)
+    ano = models.IntegerField('Ano de Fabrico', default=2024)
+    cor = models.CharField('Cor', max_length=50, default='Branco')
+    categoria = models.CharField('Categoria de Serviço', max_length=100, default='Serviço Operacional')
+    ministerio_instituicao = models.CharField('Ministério / Instituição Responsável', max_length=200)
+    sigla_instituicao = models.CharField('Sigla', max_length=40, blank=True, default='')
+    departamento_direcao = models.CharField('Departamento / Direção Afeta', max_length=200, blank=True, default='')
+    funcionario_responsavel = models.CharField('Funcionário Responsável', max_length=200, blank=True, default='')
+    funcionario_cargo = models.CharField('Cargo do Responsável', max_length=150, blank=True, default='')
+    funcionario_contacto = models.CharField('Contacto do Funcionário', max_length=60, blank=True, default='')
+    quilometragem_atual = models.IntegerField('Quilometragem Atual (km)', default=0)
+    capacidade_tanque = models.IntegerField('Capacidade do Depósito (L)', default=65)
+    tipo_combustivel = models.CharField('Tipo de Combustível', max_length=50, default='Gasóleo (Diesel)')
+    status = models.CharField('Estado Operacional', max_length=50, default='Em Serviço')
+    numero_chassi = models.CharField('N.º de Chassi / Quadro', max_length=100, blank=True, default='')
+    data_afetacao = models.CharField('Data de Afetação', max_length=20, blank=True, default='')
+    observacoes = models.CharField('Observações', max_length=255, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'veiculos_publicos'
+        verbose_name = 'Veículo Público'
+        verbose_name_plural = 'Veículos Públicos'
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.placa} ({self.ministerio_instituicao})"
+
+
+class UtilizacaoVeiculoPublico(models.Model):
+    codigo = models.CharField('N.º da Missão / Requisição', max_length=50, unique=True)
+    veiculo_placa = models.CharField('Matrícula do Veículo', max_length=32)
+    ministerio_instituicao = models.CharField('Ministério / Instituição', max_length=200)
+    funcionario_nome = models.CharField('Condutor / Funcionário Requisitante', max_length=200)
+    funcionario_matricula = models.CharField('N.º de BI / Matrícula do Funcionário', max_length=60, blank=True, default='')
+    motivo_missao = models.CharField('Finalidade / Motivo da Missão', max_length=255)
+    origem = models.CharField('Local de Origem', max_length=100, default='Bissau')
+    destino = models.CharField('Destino / Rota', max_length=150)
+    data_saida = models.CharField('Data de Saída', max_length=20)
+    hora_saida = models.CharField('Hora de Saída', max_length=10, blank=True, default='08:00')
+    data_retorno = models.CharField('Data Prevista de Retorno', max_length=20, blank=True, default='')
+    hora_retorno = models.CharField('Hora de Retorno', max_length=10, blank=True, default='18:00')
+    km_saida = models.IntegerField('Quilometragem de Saída', default=0)
+    km_retorno = models.IntegerField('Quilometragem de Chegada', default=0)
+    km_percorridos = models.IntegerField('Quilómetros Percorridos', default=0)
+    status = models.CharField('Estado da Missão', max_length=40, default='Concluída')
+    observacoes = models.CharField('Observações da Utilização', max_length=255, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'utilizacoes_frota_publica'
+        verbose_name = 'Utilização de Veículo Público'
+        verbose_name_plural = 'Utilizações de Frota Pública'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.veiculo_placa} ({self.destino})"
+
+
+class AbastecimentoFrota(models.Model):
+    codigo = models.CharField('N.º do Abastecimento / Talão', max_length=50, unique=True)
+    veiculo_placa = models.CharField('Matrícula do Veículo', max_length=32)
+    ministerio_instituicao = models.CharField('Ministério / Instituição', max_length=200)
+    funcionario_condutor = models.CharField('Funcionário / Condutor', max_length=200)
+    data_abastecimento = models.CharField('Data do Abastecimento', max_length=20)
+    posto_combustivel = models.CharField('Posto / Fornecedor', max_length=150, default='Petroguin - Luanda')
+    tipo_combustivel = models.CharField('Tipo de Combustível', max_length=50, default='Gasóleo')
+    quantidade_litros = models.FloatField('Quantidade (Litros)', default=0.0)
+    preco_por_litro = models.IntegerField('Preço por Litro (XOF)', default=950)
+    valor_total = models.BigIntegerField('Valor Total (XOF)', default=0)
+    km_momento = models.IntegerField('Quilometragem no Abastecimento', default=0)
+    numero_talao = models.CharField('N.º da Requisição / Cupão', max_length=80, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'abastecimentos_frota_publica'
+        verbose_name = 'Abastecimento da Frota Pública'
+        verbose_name_plural = 'Abastecimentos da Frota Pública'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.veiculo_placa} ({self.quantidade_litros} L)"
+
+
+class ManutencaoFrota(models.Model):
+    codigo = models.CharField('N.º da Ordem de Reparação', max_length=50, unique=True)
+    veiculo_placa = models.CharField('Matrícula do Veículo', max_length=32)
+    ministerio_instituicao = models.CharField('Ministério / Instituição', max_length=200)
+    tipo_manutencao = models.CharField('Tipo de Manutenção', max_length=100, default='Preventiva / Revisão Periódica')
+    oficina_prestador = models.CharField('Oficina / Prestador de Serviço', max_length=150, default='Garagem Central do Estado')
+    data_entrada = models.CharField('Data de Entrada', max_length=20)
+    data_conclusao = models.CharField('Data de Conclusão', max_length=20, blank=True, default='')
+    km_manutencao = models.IntegerField('Quilometragem na Manutenção', default=0)
+    descricao_servico = models.CharField('Descrição da Intervenção', max_length=255)
+    pecas_substituidas = models.CharField('Peças Substituídas / Materiais', max_length=255, blank=True, default='')
+    custo_total = models.BigIntegerField('Custo Total (XOF)', default=0)
+    status = models.CharField('Estado da Manutenção', max_length=40, default='Concluída')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'manutencoes_frota_publica'
+        verbose_name = 'Manutenção de Frota Pública'
+        verbose_name_plural = 'Manutenções da Frota Pública'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.veiculo_placa} ({self.tipo_manutencao})"
+
+
 class UsuarioSistema(models.Model):
     nome = models.CharField('Nome', max_length=200)
     email = models.EmailField('Email', unique=True)
@@ -490,3 +607,161 @@ class Audiencia(models.Model):
 
     def __str__(self):
         return f"{self.protocolo_processo} - {self.sala}"
+
+
+# ==============================================================================
+# Modelos de Gestão de Acidentes Rodoviários (SIGETRAN / Trânsito e Segurança)
+# ==============================================================================
+
+class AcidenteTransito(models.Model):
+    codigo = models.CharField('N.º do Registo de Acidente', max_length=50, unique=True)
+    data_acidente = models.CharField('Data do Acidente', max_length=20)
+    hora_acidente = models.CharField('Hora do Acidente', max_length=10, blank=True, default='12:00')
+    gravidade = models.CharField('Gravidade do Acidente', max_length=60, default='Com Feridos')
+    tipo_acidente = models.CharField('Tipo de Acidente', max_length=80, default='Colisão')
+    regiao = models.CharField('Região / Distrito', max_length=100, default='Setor Autónomo de Bissau')
+    local_via = models.CharField('Local / Via / Estrada', max_length=200)
+    latitude = models.FloatField('Latitude (GPS)', default=11.8632)
+    longitude = models.FloatField('Longitude (GPS)', default=-15.5984)
+    ponto_referencia = models.CharField('Ponto de Referência', max_length=200, blank=True, default='')
+    condicoes_meteorologicas = models.CharField('Condições Meteorológicas', max_length=80, default='Bom tempo / Sol')
+    estado_piso = models.CharField('Estado da Via / Piso', max_length=80, default='Seco e limpo')
+    quantidade_veiculos = models.IntegerField('Veículos Envolvidos', default=2)
+    quantidade_vitimas = models.IntegerField('Total de Vítimas', default=0)
+    quantidade_mortos = models.IntegerField('Vítimas Mortais (Óbitos)', default=0)
+    quantidade_feridos = models.IntegerField('Feridos', default=0)
+    causa_provavel = models.CharField('Causa Provável', max_length=150, default='Excesso de velocidade')
+    descricao_circunstancias = models.TextField('Descrição Sumária das Circunstâncias', blank=True, default='')
+    status = models.CharField('Estado da Investigação', max_length=50, default='Em Investigação')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'acidentes_transito'
+        verbose_name = 'Acidente de Trânsito'
+        verbose_name_plural = 'Acidentes de Trânsito'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.regiao} ({self.tipo_acidente})"
+
+
+class VeiculoCondutorAcidente(models.Model):
+    codigo = models.CharField('N.º do Registo', max_length=50, unique=True)
+    acidente_codigo = models.CharField('Código do Acidente', max_length=50)
+    veiculo_placa = models.CharField('Matrícula do Veículo', max_length=32)
+    veiculo_marca_modelo = models.CharField('Marca e Modelo', max_length=150, blank=True, default='')
+    veiculo_categoria = models.CharField('Categoria do Veículo', max_length=80, default='Ligeiro particular')
+    veiculo_seguradora = models.CharField('Seguradora', max_length=120, blank=True, default='Garantia Seguros GB')
+    veiculo_apolice = models.CharField('N.º de Apólice', max_length=80, blank=True, default='')
+    danos_materiais = models.CharField('Danos Materiais no Veículo', max_length=255, blank=True, default='')
+    condutor_nome = models.CharField('Nome do Condutor', max_length=200)
+    condutor_documento = models.CharField('BI / Passaporte do Condutor', max_length=60, blank=True, default='')
+    condutor_carta = models.CharField('N.º da Carta de Condução', max_length=60, blank=True, default='')
+    condutor_categoria_carta = models.CharField('Categoria da Carta', max_length=40, blank=True, default='B')
+    condutor_telefone = models.CharField('Contacto Telefónico', max_length=60, blank=True, default='')
+    teste_alcoolemia = models.CharField('Teste de Alcoolemia (TAS)', max_length=80, default='0.00 g/l (Negativo)')
+    responsabilidade_apurada = models.CharField('Responsabilidade Apurada', max_length=80, default='Sob Peritagem')
+    observacoes = models.CharField('Observações do Interveniente', max_length=255, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'veiculos_condutores_acidente'
+        verbose_name = 'Veículo e Condutor Envolvido'
+        verbose_name_plural = 'Veículos e Condutores Envolvidos'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.acidente_codigo} - {self.veiculo_placa} ({self.condutor_nome})"
+
+
+class VitimaAcidente(models.Model):
+    codigo = models.CharField('N.º da Vítima', max_length=50, unique=True)
+    acidente_codigo = models.CharField('Código do Acidente', max_length=50)
+    nome = models.CharField('Nome da Vítima', max_length=200)
+    documento_identificacao = models.CharField('N.º de Identificação / BI', max_length=60, blank=True, default='')
+    idade = models.IntegerField('Idade', default=30)
+    sexo = models.CharField('Género / Sexo', max_length=20, default='Masculino')
+    condicao_vitima = models.CharField('Condição da Vítima', max_length=60, default='Passageiro')
+    veiculo_placa = models.CharField('Matrícula do Veículo Associado', max_length=32, blank=True, default='')
+    gravidade_lesao = models.CharField('Gravidade da Lesão', max_length=80, default='Ferimentos Leves')
+    hospital_destino = models.CharField('Unidade Hospitalar / Socorro', max_length=150, default='Hospital Nacional Simão Mendes')
+    contacto_emergencia = models.CharField('Contacto de Familiar / Emergência', max_length=100, blank=True, default='')
+    observacoes_medicas = models.TextField('Boletim / Observações Clínicas', blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'vitimas_acidente'
+        verbose_name = 'Vítima de Acidente'
+        verbose_name_plural = 'Vítimas de Acidentes'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.acidente_codigo} - {self.nome} ({self.gravidade_lesao})"
+
+
+class TestemunhaAcidente(models.Model):
+    codigo = models.CharField('N.º da Testemunha', max_length=50, unique=True)
+    acidente_codigo = models.CharField('Código do Acidente', max_length=50)
+    nome = models.CharField('Nome da Testemunha', max_length=200)
+    documento_identificacao = models.CharField('BI / Identificação', max_length=60, blank=True, default='')
+    telefone = models.CharField('Contacto Telefónico', max_length=60, blank=True, default='')
+    endereco = models.CharField('Morada / Residência', max_length=200, blank=True, default='')
+    posicao_momento = models.CharField('Posição no Momento do Acidente', max_length=150, default='Peão no local')
+    depoimento = models.TextField('Declaração / Depoimento Testemunhal', blank=True, default='')
+    data_depoimento = models.CharField('Data da Declaração', max_length=20)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'testemunhas_acidente'
+        verbose_name = 'Testemunha de Acidente'
+        verbose_name_plural = 'Testemunhas de Acidentes'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.acidente_codigo} - {self.nome}"
+
+
+class RelatorioPolicialAcidente(models.Model):
+    codigo = models.CharField('N.º do Relatório', max_length=50, unique=True)
+    acidente_codigo = models.CharField('Código do Acidente', max_length=50)
+    numero_boletim = models.CharField('N.º do Boletim de Ocorrência (BO)', max_length=80, unique=True)
+    orgao_policial = models.CharField('Órgão Fiscalizador / Polícia', max_length=150, default='Brigada Nacional de Trânsito (BNT)')
+    agente_responsavel = models.CharField('Agente / Perito Autuante', max_length=200)
+    agente_matricula = models.CharField('N.º de Crachá / Matrícula Policial', max_length=50)
+    data_relatorio = models.CharField('Data do Relatório', max_length=20)
+    conclusao_pericial = models.TextField('Conclusão Pericial e Dinâmica do Acidente')
+    infracoes_constatadas = models.CharField('Infrações ao Código da Estrada Constatadas', max_length=255, blank=True, default='')
+    encaminhamento = models.CharField('Encaminhamento Processual / Judicial', max_length=150, default='Remetido ao Ministério Público')
+    status_processo = models.CharField('Estado do Procedimento Policial', max_length=50, default='Concluído')
+    observacoes = models.CharField('Observações', max_length=255, blank=True, default='')
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'relatorios_policiais_acidente'
+        verbose_name = 'Relatório Policial de Acidente'
+        verbose_name_plural = 'Relatórios Policiais de Acidentes'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.numero_boletim} - {self.acidente_codigo} ({self.orgao_policial})"
+
+
+class DocumentoFotografiaAcidente(models.Model):
+    codigo = models.CharField('Código do Anexo', max_length=50, unique=True)
+    acidente_codigo = models.CharField('Código do Acidente', max_length=50)
+    tipo_anexo = models.CharField('Tipo de Anexo / Prova', max_length=100, default='Fotografia do Local')
+    titulo = models.CharField('Título / Identificação do Ficheiro', max_length=200)
+    arquivo_url = models.CharField('Ficheiro / Imagem', max_length=255, blank=True, default='')
+    descricao = models.CharField('Descrição / Pormenores Periciais', max_length=255, blank=True, default='')
+    autor_anexo = models.CharField('Autor do Registo / Perito', max_length=150, default='Brigada de Peritagem BNT')
+    data_registo = models.CharField('Data do Registo', max_length=20)
+    criado_em = models.DateTimeField('Criado em', auto_now_add=True)
+
+    class Meta:
+        db_table = 'documentos_fotos_acidente'
+        verbose_name = 'Documento / Fotografia de Acidente'
+        verbose_name_plural = 'Documentos e Fotografias de Acidentes'
+        ordering = ['-id']
+
+    def __str__(self):
+        return f"{self.codigo} - {self.acidente_codigo} ({self.titulo})"

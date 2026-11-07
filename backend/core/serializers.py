@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from .models import (
-    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado, UsuarioSistema, ConfiguracaoSistema,
+    Veiculo, OcorrenciaVeicular, HistoricoProprietario, Condutor, RegistoCartaConducao, ExameCondutor, Multa, RecursoMulta, AgenteFiscalizador, TipoInfracao, InspecaoVeicular, DocumentoCertificado,
+    VeiculoPublico, UtilizacaoVeiculoPublico, AbastecimentoFrota, ManutencaoFrota,
+    AcidenteTransito, VeiculoCondutorAcidente, VitimaAcidente, TestemunhaAcidente, RelatorioPolicialAcidente, DocumentoFotografiaAcidente,
+    UsuarioSistema, ConfiguracaoSistema,
     Consumidor, Fornecedor, Processo, MensagemProcesso, Documento,
     Fiscalizacao, Superendividamento, Audiencia
 )
@@ -253,6 +256,118 @@ class DocumentoCertificadoSerializer(serializers.ModelSerializer):
         ]
 
 
+class VeiculoPublicoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='placa')
+    make = serializers.CharField(source='marca')
+    model = serializers.CharField(source='modelo')
+    year = serializers.IntegerField(source='ano')
+    color = serializers.CharField(source='cor', required=False, default='Branco')
+    category = serializers.CharField(source='categoria', required=False, default='Serviço Operacional')
+    institution = serializers.CharField(source='ministerio_instituicao')
+    institutionAcronym = serializers.CharField(source='sigla_instituicao', required=False, allow_blank=True, default='')
+    department = serializers.CharField(source='departamento_direcao', required=False, allow_blank=True, default='')
+    responsibleOfficer = serializers.CharField(source='funcionario_responsavel', required=False, allow_blank=True, default='')
+    officerRole = serializers.CharField(source='funcionario_cargo', required=False, allow_blank=True, default='')
+    officerContact = serializers.CharField(source='funcionario_contacto', required=False, allow_blank=True, default='')
+    currentMileage = serializers.IntegerField(source='quilometragem_atual', required=False, default=0)
+    tankCapacity = serializers.IntegerField(source='capacidade_tanque', required=False, default=65)
+    fuelType = serializers.CharField(source='tipo_combustivel', required=False, default='Gasóleo (Diesel)')
+    status = serializers.CharField(required=False, default='Em Serviço')
+    chassisNumber = serializers.CharField(source='numero_chassi', required=False, allow_blank=True, default='')
+    assignmentDate = serializers.CharField(source='data_afetacao', required=False, allow_blank=True, default='')
+    notes = serializers.CharField(source='observacoes', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = VeiculoPublico
+        fields = [
+            'id', 'plate', 'make', 'model', 'year', 'color', 'category',
+            'institution', 'institutionAcronym', 'department',
+            'responsibleOfficer', 'officerRole', 'officerContact',
+            'currentMileage', 'tankCapacity', 'fuelType', 'status',
+            'chassisNumber', 'assignmentDate', 'notes', 'createdAt'
+        ]
+
+
+class UtilizacaoVeiculoPublicoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='veiculo_placa')
+    institution = serializers.CharField(source='ministerio_instituicao')
+    officerName = serializers.CharField(source='funcionario_nome')
+    officerBadge = serializers.CharField(source='funcionario_matricula', required=False, allow_blank=True, default='')
+    missionPurpose = serializers.CharField(source='motivo_missao')
+    origin = serializers.CharField(source='origem', required=False, default='Bissau')
+    destination = serializers.CharField(source='destino')
+    departureDate = serializers.CharField(source='data_saida')
+    departureTime = serializers.CharField(source='hora_saida', required=False, default='08:00')
+    returnDate = serializers.CharField(source='data_retorno', required=False, allow_blank=True, default='')
+    returnTime = serializers.CharField(source='hora_retorno', required=False, default='18:00')
+    departureKm = serializers.IntegerField(source='km_saida', required=False, default=0)
+    returnKm = serializers.IntegerField(source='km_retorno', required=False, default=0)
+    totalKm = serializers.IntegerField(source='km_percorridos', required=False, default=0)
+    status = serializers.CharField(required=False, default='Concluída')
+    notes = serializers.CharField(source='observacoes', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = UtilizacaoVeiculoPublico
+        fields = [
+            'id', 'plate', 'institution', 'officerName', 'officerBadge',
+            'missionPurpose', 'origin', 'destination',
+            'departureDate', 'departureTime', 'returnDate', 'returnTime',
+            'departureKm', 'returnKm', 'totalKm', 'status', 'notes', 'createdAt'
+        ]
+
+
+class AbastecimentoFrotaSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='veiculo_placa')
+    institution = serializers.CharField(source='ministerio_instituicao')
+    driverName = serializers.CharField(source='funcionario_condutor')
+    date = serializers.CharField(source='data_abastecimento')
+    station = serializers.CharField(source='posto_combustivel', required=False, default='Petroguin - Luanda')
+    fuelType = serializers.CharField(source='tipo_combustivel', required=False, default='Gasóleo')
+    liters = serializers.FloatField(source='quantidade_litros')
+    unitPrice = serializers.IntegerField(source='preco_por_litro', required=False, default=950)
+    totalAmount = serializers.IntegerField(source='valor_total')
+    mileageAtFuel = serializers.IntegerField(source='km_momento', required=False, default=0)
+    voucherNumber = serializers.CharField(source='numero_talao', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = AbastecimentoFrota
+        fields = [
+            'id', 'plate', 'institution', 'driverName', 'date', 'station',
+            'fuelType', 'liters', 'unitPrice', 'totalAmount', 'mileageAtFuel',
+            'voucherNumber', 'createdAt'
+        ]
+
+
+class ManutencaoFrotaSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    plate = serializers.CharField(source='veiculo_placa')
+    institution = serializers.CharField(source='ministerio_instituicao')
+    maintenanceType = serializers.CharField(source='tipo_manutencao', required=False, default='Preventiva / Revisão Periódica')
+    garage = serializers.CharField(source='oficina_prestador', required=False, default='Garagem Central do Estado')
+    entryDate = serializers.CharField(source='data_entrada')
+    completionDate = serializers.CharField(source='data_conclusao', required=False, allow_blank=True, default='')
+    mileageAtService = serializers.IntegerField(source='km_manutencao', required=False, default=0)
+    serviceDescription = serializers.CharField(source='descricao_servico')
+    partsReplaced = serializers.CharField(source='pecas_substituidas', required=False, allow_blank=True, default='')
+    totalCost = serializers.IntegerField(source='custo_total')
+    status = serializers.CharField(required=False, default='Concluída')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = ManutencaoFrota
+        fields = [
+            'id', 'plate', 'institution', 'maintenanceType', 'garage',
+            'entryDate', 'completionDate', 'mileageAtService',
+            'serviceDescription', 'partsReplaced', 'totalCost', 'status', 'createdAt'
+        ]
+
+
 class UsuarioSistemaSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='nome')
     role = serializers.CharField(source='perfil')
@@ -378,3 +493,155 @@ class AudienciaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Audiencia
         fields = ['id', 'caseProtocol', 'date', 'room', 'mediator', 'status']
+
+
+# ==============================================================================
+# Serializers de Gestão de Acidentes Rodoviários (SIGETRAN)
+# ==============================================================================
+
+class AcidenteTransitoSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    date = serializers.CharField(source='data_acidente')
+    time = serializers.CharField(source='hora_acidente', required=False, default='12:00')
+    severity = serializers.CharField(source='gravidade', required=False, default='Com Feridos')
+    type = serializers.CharField(source='tipo_acidente', required=False, default='Colisão')
+    region = serializers.CharField(source='regiao', required=False, default='Setor Autónomo de Bissau')
+    road = serializers.CharField(source='local_via')
+    latitude = serializers.FloatField(required=False, default=11.8632)
+    longitude = serializers.FloatField(required=False, default=-15.5984)
+    landmark = serializers.CharField(source='ponto_referencia', required=False, allow_blank=True, default='')
+    weather = serializers.CharField(source='condicoes_meteorologicas', required=False, default='Bom tempo / Sol')
+    roadCondition = serializers.CharField(source='estado_piso', required=False, default='Seco e limpo')
+    vehiclesInvolved = serializers.IntegerField(source='quantidade_veiculos', required=False, default=2)
+    victimsCount = serializers.IntegerField(source='quantidade_vitimas', required=False, default=0)
+    fatalitiesCount = serializers.IntegerField(source='quantidade_mortos', required=False, default=0)
+    injuredCount = serializers.IntegerField(source='quantidade_feridos', required=False, default=0)
+    probableCause = serializers.CharField(source='causa_provavel', required=False, default='Excesso de velocidade')
+    description = serializers.CharField(source='descricao_circunstancias', required=False, allow_blank=True, default='')
+    status = serializers.CharField(required=False, default='Em Investigação')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = AcidenteTransito
+        fields = [
+            'id', 'date', 'time', 'severity', 'type', 'region', 'road',
+            'latitude', 'longitude', 'landmark', 'weather', 'roadCondition',
+            'vehiclesInvolved', 'victimsCount', 'fatalitiesCount', 'injuredCount',
+            'probableCause', 'description', 'status', 'createdAt'
+        ]
+
+
+class VeiculoCondutorAcidenteSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    accidentId = serializers.CharField(source='acidente_codigo')
+    plate = serializers.CharField(source='veiculo_placa')
+    vehicleLabel = serializers.CharField(source='veiculo_marca_modelo', required=False, allow_blank=True, default='')
+    vehicleCategory = serializers.CharField(source='veiculo_categoria', required=False, default='Ligeiro particular')
+    insuranceCompany = serializers.CharField(source='veiculo_seguradora', required=False, allow_blank=True, default='Garantia Seguros GB')
+    insurancePolicy = serializers.CharField(source='veiculo_apolice', required=False, allow_blank=True, default='')
+    damageDescription = serializers.CharField(source='danos_materiais', required=False, allow_blank=True, default='')
+    driverName = serializers.CharField(source='condutor_nome')
+    driverDocument = serializers.CharField(source='condutor_documento', required=False, allow_blank=True, default='')
+    driverLicense = serializers.CharField(source='condutor_carta', required=False, allow_blank=True, default='')
+    driverCategory = serializers.CharField(source='condutor_categoria_carta', required=False, allow_blank=True, default='B')
+    driverPhone = serializers.CharField(source='condutor_telefone', required=False, allow_blank=True, default='')
+    alcoholTest = serializers.CharField(source='teste_alcoolemia', required=False, default='0.00 g/l (Negativo)')
+    liability = serializers.CharField(source='responsabilidade_apurada', required=False, default='Sob Peritagem')
+    notes = serializers.CharField(source='observacoes', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = VeiculoCondutorAcidente
+        fields = [
+            'id', 'accidentId', 'plate', 'vehicleLabel', 'vehicleCategory',
+            'insuranceCompany', 'insurancePolicy', 'damageDescription',
+            'driverName', 'driverDocument', 'driverLicense', 'driverCategory',
+            'driverPhone', 'alcoholTest', 'liability', 'notes', 'createdAt'
+        ]
+
+
+class VitimaAcidenteSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    accidentId = serializers.CharField(source='acidente_codigo')
+    name = serializers.CharField(source='nome')
+    document = serializers.CharField(source='documento_identificacao', required=False, allow_blank=True, default='')
+    age = serializers.IntegerField(source='idade', required=False, default=30)
+    gender = serializers.CharField(source='sexo', required=False, default='Masculino')
+    condition = serializers.CharField(source='condicao_vitima', required=False, default='Passageiro')
+    associatedPlate = serializers.CharField(source='veiculo_placa', required=False, allow_blank=True, default='')
+    injurySeverity = serializers.CharField(source='gravidade_lesao', required=False, default='Ferimentos Leves')
+    hospital = serializers.CharField(source='hospital_destino', required=False, default='Hospital Nacional Simão Mendes')
+    emergencyContact = serializers.CharField(source='contacto_emergencia', required=False, allow_blank=True, default='')
+    medicalNotes = serializers.CharField(source='observacoes_medicas', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = VitimaAcidente
+        fields = [
+            'id', 'accidentId', 'name', 'document', 'age', 'gender', 'condition',
+            'associatedPlate', 'injurySeverity', 'hospital', 'emergencyContact',
+            'medicalNotes', 'createdAt'
+        ]
+
+
+class TestemunhaAcidenteSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    accidentId = serializers.CharField(source='acidente_codigo')
+    name = serializers.CharField(source='nome')
+    document = serializers.CharField(source='documento_identificacao', required=False, allow_blank=True, default='')
+    phone = serializers.CharField(source='telefone', required=False, allow_blank=True, default='')
+    address = serializers.CharField(source='endereco', required=False, allow_blank=True, default='')
+    locationAtMoment = serializers.CharField(source='posicao_momento', required=False, default='Peão no local')
+    statement = serializers.CharField(source='depoimento', required=False, allow_blank=True, default='')
+    statementDate = serializers.CharField(source='data_depoimento')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = TestemunhaAcidente
+        fields = [
+            'id', 'accidentId', 'name', 'document', 'phone', 'address',
+            'locationAtMoment', 'statement', 'statementDate', 'createdAt'
+        ]
+
+
+class RelatorioPolicialAcidenteSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    accidentId = serializers.CharField(source='acidente_codigo')
+    reportNumber = serializers.CharField(source='numero_boletim')
+    policeDepartment = serializers.CharField(source='orgao_policial', required=False, default='Brigada Nacional de Trânsito (BNT)')
+    officerName = serializers.CharField(source='agente_responsavel')
+    officerBadge = serializers.CharField(source='agente_matricula')
+    reportDate = serializers.CharField(source='data_relatorio')
+    investigationSummary = serializers.CharField(source='conclusao_pericial')
+    infractionsFound = serializers.CharField(source='infracoes_constatadas', required=False, allow_blank=True, default='')
+    legalReferral = serializers.CharField(source='encaminhamento', required=False, default='Remetido ao Ministério Público')
+    procedureStatus = serializers.CharField(source='status_processo', required=False, default='Concluído')
+    notes = serializers.CharField(source='observacoes', required=False, allow_blank=True, default='')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = RelatorioPolicialAcidente
+        fields = [
+            'id', 'accidentId', 'reportNumber', 'policeDepartment', 'officerName',
+            'officerBadge', 'reportDate', 'investigationSummary', 'infractionsFound',
+            'legalReferral', 'procedureStatus', 'notes', 'createdAt'
+        ]
+
+
+class DocumentoFotografiaAcidenteSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source='codigo')
+    accidentId = serializers.CharField(source='acidente_codigo')
+    evidenceType = serializers.CharField(source='tipo_anexo', required=False, default='Fotografia do Local')
+    title = serializers.CharField(source='titulo')
+    fileUrl = serializers.CharField(source='arquivo_url', required=False, allow_blank=True, default='')
+    description = serializers.CharField(source='descricao', required=False, allow_blank=True, default='')
+    registeredBy = serializers.CharField(source='autor_anexo', required=False, default='Brigada de Peritagem BNT')
+    registrationDate = serializers.CharField(source='data_registo')
+    createdAt = serializers.DateTimeField(source='criado_em', read_only=True)
+
+    class Meta:
+        model = DocumentoFotografiaAcidente
+        fields = [
+            'id', 'accidentId', 'evidenceType', 'title', 'fileUrl',
+            'description', 'registeredBy', 'registrationDate', 'createdAt'
+        ]

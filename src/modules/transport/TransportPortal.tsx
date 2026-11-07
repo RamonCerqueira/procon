@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, AlertTriangle, ArrowRight, Banknote, CarFront, Check, ClipboardCheck, ClipboardList, FileBarChart2, FilePlus2, FileText, LogOut, Printer, QrCode, Search, Settings, ShieldCheck, UserRoundCog, Users, X, type LucideIcon } from 'lucide-react';
+import { Activity, AlertOctagon, AlertTriangle, ArrowRight, Banknote, Building2, Camera, CarFront, Check, ClipboardCheck, ClipboardList, Coins, FileBarChart2, FilePlus2, FileText, FileWarning, Fuel, Gauge, LogOut, MapPin, Printer, QrCode, Search, Settings, ShieldAlert, ShieldCheck, Siren, UserRoundCog, Users, UserX, Wrench, X, type LucideIcon } from 'lucide-react';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 
@@ -16,6 +16,16 @@ type InspectionAgent = { id: string; name: string; badge: string; unit: string; 
 type InfractionTypeItem = { id: string; name: string; amount: number; severity: string; description?: string };
 type Inspection = { id: string; plate: string; reason: string; office: string; date: string; status: string };
 type OfficialDocument = { id: string; documentType: string; issueMode: string; targetRef: string; holderName: string; holderDocument?: string; technicalDetails?: string; authenticityCode: string; qrPayload: string; issuingOffice: string; issueDate: string; expiryDate: string; status: string; administrativeBlock?: boolean; blockReason?: string; notes?: string };
+type PublicVehicle = { id: string; plate: string; make: string; model: string; year: number; color?: string; category: string; institution: string; institutionAcronym?: string; department?: string; responsibleOfficer?: string; officerRole?: string; officerContact?: string; currentMileage?: number; tankCapacity?: number; fuelType?: string; status: string; chassisNumber?: string; assignmentDate?: string; notes?: string };
+type FleetMission = { id: string; plate: string; institution: string; officerName: string; officerBadge?: string; missionPurpose: string; origin: string; destination: string; departureDate: string; departureTime?: string; returnDate?: string; returnTime?: string; departureKm: number; returnKm: number; totalKm: number; status: string; notes?: string };
+type FleetFuelLog = { id: string; plate: string; institution: string; driverName: string; date: string; station: string; fuelType: string; liters: number; unitPrice: number; totalAmount: number; mileageAtFuel: number; voucherNumber?: string };
+type FleetMaintenance = { id: string; plate: string; institution: string; maintenanceType: string; garage: string; entryDate: string; completionDate?: string; mileageAtService: number; serviceDescription: string; partsReplaced?: string; totalCost: number; status: string };
+type Accident = { id: string; date: string; time: string; severity: string; type: string; region: string; road: string; latitude: number; longitude: number; landmark?: string; weather: string; roadCondition: string; vehiclesInvolved: number; victimsCount: number; fatalitiesCount: number; injuredCount: number; probableCause: string; description?: string; status: string };
+type AccidentVehicleDriver = { id: string; accidentId: string; plate: string; vehicleLabel?: string; vehicleCategory: string; insuranceCompany?: string; insurancePolicy?: string; damageDescription?: string; driverName: string; driverDocument?: string; driverLicense?: string; driverCategory?: string; driverPhone?: string; alcoholTest?: string; liability?: string; notes?: string };
+type AccidentVictim = { id: string; accidentId: string; name: string; document?: string; age: number; gender: string; condition: string; associatedPlate?: string; injurySeverity: string; hospital: string; emergencyContact?: string; medicalNotes?: string };
+type AccidentWitness = { id: string; accidentId: string; name: string; document?: string; phone?: string; address?: string; locationAtMoment?: string; statement?: string; statementDate: string };
+type AccidentPoliceReport = { id: string; accidentId: string; reportNumber: string; policeDepartment: string; officerName: string; officerBadge: string; reportDate: string; investigationSummary: string; infractionsFound?: string; legalReferral: string; procedureStatus: string; notes?: string };
+type AccidentEvidence = { id: string; accidentId: string; evidenceType: string; title: string; fileUrl?: string; description?: string; registeredBy: string; registrationDate: string };
 
 const seedVehicles: Vehicle[] = [
   { plate:'GB-24-BC',make:'Toyota',model:'Corolla',year:2018,color:'Prata',owner:'Mamadu Embaló',driver:'Mamadu Embaló',taxDue:41500,district:'Bissau',category:'Ligeiro particular' },
@@ -78,6 +88,311 @@ const seedOfficialDocuments: OfficialDocument[] = [
   {id:'DOC-2026-0005',documentType:'Documento de Identificação do Veículo',issueMode:'2.ª Via (Extravio / Deterioração)',targetRef:'GB-23-FA',holderName:'Naima Mané',holderDocument:'000000004',technicalDetails:'Honda Wave (2022) · Cor: Vermelho · Cat.: Motociclo',authenticityCode:'AUTH-GB-2026-1005-23FA',qrPayload:'SIGETRAN-QR|DOC-2026-0005|GB-23-FA|AUTH-GB-2026-1005-23FA',issuingOffice:'Delegação Regional de Viação · Gabú',issueDate:'2026-08-05',expiryDate:'Permanente',status:'Válido',administrativeBlock:false,blockReason:'',notes:'2.ª Via emitida mediante declaração policial de extravio n.º 88/2026.'},
 ];
 
+const seedPublicVehicles: PublicVehicle[] = [
+  {id:'VP-001',plate:'GB-GOV-0101',make:'Toyota',model:'Land Cruiser Prado',year:2022,color:'Preto',category:'Veículo de Representação / Todo-o-Terreno',institution:'Ministério dos Transportes e Comunicações',institutionAcronym:'MTC',department:'Gabinete do Ministro / Direção-Geral de Viação',responsibleOfficer:'Dr. Lassana Camará',officerRole:'Diretor-Geral de Viação e Transportes',officerContact:'+245 955 400 110',currentMileage:42500,tankCapacity:87,fuelType:'Gasóleo',status:'Ativo',chassisNumber:'JT111GJ928192801',assignmentDate:'2022-06-15',notes:'Viatura de representação oficial afeta à Direção Geral.'},
+  {id:'VP-002',plate:'GB-GOV-0205',make:'Toyota',model:'Hilux 4x4',year:2021,color:'Branco',category:'Pick-up Operacional',institution:'Ministério da Saúde Pública',institutionAcronym:'MINSAP',department:'Direção de Logística e Distribuição Hospitalar',responsibleOfficer:'Eng.ª Mariama Djaló',officerRole:'Chefe do Departamento de Logística Sanitária',officerContact:'+245 966 220 330',currentMileage:68200,tankCapacity:80,fuelType:'Gasóleo',status:'Ativo',chassisNumber:'MROFR22G981029381',assignmentDate:'2021-09-01',notes:'Afeta ao transporte de medicamentos e brigadas de vacinação.'},
+  {id:'VP-003',plate:'GB-GOV-0312',make:'Nissan',model:'Patrol',year:2020,color:'Azul',category:'Todo-o-Terreno Fiscalização',institution:'Ministério da Economia e Finanças',institutionAcronym:'MEF',department:'Direção-Geral das Alfândegas / Brigada Fiscal',responsibleOfficer:'Inspetor Bacar Seidi',officerRole:'Inspetor-Chefe da Brigada Móvel Aduaneira',officerContact:'+245 955 880 440',currentMileage:91400,tankCapacity:95,fuelType:'Gasóleo',status:'Ativo',chassisNumber:'JN1TESY6100918273',assignmentDate:'2020-11-20',notes:'Viatura de fiscalização móvel nas fronteiras terrestres.'},
+  {id:'VP-004',plate:'GB-GOV-0408',make:'Mitsubishi',model:'L200 Strakar',year:2019,color:'Cinzento',category:'Pick-up Mista',institution:'Ministério da Educação Nacional',institutionAcronym:'MEN',department:'Inspeção Escolar e Acompanhamento Pedagógico',responsibleOfficer:'Prof. Serifo Baldé',officerRole:'Delegado Regional de Inspeção de Ensino',officerContact:'+245 966 110 550',currentMileage:114800,tankCapacity:75,fuelType:'Gasóleo',status:'Em Manutenção',chassisNumber:'MMBJRKL1019283746',assignmentDate:'2019-10-10',notes:'Viatura em oficina central para substituição de embraiagem e revisão de suspensão.'},
+  {id:'VP-005',plate:'GB-GOV-0515',make:'Toyota',model:'Hiace Minibus',year:2023,color:'Branco',category:'Transporte Coletivo de Serviço',institution:'Ministério da Administração Territorial',institutionAcronym:'MAT',department:'Secretaria-Geral / Serviços Administrativos',responsibleOfficer:'Sr. Malam Sanhá',officerRole:'Motorista Oficial e Coordenador de Pessoal',officerContact:'+245 955 770 990',currentMileage:28100,tankCapacity:70,fuelType:'Gasóleo',status:'Ativo',chassisNumber:'JTFSS22P990182736',assignmentDate:'2023-03-01',notes:'Transporte de equipas técnicas e funcionários ministeriais.'},
+];
+
+const seedFleetMissions: FleetMission[] = [
+  {id:'MIS-2026-0001',plate:'GB-GOV-0101',institution:'Ministério dos Transportes e Comunicações',officerName:'Dr. Lassana Camará',officerBadge:'MTC-001',missionPurpose:'Vistoria e auditoria ao Porto de Bissau e terminal de cargas',origin:'Bissau (Sede DGT)',destination:'Porto Comercial de Bissau',departureDate:'2026-10-15',departureTime:'08:30',returnDate:'2026-10-15',returnTime:'16:45',departureKm:42100,returnKm:42185,totalKm:85,status:'Concluída',notes:'Missão oficial devidamente autorizada pelo Gabinete do Ministro.'},
+  {id:'MIS-2026-0002',plate:'GB-GOV-0205',institution:'Ministério da Saúde Pública',officerName:'Eng.ª Mariama Djaló',officerBadge:'MSP-LOG-14',missionPurpose:'Distribuição urgente de vacinas e material sanitário',origin:'Bissau (Armazém Central)',destination:'Hospital Regional de Gabú',departureDate:'2026-10-18',departureTime:'06:00',returnDate:'2026-10-19',returnTime:'19:30',departureKm:67800,returnKm:68200,totalKm:400,status:'Concluída',notes:'Entrega de doses de vacinas realizada sem avarias na cadeia de frio.'},
+  {id:'MIS-2026-0003',plate:'GB-GOV-0312',institution:'Ministério da Economia e Finanças',officerName:'Inspetor Bacar Seidi',officerBadge:'MEF-ALF-89',missionPurpose:'Ação de fiscalização aduaneira nas fronteiras terrestres',origin:'Bissau (Quartel Fiscal)',destination:'São Domingos (Fronteira Senegal)',departureDate:'2026-10-22',departureTime:'07:00',returnDate:'2026-10-24',returnTime:'18:00',departureKm:91250,returnKm:91400,totalKm:150,status:'Em Curso',notes:'Operação conjunta com a Guarda Fiscal e Polícia de Fronteiras.'},
+];
+
+const seedFleetFuelLogs: FleetFuelLog[] = [
+  {id:'ABAS-2026-0001',plate:'GB-GOV-0101',institution:'Ministério dos Transportes e Comunicações',driverName:'Mamadu Embaló',date:'2026-10-10',station:'Galp Aeroporto Bissau',fuelType:'Gasóleo',liters:65,unitPrice:850,totalAmount:55250,mileageAtFuel:42000,voucherNumber:'VOUCH-MTC-0881'},
+  {id:'ABAS-2026-0002',plate:'GB-GOV-0205',institution:'Ministério da Saúde Pública',driverName:'Bacar Camará',date:'2026-10-17',station:'Total Bissau Centro',fuelType:'Gasóleo',liters:70,unitPrice:850,totalAmount:59500,mileageAtFuel:67750,voucherNumber:'VOUCH-MSP-0412'},
+  {id:'ABAS-2026-0003',plate:'GB-GOV-0312',institution:'Ministério da Economia e Finanças',driverName:'Ansumane Mané',date:'2026-10-21',station:'Star Oil Bafatá',fuelType:'Gasóleo',liters:80,unitPrice:850,totalAmount:68000,mileageAtFuel:91200,voucherNumber:'VOUCH-MEF-1029'},
+  {id:'ABAS-2026-0408',plate:'GB-GOV-0408',institution:'Ministério da Educação Nacional',driverName:'Serifo Baldé',date:'2026-10-05',station:'Shell Bissau Porto',fuelType:'Gasóleo',liters:50,unitPrice:850,totalAmount:42500,mileageAtFuel:114600,voucherNumber:'VOUCH-MEN-0199'},
+];
+
+const seedFleetMaintenances: FleetMaintenance[] = [
+  {id:'MAN-2026-0001',plate:'GB-GOV-0408',institution:'Ministério da Educação Nacional',maintenanceType:'Manutenção Corretiva',garage:'Auto Mecânica Central Bissau',entryDate:'2026-10-20',completionDate:'2026-10-26',mileageAtService:114800,serviceDescription:'Substituição de amortecedores dianteiros, pastilhas de travão e kit de embraiagem',partsReplaced:'Amortecedores KYB, Pastilhas Ferodo, Disco de embraiagem',totalCost:480000,status:'Em Andamento'},
+  {id:'MAN-2026-0002',plate:'GB-GOV-0101',institution:'Ministério dos Transportes e Comunicações',maintenanceType:'Revisão Periódica',garage:'Garagem Oficial do Estado',entryDate:'2026-09-15',completionDate:'2026-09-16',mileageAtService:40000,serviceDescription:'Revisão programada dos 40.000 km: troca de óleo do motor, filtro de combustível e filtro de ar',partsReplaced:'Óleo sintético 5W30 (8L), Filtros genuínos Toyota',totalCost:165000,status:'Concluída'},
+  {id:'MAN-2026-0003',plate:'GB-GOV-0205',institution:'Ministério da Saúde Pública',maintenanceType:'Manutenção Preventiva',garage:'Oficina Guineense de Motores',entryDate:'2026-10-02',completionDate:'2026-10-03',mileageAtService:65000,serviceDescription:'Substituição de correia de distribuição e bomba de água preventivas',partsReplaced:'Correia dentada Dayco, Bomba de água AISIN',totalCost:330000,status:'Concluída'},
+];
+
+const seedAccidents: Accident[] = [
+  {
+    id: 'ACID-2026-0001',
+    date: '2026-10-18',
+    time: '16:30',
+    severity: 'Com Feridos Graves',
+    type: 'Colisão Frontal',
+    region: 'Setor Autónomo de Bissau',
+    road: 'Avenida dos Combatentes da Liberdade da Pátria · Próximo ao Aeroporto Osvaldo Vieira',
+    latitude: 11.8632,
+    longitude: -15.5984,
+    landmark: 'Rotunda de acesso ao terminal aéreo de Bissau',
+    weather: 'Bom tempo / Sol',
+    roadCondition: 'Seco e limpo',
+    vehiclesInvolved: 2,
+    victimsCount: 2,
+    fatalitiesCount: 0,
+    injuredCount: 2,
+    probableCause: 'Excesso de velocidade e ultrapassagem irregular',
+    description: 'Colisão frontal violenta entre um ligeiro de passageiros e uma carrinha de transporte misto durante ultrapassagem em traço contínuo.',
+    status: 'Peritagem Concluída',
+  },
+  {
+    id: 'ACID-2026-0002',
+    date: '2026-10-22',
+    time: '20:45',
+    severity: 'Com Vítimas Mortais',
+    type: 'Atropelamento e Fuga',
+    region: 'Biombo',
+    road: 'Estrada Nacional N1 · Eixo Safim - Bissau (km 12)',
+    latitude: 11.9540,
+    longitude: -15.6510,
+    landmark: 'Cruzamento de Safim / Mercado local',
+    weather: 'Noite sem iluminação',
+    roadCondition: 'Seco e limpo',
+    vehiclesInvolved: 1,
+    victimsCount: 1,
+    fatalitiesCount: 1,
+    injuredCount: 0,
+    probableCause: 'Excesso de velocidade e falta de iluminação na via pública',
+    description: 'Atropelamento mortal de peão na berma da estrada por viatura que se colocou em fuga, posteriormente apreendida pela BNT.',
+    status: 'Remetido a Tribunal',
+  },
+  {
+    id: 'ACID-2026-0003',
+    date: '2026-10-25',
+    time: '09:15',
+    severity: 'Danos Materiais',
+    type: 'Colisão Traseira',
+    region: 'Bafatá',
+    road: 'Ponte sobre o Rio Geba · Entrada da Cidade de Bafatá',
+    latitude: 12.1678,
+    longitude: -14.6542,
+    landmark: 'Início do tabuleiro da ponte metálica',
+    weather: 'Bom tempo / Sol',
+    roadCondition: 'Com buracos / Degradação',
+    vehiclesInvolved: 2,
+    victimsCount: 0,
+    fatalitiesCount: 0,
+    injuredCount: 0,
+    probableCause: 'Falta de distância de segurança e travagem brusca',
+    description: 'Colisão por alcance após travagem de emergência do veículo à frente devido a buraco pronunciado na faixa.',
+    status: 'Arquivado',
+  },
+  {
+    id: 'ACID-2026-0004',
+    date: '2026-11-01',
+    time: '14:20',
+    severity: 'Com Feridos',
+    type: 'Capotamento',
+    region: 'Gabú',
+    road: 'Estrada Regional Gabú - Pirada (km 18)',
+    latitude: 12.2850,
+    longitude: -14.2180,
+    landmark: 'Curva do Rio Campossa',
+    weather: 'Chuva intensa',
+    roadCondition: 'Molhado / Escorregadio',
+    vehiclesInvolved: 1,
+    victimsCount: 4,
+    fatalitiesCount: 0,
+    injuredCount: 4,
+    probableCause: 'Aquaplanagem e velocidade inadequada',
+    description: 'Despiste seguido de capotamento para fora da berma em valeta durante forte precipitação com 4 passageiros feridos.',
+    status: 'Em Investigação',
+  },
+];
+
+const seedAccidentVehiclesDrivers: AccidentVehicleDriver[] = [
+  {
+    id: 'VCA-2026-0001',
+    accidentId: 'ACID-2026-0001',
+    plate: 'GB-24-BC',
+    vehicleLabel: 'Toyota Corolla (2018)',
+    vehicleCategory: 'Ligeiro particular',
+    insuranceCompany: 'Garantia Seguros GB',
+    insurancePolicy: 'APOL-GAR-2026/0912',
+    damageDescription: 'Destruição do bloco dianteiro, suspensão frontal esquerda e quebra do para-brisas.',
+    driverName: 'Mamadu Embaló',
+    driverDocument: 'BI 000000001',
+    driverLicense: 'GB-C-10294',
+    driverCategory: 'B',
+    driverPhone: '+245 955 100 201',
+    alcoholTest: '0.00 g/l (Negativo)',
+    liability: 'Lesado / Terceiro',
+    notes: 'Condutor circulava na sua faixa com cinto de segurança apertado.',
+  },
+  {
+    id: 'VCA-2026-0002',
+    accidentId: 'ACID-2026-0001',
+    plate: 'GB-19-AA',
+    vehicleLabel: 'Suzuki Carry (2020)',
+    vehicleCategory: 'Transporte misto',
+    insuranceCompany: 'Sem seguro válido',
+    insurancePolicy: '',
+    damageDescription: 'Perda total da frente e eixo dianteiro partido.',
+    driverName: 'Bacar Camará',
+    driverDocument: 'BI 000000002',
+    driverLicense: 'GB-C-08142',
+    driverCategory: 'B, C',
+    driverPhone: '+245 966 200 142',
+    alcoholTest: '0.65 g/l (Positivo - Contraordenação Grave)',
+    liability: 'Presumível causador',
+    notes: 'Invasão da faixa de rodagem contrária sob influência de álcool.',
+  },
+  {
+    id: 'VCA-2026-0003',
+    accidentId: 'ACID-2026-0002',
+    plate: 'GB-22-CD',
+    vehicleLabel: 'Mercedes-Benz Sprinter (2017)',
+    vehicleCategory: 'Transporte colectivo',
+    insuranceCompany: 'Garantia Seguros GB',
+    insurancePolicy: 'APOL-GAR-2026/1104',
+    damageDescription: 'Deformação da ótica dianteira direita e espelho retrovisor partido.',
+    driverName: 'Ibraima Sanhá',
+    driverDocument: 'BI 000000003',
+    driverLicense: 'GB-D-07331',
+    driverCategory: 'C, D, E',
+    driverPhone: '+245 955 300 733',
+    alcoholTest: '0.00 g/l (Negativo)',
+    liability: 'Arguido em inquérito',
+    notes: 'Viatura retida para peritagem forense no piquete de Bissau.',
+  },
+];
+
+const seedAccidentVictims: AccidentVictim[] = [
+  {
+    id: 'VIT-2026-0001',
+    accidentId: 'ACID-2026-0001',
+    name: 'Mariama Sanhá',
+    document: 'BI 000492811',
+    age: 34,
+    gender: 'Feminino',
+    condition: 'Passageiro',
+    associatedPlate: 'GB-19-AA',
+    injurySeverity: 'Ferimentos Graves',
+    hospital: 'Hospital Nacional Simão Mendes',
+    emergencyContact: '+245 966 440 220 (Irmão)',
+    medicalNotes: 'Traumatismo craniano ligeiro e fratura fechada de fémur; internada no bloco de cirurgia.',
+  },
+  {
+    id: 'VIT-2026-0002',
+    accidentId: 'ACID-2026-0001',
+    name: 'Mamadu Embaló',
+    document: 'BI 000000001',
+    age: 42,
+    gender: 'Masculino',
+    condition: 'Condutor',
+    associatedPlate: 'GB-24-BC',
+    injurySeverity: 'Ferimentos Leves',
+    hospital: 'Hospital Nacional Simão Mendes',
+    emergencyContact: '+245 955 100 201',
+    medicalNotes: 'Escoriações múltiplas e contusão torácica; alta clínica concedida após exames.',
+  },
+  {
+    id: 'VIT-2026-0003',
+    accidentId: 'ACID-2026-0002',
+    name: 'Ansumane Djaló',
+    document: 'BI 000781902',
+    age: 58,
+    gender: 'Masculino',
+    condition: 'Peão / Pedestre',
+    associatedPlate: 'GB-22-CD',
+    injurySeverity: 'Óbito no Local',
+    hospital: 'Morgue do Hospital Nacional Simão Mendes',
+    emergencyContact: '+245 955 881 002 (Esposa)',
+    medicalNotes: 'Óbito declarado no local pela equipa médica de emergência e médico legista.',
+  },
+];
+
+const seedAccidentWitnesses: AccidentWitness[] = [
+  {
+    id: 'TST-2026-0001',
+    accidentId: 'ACID-2026-0001',
+    name: 'Abel da Silva',
+    document: 'BI 000881920',
+    phone: '+245 955 770 123',
+    address: 'Bairro Militar, Bissau',
+    locationAtMoment: 'Condutor da viatura que seguia atrás',
+    statement: 'Viu a carrinha Suzuki tentar ultrapassar um camião de mercadorias em local de linha contínua, colidindo frontalmente com o Corolla.',
+    statementDate: '2026-10-18',
+  },
+  {
+    id: 'TST-2026-0002',
+    accidentId: 'ACID-2026-0002',
+    name: 'Dionísio Mendes',
+    document: 'BI 000918273',
+    phone: '+245 966 331 445',
+    address: 'Safim Centro',
+    locationAtMoment: 'Comerciante do quiosque lateral',
+    statement: 'Ouviu uma travagem forte e o som do impacto; observou uma carrinha de passageiros branca acelerar sem prestar assistência ao peão.',
+    statementDate: '2026-10-23',
+  },
+];
+
+const seedAccidentPoliceReports: AccidentPoliceReport[] = [
+  {
+    id: 'BO-POL-2026-0045',
+    accidentId: 'ACID-2026-0001',
+    reportNumber: 'BO/BNT/2026/045',
+    policeDepartment: 'Brigada Nacional de Trânsito (BNT)',
+    officerName: 'Subcomissário Malam Bacai',
+    officerBadge: 'AG-GB-0104',
+    reportDate: '2026-10-19',
+    investigationSummary: 'A colisão frontal foi originada por manobra de ultrapassagem temerária e não permitida realizada pelo condutor Bacar Camará com taxa de alcoolemia positiva.',
+    infractionsFound: 'Art. 38.º (Ultrapassagem proibida) e Art. 81.º (Condução sob influência do álcool) do Código da Estrada',
+    legalReferral: 'Remetido ao Ministério Público / Tribunal Regional de Bissau',
+    procedureStatus: 'Concluído',
+    notes: 'Auto de notícia e testes toxicológicos anexos ao processo.',
+  },
+  {
+    id: 'BO-POL-2026-0052',
+    accidentId: 'ACID-2026-0002',
+    reportNumber: 'BO/BNT/2026/052',
+    policeDepartment: 'Brigada Nacional de Trânsito (BNT)',
+    officerName: 'Agente Principal Fátima Djú',
+    officerBadge: 'AG-GB-0219',
+    reportDate: '2026-10-24',
+    investigationSummary: 'Atropelamento mortal com fuga de condutor e omissão de auxílio; condutor identificado após investigação policial conjunta da BNT e POP.',
+    infractionsFound: 'Art. 135.º (Homicídio por negligência na condução) e Art. 89.º (Omissão de auxílio)',
+    legalReferral: 'Remetido ao Ministério Público com arguido sob termo de identidade e residência',
+    procedureStatus: 'Concluído',
+    notes: 'Veículo apreendido no parque da delegação regional.',
+  },
+];
+
+const seedAccidentEvidence: AccidentEvidence[] = [
+  {
+    id: 'FOTO-2026-0001',
+    accidentId: 'ACID-2026-0001',
+    evidenceType: 'Fotografia do Local',
+    title: 'Ponto de impacto frontal no eixo da via na Av. Combatentes',
+    fileUrl: '/media/acidentes/impacto_av_combatentes.jpg',
+    description: 'Registo fotográfico dos vestígios de travagem (18 metros) e deformação estrutural frontal dos veículos.',
+    registeredBy: 'Perito Malam Bacai (BNT)',
+    registrationDate: '2026-10-18',
+  },
+  {
+    id: 'FOTO-2026-0002',
+    accidentId: 'ACID-2026-0001',
+    evidenceType: 'Croqui / Esquema da Via',
+    title: 'Croqui pericial topográfico da colisão frontal',
+    fileUrl: '/media/acidentes/croqui_safim.jpg',
+    description: 'Planta do local do acidente com cotas das bermas, ponto de repouso dos veículos e trajetória percorrida.',
+    registeredBy: 'Gabinete de Acidentologia Rodoviária DGT',
+    registrationDate: '2026-10-19',
+  },
+  {
+    id: 'FOTO-2026-0003',
+    accidentId: 'ACID-2026-0002',
+    evidenceType: 'Fotografia dos Danos Veiculares',
+    title: 'Danos no para-choques e ótica direita da viatura interveniente',
+    fileUrl: '/media/acidentes/danos_sprinter.jpg',
+    description: 'Provas periciais de compatibilidade entre as deformações e as fibras do vestuário da vítima atropelada.',
+    registeredBy: 'Laboratório de Polícia Técnica e Científica',
+    registrationDate: '2026-10-23',
+  },
+];
+
 function useSaved<T>(key:string, initial:T) {
   const [data,setData] = useState<T>(()=>{try {const value=localStorage.getItem(`sigetran:${key}`);return value?JSON.parse(value) as T:initial;}catch{return initial;}});
   useEffect(() => { let active = true; api.get<T>(`/state/${key}`).then(res => { if (active && res.data !== undefined) { setData(res.data); try { localStorage.setItem(`sigetran:${key}`, JSON.stringify(res.data)); } catch { /* ignore */ } } }).catch(() => { /* fallback */ }); return () => { active = false; }; }, [key]);
@@ -117,8 +432,27 @@ const documentSubmenus:{path:string;label:string;shortLabel:string}[]=[
   {path:'/documents-certificates/authenticity',label:'Verificação pública de autenticidade',shortLabel:'Autenticidade Pública'},
   {path:'/documents-certificates/administrative-blocks',label:'Bloqueio administrativo',shortLabel:'Bloqueio Administrativo'},
 ];
+const stateFleetSubmenus:{path:string;label:string;shortLabel:string}[]=[
+  {path:'/state-fleet',label:'Cadastro de veículos públicos',shortLabel:'Veículos Públicos'},
+  {path:'/state-fleet/institutions',label:'Ministério ou instituição responsável',shortLabel:'Instituições'},
+  {path:'/state-fleet/officers',label:'Funcionário responsável pelo veículo',shortLabel:'Funcionários'},
+  {path:'/state-fleet/missions',label:'Histórico de utilização',shortLabel:'Utilização / Missões'},
+  {path:'/state-fleet/fuel',label:'Consumo de combustível',shortLabel:'Combustível'},
+  {path:'/state-fleet/maintenance',label:'Manutenção e reparações',shortLabel:'Manutenção'},
+  {path:'/state-fleet/expenses',label:'Controlo de despesas',shortLabel:'Despesas Globais'},
+];
+const accidentSubmenus:{path:string;label:string;shortLabel:string}[]=[
+  {path:'/accidents',label:'Registo de acidentes',shortLabel:'Registo'},
+  {path:'/accidents/vehicles-drivers',label:'Veículos e condutores envolvidos',shortLabel:'Veículos/Condutores'},
+  {path:'/accidents/victims',label:'Identificação de vítimas',shortLabel:'Vítimas'},
+  {path:'/accidents/locations',label:'Localização geográfica',shortLabel:'Localização GIS'},
+  {path:'/accidents/evidence',label:'Fotografias e documentos',shortLabel:'Fotos e Provas'},
+  {path:'/accidents/police-reports',label:'Relatórios policiais',shortLabel:'Relatórios Policiais'},
+  {path:'/accidents/witnesses',label:'Identificação de testemunhas',shortLabel:'Testemunhas'},
+  {path:'/accidents/statistics',label:'Estatísticas de acidentes por região',shortLabel:'Estatísticas Regionais'},
+];
 const menu:{path:string;label:string;icon:LucideIcon;children?:{path:string;label:string}[]}[]=[
-  {path:'/dashboard',label:'Painel de gestão',icon:Activity},{path:'/vehicles',label:'Veículos e matrículas',icon:CarFront},{path:'/ownership-transfers',label:'Transferência e histórico',icon:ArrowRight},{path:'/vehicle-occurrences',label:'Apreensões, roubos e baixas',icon:ShieldCheck},{path:'/drivers',label:'Gestão de condutores',icon:Users,children:driverSubmenus},{path:'/plate-check',label:'Consulta de matrícula',icon:Search},{path:'/circulation-tax',label:'Imposto de Circulação',icon:Banknote},{path:'/fines',label:'Gestão de multas e infrações',icon:ClipboardList,children:fineSubmenus},{path:'/documents-certificates',label:'Documentação e certificados',icon:FilePlus2,children:documentSubmenus},{path:'/inspections',label:'Inspeções veiculares',icon:ClipboardCheck},{path:'/reports',label:'Relatórios nacionais',icon:FileBarChart2},{path:'/users',label:'Utilizadores',icon:UserRoundCog},{path:'/settings',label:'Configuração',icon:Settings},
+  {path:'/dashboard',label:'Painel de gestão',icon:Activity},{path:'/vehicles',label:'Veículos e matrículas',icon:CarFront},{path:'/ownership-transfers',label:'Transferência e histórico',icon:ArrowRight},{path:'/vehicle-occurrences',label:'Apreensões, roubos e baixas',icon:ShieldCheck},{path:'/drivers',label:'Gestão de condutores',icon:Users,children:driverSubmenus},{path:'/plate-check',label:'Consulta de matrícula',icon:Search},{path:'/circulation-tax',label:'Imposto de Circulação',icon:Banknote},{path:'/fines',label:'Gestão de multas e infrações',icon:ClipboardList,children:fineSubmenus},{path:'/documents-certificates',label:'Documentação e certificados',icon:FilePlus2,children:documentSubmenus},{path:'/state-fleet',label:'Gestão da frota do Estado',icon:Building2,children:stateFleetSubmenus},{path:'/accidents',label:'Gestão de acidentes rodoviários',icon:ShieldAlert,children:accidentSubmenus},{path:'/inspections',label:'Inspeções veiculares',icon:ClipboardCheck},{path:'/reports',label:'Relatórios nacionais',icon:FileBarChart2},{path:'/users',label:'Utilizadores',icon:UserRoundCog},{path:'/settings',label:'Configuração',icon:Settings},
 ];
 const inputClass='w-full border border-[#d5d1c2] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#009E49] focus:ring-2 focus:ring-[#009E49]/15';
 const primaryClass='inline-flex items-center justify-center gap-2 bg-[#006B35] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#00552b] disabled:cursor-not-allowed disabled:opacity-50';
@@ -3080,6 +3414,2447 @@ export function DocumentAdministrativeBlockPage(){
           </tr>)}
         </tbody>
       </table>
+    </div>
+  </Shell>;
+}
+
+function StateFleetSubmenuBar(){
+  const {pathname}=useLocation();
+  return <div className="mb-6 flex flex-wrap gap-1.5 border-b border-[#dcd9cc] pb-4">
+    {stateFleetSubmenus.map(sub=>{
+      const active=pathname===sub.path;
+      return <Link key={sub.path} to={sub.path} className={`border px-3 py-1.5 text-xs font-semibold transition ${active?'border-[#006B35] bg-[#006B35] text-white':'border-[#d5d1c2] bg-white text-[#26372b] hover:border-[#009E49] hover:bg-[#f4f3ed]'}`}>{sub.label}</Link>;
+    })}
+  </div>;
+}
+
+function FleetResponsibilityTermModal({vehicle,onClose}:{vehicle:PublicVehicle;onClose:()=>void}){
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#10251a]/60">
+    <div className="relative w-full max-w-2xl bg-white border-2 border-[#173d2b] shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+      <div className="flex justify-between items-start border-b-2 border-[#d5d1c2] pb-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 place-items-center border border-[#FCD116] bg-[#173d2b] text-base font-black text-[#FCD116]">GB</div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#836300]">República da Guiné-Bissau</div>
+            <h3 className="font-serif text-lg font-bold text-[#173d2b]">Ministério dos Transportes e Comunicações</h3>
+            <div className="text-xs text-[#697168]">Direção-Geral de Viação · Direção do Património do Estado</div>
+          </div>
+        </div>
+        <button onClick={onClose} aria-label="Fechar" className="p-1 text-[#737a70] hover:text-[#1c3024]"><X size={20}/></button>
+      </div>
+
+      <div className="mb-4 border-l-4 border-[#009E49] bg-[#f4f3ed] p-3 text-center">
+        <h4 className="font-serif text-base font-bold text-[#173d2b] uppercase tracking-wide">Termo Oficial de Cedência e Responsabilidade de Viatura do Estado</h4>
+        <p className="text-[11px] text-[#737a70]">Em conformidade com as normas regulamentares de gestão do património móvel do Estado</p>
+      </div>
+
+      <div className="space-y-4 text-xs">
+        <div className="grid grid-cols-2 gap-3 border border-[#dcd9cc] bg-[#f8f7f2] p-4">
+          <div><span className="text-[#737a70] block">Matrícula Oficial:</span><b className="font-mono text-sm text-[#006B35]">{vehicle.plate}</b></div>
+          <div><span className="text-[#737a70] block">Viatura:</span><b>{vehicle.make} {vehicle.model} ({vehicle.year})</b></div>
+          <div><span className="text-[#737a70] block">Cor / Categoria:</span><b>{vehicle.color||'Branco'} · {vehicle.category}</b></div>
+          <div><span className="text-[#737a70] block">N.º de Chassi (VIN):</span><b className="font-mono">{vehicle.chassisNumber||'JT111GJ928192801'}</b></div>
+          <div><span className="text-[#737a70] block">Quilometragem Inicial:</span><b>{(vehicle.currentMileage||0).toLocaleString('pt-PT')} km</b></div>
+          <div><span className="text-[#737a70] block">Tipo de Combustível:</span><b>{vehicle.fuelType||'Gasóleo'} (Capacidade: {vehicle.tankCapacity||80} L)</b></div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 border border-[#dcd9cc] p-4">
+          <div className="col-span-2"><span className="text-[#737a70] block">Ministério / Instituição Afeta:</span><b className="text-sm text-[#173d2b]">{vehicle.institution} ({vehicle.institutionAcronym||'GOV'})</b></div>
+          <div><span className="text-[#737a70] block">Direção / Departamento:</span><b>{vehicle.department||'Serviços Gerais'}</b></div>
+          <div><span className="text-[#737a70] block">Data de Afetação:</span><b>{vehicle.assignmentDate||'2022-06-15'}</b></div>
+          <div><span className="text-[#737a70] block">Funcionário / Titular Responsável:</span><b className="text-sm">{vehicle.responsibleOfficer||'Não designado'}</b></div>
+          <div><span className="text-[#737a70] block">Cargo / Função Oficial:</span><b>{vehicle.officerRole||'Titular de Cargo Público'}</b></div>
+          <div className="col-span-2"><span className="text-[#737a70] block">Contacto Telefónico:</span><b>{vehicle.officerContact||'+245 955 000 000'}</b></div>
+        </div>
+
+        <div className="border border-[#dcd9cc] bg-white p-3 space-y-2 text-[11px] leading-relaxed text-[#4b5549]">
+          <b className="text-[#173d2b] block">Cláusulas e Deveres do Titular:</b>
+          <p>1. A viatura identificada destina-se estritamente ao cumprimento de missões oficiais e necessidades do serviço público governamental, sendo expressamente vedado o uso particular ou cedência a pessoas não autorizadas.</p>
+          <p>2. O titular compromete-se a zelar pelo bom estado mecânico, conservação dos equipamentos de bordo e apresentação às vistorias e revisões periódicas da Garagem Oficial do Estado.</p>
+          <p>3. Qualquer sinistro, furto, avaria grave ou deslocação para fora de Bissau carece de emissão prévia de Guia de Marcha / Ordem de Missão no SIGETRAN.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-8 border-t border-[#dcd9cc] pt-6 text-center text-[11px]">
+          <div>
+            <div className="border-b border-[#202820] pb-8"/>
+            <b className="block mt-1">{vehicle.responsibleOfficer||'O Funcionário Responsável'}</b>
+            <span className="text-[#737a70]">Assinatura do Titular</span>
+          </div>
+          <div>
+            <div className="border-b border-[#202820] pb-8"/>
+            <b className="block mt-1">Diretor-Geral de Viação e Transportes</b>
+            <span className="text-[#737a70]">Homologação e Selo Branco</span>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-[#dcd9cc] pt-4">
+          <button onClick={()=>window.print()} className={primaryClass}><Printer size={15}/> Imprimir Termo de Responsabilidade</button>
+          <button onClick={onClose} className={secondaryClass}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+export function PublicVehicleRegistryPage(){
+  const [vehicles,setVehicles]=useSaved('state-fleet',seedPublicVehicles);
+  const [open,setOpen]=useState(false);
+  const [editing,setEditing]=useState<PublicVehicle|null>(null);
+  const [viewingTerm,setViewingTerm]=useState<PublicVehicle|null>(null);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+  const [institutionFilter,setInstitutionFilter]=useState('');
+  const [statusFilter,setStatusFilter]=useState('');
+
+  const institutions=useMemo(()=>Array.from(new Set(vehicles.map(v=>v.institutionAcronym||v.institution))),[vehicles]);
+
+  const filtered=useMemo(()=>vehicles.filter(v=>{
+    const matchSearch=[v.plate,v.make,v.model,v.institution,v.institutionAcronym||'',v.responsibleOfficer||'',v.category].join(' ').toLowerCase().includes(search.toLowerCase());
+    const matchInst=!institutionFilter||(v.institutionAcronym===institutionFilter||v.institution===institutionFilter);
+    const matchStatus=!statusFilter||v.status===statusFilter;
+    return matchSearch&&matchInst&&matchStatus;
+  }),[vehicles,search,institutionFilter,statusFilter]);
+
+  const totalKm=vehicles.reduce((sum,v)=>sum+(v.currentMileage||0),0);
+
+  async function submitVehicle(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const plate=String(f.get('plate')||'').toUpperCase().trim();
+    const payload:PublicVehicle={
+      id:editing?editing.id:`VP-${String(Date.now()).slice(-4)}`,
+      plate,
+      make:String(f.get('make')||'').trim(),
+      model:String(f.get('model')||'').trim(),
+      year:Number(f.get('year')||2023),
+      color:String(f.get('color')||'Branco').trim()||'Branco',
+      category:String(f.get('category')||'Veículo de Serviço').trim(),
+      institution:String(f.get('institution')||'Ministério dos Transportes e Comunicações').trim(),
+      institutionAcronym:String(f.get('institutionAcronym')||'MTC').trim().toUpperCase(),
+      department:String(f.get('department')||'').trim(),
+      responsibleOfficer:String(f.get('responsibleOfficer')||'').trim(),
+      officerRole:String(f.get('officerRole')||'').trim(),
+      officerContact:String(f.get('officerContact')||'').trim(),
+      currentMileage:Number(f.get('currentMileage')||0),
+      tankCapacity:Number(f.get('tankCapacity')||80),
+      fuelType:String(f.get('fuelType')||'Gasóleo'),
+      status:String(f.get('status')||'Ativo'),
+      chassisNumber:String(f.get('chassisNumber')||'').trim(),
+      assignmentDate:String(f.get('assignmentDate')||new Date().toISOString().slice(0,10)),
+      notes:String(f.get('notes')||'').trim(),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      if(editing){
+        const res=await api.put<PublicVehicle>(`/public-vehicles/${encodeURIComponent(editing.id)}`,payload);
+        setVehicles(rows=>rows.map(v=>v.id===editing.id?res.data:v));
+        setSuccessMsg(`Viatura pública ${payload.plate} atualizada com sucesso.`);
+      }else{
+        const res=await api.post<PublicVehicle>('/public-vehicles',payload);
+        setVehicles([res.data,...vehicles]);
+        setSuccessMsg(`Viatura pública ${payload.plate} registada com sucesso.`);
+      }
+      formEl.reset();
+      setEditing(null);
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Não foi possível salvar a viatura pública.');
+    }
+  }
+
+  async function handleDelete(id:string,plate:string){
+    if(!window.confirm(`Deseja realmente remover a viatura ${plate} do património do Estado?`))return;
+    try{
+      await api.delete(`/public-vehicles/${encodeURIComponent(id)}`);
+    }catch{/* ignore */}
+    setVehicles(rows=>rows.filter(v=>v.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão da frota do Estado · Submenu 1" title="Cadastro de veículos públicos" description="Inventário centralizado das viaturas oficiais do Estado da Guiné-Bissau, afetação institucional, características técnicas e estado operacional." icon={Building2}/>
+    <StateFleetSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Frota Pública Total" value={String(vehicles.length)} detail="Viaturas matriculadas" icon={CarFront}/>
+      <Stat label="Em Serviço Ativo" value={String(vehicles.filter(v=>v.status==='Ativo').length)} detail="Operacionais" icon={ShieldCheck}/>
+      <Stat label="Em Manutenção" value={String(vehicles.filter(v=>v.status==='Em Manutenção').length)} detail="Oficina oficial" icon={Wrench}/>
+      <Stat label="Quilometragem Global" value={`${totalKm.toLocaleString('pt-PT')} km`} detail="Distância acumulada" icon={Gauge}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-1 flex-wrap items-center gap-2">
+        <label className="flex min-w-[240px] flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+          <Search size={16} className="text-[#737a70]"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por matrícula, ministério, oficial ou modelo" className="w-full py-2 text-sm outline-none"/>
+        </label>
+        <select value={institutionFilter} onChange={e=>setInstitutionFilter(e.target.value)} className={`w-auto ${inputClass}`}>
+          <option value="">Todas as Instituições</option>
+          {institutions.map(inst=><option key={inst} value={inst}>{inst}</option>)}
+        </select>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className={`w-auto ${inputClass}`}>
+          <option value="">Todos os Estados</option>
+          <option value="Ativo">Ativo</option>
+          <option value="Em Manutenção">Em Manutenção</option>
+          <option value="Inativo">Inativo</option>
+          <option value="Abatido">Abatido</option>
+        </select>
+      </div>
+      <button onClick={()=>{setEditing(null);setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Novo Registo de Veículo Público'}</button>
+    </div>
+
+    {open&&<Drawer title={editing?`Editar Viatura Pública · ${editing.plate}`:'Registar Veículo do Estado'} onClose={()=>{setOpen(false);setEditing(null);}}>
+      <form key={editing?.id||'new'} onSubmit={submitVehicle} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549]">Matrícula Oficial
+          <input className={`mt-1.5 ${inputClass}`} type="text" name="plate" required defaultValue={editing?.plate||'GB-GOV-'} placeholder="GB-GOV-0123"/>
+        </label>
+        <Field label="Marca" name="make" defaultValue={editing?.make||'Toyota'}/>
+        <Field label="Modelo" name="model" defaultValue={editing?.model||'Land Cruiser'}/>
+        <Field label="Ano de Fabrico" name="year" type="number" defaultValue={String(editing?.year||2023)}/>
+        <Field label="Cor" name="color" defaultValue={editing?.color||'Branco'}/>
+        <Field label="Categoria da Viatura" name="category" defaultValue={editing?.category||'Veículo de Representação / Todo-o-Terreno'}/>
+        <Field label="Ministério / Instituição Titular" name="institution" defaultValue={editing?.institution||'Ministério dos Transportes e Comunicações'}/>
+        <Field label="Sigla Institucional" name="institutionAcronym" defaultValue={editing?.institutionAcronym||'MTC'} placeholder="Ex.: MTC, MINSAP, MEF"/>
+        <Field label="Direção / Gabinete / Serviço" name="department" defaultValue={editing?.department||'Gabinete do Ministro'}/>
+        <Field label="Funcionário / Titular Responsável" name="responsibleOfficer" defaultValue={editing?.responsibleOfficer||''}/>
+        <Field label="Cargo / Função Oficial" name="officerRole" defaultValue={editing?.officerRole||''}/>
+        <Field label="Contacto Telefónico" name="officerContact" defaultValue={editing?.officerContact||'+245 955 '}/>
+        <Field label="Quilometragem Atual (km)" name="currentMileage" type="number" defaultValue={String(editing?.currentMileage||0)}/>
+        <Field label="Capacidade do Depósito (Litros)" name="tankCapacity" type="number" defaultValue={String(editing?.tankCapacity||80)}/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Tipo de Combustível
+          <select name="fuelType" defaultValue={editing?.fuelType||'Gasóleo'} className={`mt-1.5 ${inputClass}`}>
+            <option value="Gasóleo">Gasóleo (Diesel)</option>
+            <option value="Gasolina">Gasolina Super</option>
+            <option value="Híbrido">Híbrido</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Estado Operacional
+          <select name="status" defaultValue={editing?.status||'Ativo'} className={`mt-1.5 ${inputClass}`}>
+            <option value="Ativo">Ativo (Em Circulação)</option>
+            <option value="Em Manutenção">Em Manutenção (Oficina)</option>
+            <option value="Inativo">Inativo (Reserva de Frota)</option>
+            <option value="Abatido">Abatido (Fim de Vida Útil)</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Número de Chassi / VIN" name="chassisNumber" defaultValue={editing?.chassisNumber||''}/>
+        </div>
+        <Field label="Data de Afetação ao Estado" name="assignmentDate" type="date" defaultValue={editing?.assignmentDate||new Date().toISOString().slice(0,10)}/>
+        <div className="sm:col-span-2">
+          <Field label="Observações e Histórico de Cedência" name="notes" defaultValue={editing?.notes||''}/>
+        </div>
+        <div className="sm:col-span-2 flex items-end gap-2 pt-2">
+          <button className={primaryClass}>{editing?'Guardar Alterações':'Cadastrar Viatura Pública'}</button>
+          {editing&&<button type="button" onClick={()=>{setEditing(null);window.dispatchEvent(new Event('sigetran:drawer-close'));}} className={secondaryClass}>Cancelar</button>}
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    {viewingTerm&&<FleetResponsibilityTermModal vehicle={viewingTerm} onClose={()=>setViewingTerm(null)}/>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Matrícula','Veículo & Cor','Ministério / Sigla','Direção / Gabinete','Responsável & Cargo','Quilometragem','Combustível','Estado','Ações'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(v=><tr key={v.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono font-bold text-[#006B35] whitespace-nowrap">{v.plate}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-semibold">{v.make} {v.model}</span>
+              <span className="block text-[11px] text-[#737a70]">{v.year} · {v.color||'Branco'} · {v.category}</span>
+            </td>
+            <td className="px-3 py-3">
+              <span className="font-semibold">{v.institutionAcronym||'GOV'}</span>
+              <span className="block text-[11px] text-[#737a70] truncate max-w-xs">{v.institution}</span>
+            </td>
+            <td className="px-3 py-3 text-xs">{v.department||'Serviços Gerais'}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-semibold">{v.responsibleOfficer||'Não designado'}</span>
+              <span className="block text-[11px] text-[#737a70]">{v.officerRole||'—'}</span>
+            </td>
+            <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{(v.currentMileage||0).toLocaleString('pt-PT')} km</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{v.fuelType||'Gasóleo'} <span className="text-[#737a70]">({v.tankCapacity||80}L)</span></td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value={v.status}/></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={()=>setViewingTerm(v)} title="Ver Termo de Responsabilidade" className="text-xs font-semibold text-[#006B35] hover:underline">Termo</button>
+                <span className="text-[#d5d1c2]">|</span>
+                <button type="button" onClick={()=>{setEditing(v);setOpen(true);}} className="text-xs font-semibold text-[#006B35] hover:underline">Editar</button>
+                <span className="text-[#d5d1c2]">|</span>
+                <button type="button" onClick={()=>handleDelete(v.id,v.plate)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button>
+              </div>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+      {filtered.length===0&&<div className="py-8 text-center text-sm text-[#737a70]">Nenhuma viatura pública encontrada para os critérios selecionados.</div>}
+    </div>
+  </Shell>;
+}
+
+export function FleetInstitutionsPage(){
+  const [vehicles,setVehicles]=useSaved('state-fleet',seedPublicVehicles);
+  const [selectedAcronym,setSelectedAcronym]=useState<string>('');
+  const [openTransfer,setOpenTransfer]=useState(false);
+  const [transferVehicleId,setTransferVehicleId]=useState('');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+
+  const institutionGroups=useMemo(()=>{
+    const map = new Map<string,{acronym:string;name:string;count:number;active:number;inRepair:number;totalKm:number;vehicles:PublicVehicle[]}>();
+    for(const v of vehicles){
+      const acr = v.institutionAcronym||'GOV';
+      if(!map.has(acr)){
+        map.set(acr,{acronym:acr,name:v.institution,count:0,active:0,inRepair:0,totalKm:0,vehicles:[]});
+      }
+      const entry = map.get(acr)!;
+      entry.count+=1;
+      if(v.status==='Ativo') entry.active+=1;
+      if(v.status==='Em Manutenção') entry.inRepair+=1;
+      entry.totalKm+=(v.currentMileage||0);
+      entry.vehicles.push(v);
+    }
+    return Array.from(map.values()).sort((a,b)=>b.count-a.count);
+  },[vehicles]);
+
+  const displayedVehicles=useMemo(()=>{
+    if(!selectedAcronym) return vehicles;
+    return vehicles.filter(v=>(v.institutionAcronym||'GOV')===selectedAcronym);
+  },[vehicles,selectedAcronym]);
+
+  async function handleTransfer(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    const target=vehicles.find(v=>v.id===transferVehicleId);
+    if(!target)return;
+
+    const payload:PublicVehicle={
+      ...target,
+      institution:String(f.get('institution')).trim(),
+      institutionAcronym:String(f.get('institutionAcronym')).trim().toUpperCase(),
+      department:String(f.get('department')).trim(),
+      responsibleOfficer:String(f.get('responsibleOfficer')).trim(),
+      officerRole:String(f.get('officerRole')).trim(),
+      officerContact:String(f.get('officerContact')).trim(),
+      assignmentDate:new Date().toISOString().slice(0,10),
+      notes:`Reafetado ao abrigo do despacho ministerial: ${String(f.get('dispatchReason')).trim()}`,
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.put<PublicVehicle>(`/public-vehicles/${encodeURIComponent(target.id)}`,payload);
+      setVehicles(rows=>rows.map(v=>v.id===target.id?res.data:v));
+      setSuccessMsg(`Viatura ${target.plate} reafetada com sucesso para ${payload.institutionAcronym}.`);
+      setOpenTransfer(false);
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao reafetar a viatura institucional.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão da frota do Estado · Submenu 2" title="Ministério ou instituição responsável" description="Mapeamento e distribuição da frota móvel por ministérios, órgãos de soberania e serviços públicos governamentais." icon={Building2}/>
+    <StateFleetSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Instituições Titulares" value={String(institutionGroups.length)} detail="Ministérios e secretarias" icon={Building2}/>
+      <Stat label="Maior Alocação" value={institutionGroups[0]?.acronym||'—'} detail={`${institutionGroups[0]?.count||0} viaturas afetas`} icon={CarFront}/>
+      <Stat label="Viaturas em Serviço" value={String(vehicles.filter(v=>v.status==='Ativo').length)} detail="Total operacional" icon={ShieldCheck}/>
+      <Stat label="Quilometragem Total" value={`${vehicles.reduce((s,v)=>s+(v.currentMileage||0),0).toLocaleString('pt-PT')} km`} detail="Toda a administração" icon={Gauge}/>
+    </div>
+
+    <div className="mb-4 flex justify-between items-center">
+      <h2 className="font-serif text-lg font-bold text-[#1c3024]">Distribuição Ministerial da Frota</h2>
+      <button onClick={()=>{setTransferVehicleId(vehicles[0]?.id||'');setOpenTransfer(true);setError('');}} className={primaryClass}>
+        <ArrowRight size={16}/> Reafetar Viatura a Outro Ministério
+      </button>
+    </div>
+
+    <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {institutionGroups.map(grp=>{
+        const isSelected=selectedAcronym===grp.acronym;
+        return <div key={grp.acronym} onClick={()=>setSelectedAcronym(isSelected?'':grp.acronym)} className={`cursor-pointer border p-5 transition bg-white ${isSelected?'border-2 border-[#009E49] shadow-md':'border-[#dcd9cc] hover:border-[#009E49]/60'}`}>
+          <div className="flex items-start justify-between">
+            <span className="inline-block border border-[#173d2b] bg-[#173d2b] px-2 py-0.5 font-mono text-xs font-bold text-[#FCD116]">{grp.acronym}</span>
+            <span className="font-serif text-xl font-bold text-[#173d2b]">{grp.count} {grp.count===1?'viatura':'viaturas'}</span>
+          </div>
+          <h3 className="mt-3 font-serif font-bold text-sm text-[#1c3024]">{grp.name}</h3>
+          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#f0eee7] pt-3 text-xs text-[#737a70]">
+            <div>Em Serviço: <b className="text-[#006B35]">{grp.active}</b></div>
+            <div>Oficina: <b className="text-[#CE1126]">{grp.inRepair}</b></div>
+            <div className="col-span-2">Distância acumulada: <b>{grp.totalKm.toLocaleString('pt-PT')} km</b></div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1">
+            {grp.vehicles.map(v=><span key={v.plate} className="border border-[#d5d1c2] bg-[#f8f7f2] px-1.5 py-0.5 text-[10px] font-mono font-semibold">{v.plate}</span>)}
+          </div>
+          <div className="mt-3 text-right">
+            <span className="text-[11px] font-bold text-[#006B35]">{isSelected?'Exibindo viaturas deste ministério ▾':'Clique para filtrar este ministério →'}</span>
+          </div>
+        </div>;
+      })}
+    </div>
+
+    {openTransfer&&<Drawer title="Reafetação Institucional de Viatura do Estado" onClose={()=>setOpenTransfer(false)}>
+      <form onSubmit={handleTransfer} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Viatura a Reafetar
+          <select value={transferVehicleId} onChange={e=>setTransferVehicleId(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {vehicles.map(v=><option key={v.id} value={v.id}>{v.plate} · {v.make} {v.model} ({v.institutionAcronym||v.institution})</option>)}
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Novo Ministério ou Instituição Titular" name="institution" defaultValue="Ministério da Saúde Pública"/>
+        </div>
+        <Field label="Nova Sigla Institucional" name="institutionAcronym" defaultValue="MINSAP"/>
+        <Field label="Nova Direção / Departamento" name="department" defaultValue="Direção Geral"/>
+        <Field label="Novo Funcionário / Oficial Responsável" name="responsibleOfficer" defaultValue="Dr. Malam Embaló"/>
+        <Field label="Cargo / Função do Novo Titular" name="officerRole" defaultValue="Diretor de Gabinete"/>
+        <Field label="Contacto do Novo Titular" name="officerContact" defaultValue="+245 955 330 110"/>
+        <div className="sm:col-span-2">
+          <Field label="Fundamento Legal e N.º do Despacho de Transferência" name="dispatchReason" defaultValue="Despacho n.º 44/GPM/2026 · Transferência por necessidade imperiosa de serviço"/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Efetivar Reafetação e Emitir Novo Termo</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <div className="flex justify-between items-center mb-3 border-b border-[#e9e6dc] pb-2">
+        <h3 className="font-serif text-base font-bold text-[#1c3024]">
+          {selectedAcronym?`Viaturas Afetas ao ${selectedAcronym} (${displayedVehicles.length})`:`Todas as Viaturas por Ministério (${displayedVehicles.length})`}
+        </h3>
+        {selectedAcronym&&<button onClick={()=>setSelectedAcronym('')} className="text-xs font-semibold text-[#006B35] underline">Ver todos os ministérios</button>}
+      </div>
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Matrícula','Veículo','Ministério Titular','Departamento / Serviço','Oficial Responsável','Quilometragem','Estado'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {displayedVehicles.map(v=><tr key={v.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono font-bold text-[#006B35] whitespace-nowrap">{v.plate}</td>
+            <td className="px-3 py-3 whitespace-nowrap">{v.make} {v.model} ({v.year})</td>
+            <td className="px-3 py-3 font-semibold">{v.institution} ({v.institutionAcronym||'GOV'})</td>
+            <td className="px-3 py-3 text-xs">{v.department||'Serviços Gerais'}</td>
+            <td className="px-3 py-3 text-xs">{v.responsibleOfficer||'Não designado'}</td>
+            <td className="px-3 py-3 font-mono text-xs">{(v.currentMileage||0).toLocaleString('pt-PT')} km</td>
+            <td className="px-3 py-3"><Status value={v.status}/></td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FleetOfficersPage(){
+  const [vehicles,setVehicles]=useSaved('state-fleet',seedPublicVehicles);
+  const [viewingTerm,setViewingTerm]=useState<PublicVehicle|null>(null);
+  const [editingVehicle,setEditingVehicle]=useState<PublicVehicle|null>(null);
+  const [open,setOpen]=useState(false);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+
+  const officersList=useMemo(()=>vehicles.filter(v=>Boolean(v.responsibleOfficer)),[vehicles]);
+
+  const filtered=useMemo(()=>officersList.filter(v=>{
+    return [v.responsibleOfficer,v.officerRole,v.officerContact,v.institution,v.plate].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[officersList,search]);
+
+  async function handleUpdateOfficer(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    if(!editingVehicle)return;
+    const f=new FormData(e.currentTarget);
+    const payload:PublicVehicle={
+      ...editingVehicle,
+      responsibleOfficer:String(f.get('responsibleOfficer')).trim(),
+      officerRole:String(f.get('officerRole')).trim(),
+      officerContact:String(f.get('officerContact')).trim(),
+      department:String(f.get('department')).trim(),
+      assignmentDate:String(f.get('assignmentDate')||new Date().toISOString().slice(0,10)),
+    };
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.put<PublicVehicle>(`/public-vehicles/${encodeURIComponent(editingVehicle.id)}`,payload);
+      setVehicles(rows=>rows.map(v=>v.id===editingVehicle.id?res.data:v));
+      setSuccessMsg(`Titular responsável da viatura ${editingVehicle.plate} atualizado com sucesso.`);
+      setEditingVehicle(null);
+      setOpen(false);
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao atualizar responsável da viatura.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão da frota do Estado · Submenu 3" title="Funcionário responsável pelo veículo" description="Registo individual dos agentes públicos, diretores, motoristas oficiais e termos de responsabilidade e guarda da viatura." icon={Users}/>
+    <StateFleetSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <Stat label="Oficiais Responsáveis" value={String(officersList.length)} detail="Servidores com viatura" icon={Users}/>
+      <Stat label="Termos Ativos e Válidos" value={String(officersList.length)} detail="Conformidade patrimonial" icon={ShieldCheck}/>
+      <Stat label="Ministérios Vinculados" value={String(new Set(vehicles.map(v=>v.institutionAcronym)).size)} detail="Cobertura governamental" icon={Building2}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+        <Search size={16} className="text-[#737a70]"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por oficial, cargo, contacto ou matrícula" className="w-full py-2 text-sm outline-none"/>
+      </label>
+    </div>
+
+    {viewingTerm&&<FleetResponsibilityTermModal vehicle={viewingTerm} onClose={()=>setViewingTerm(null)}/>}
+
+    {open&&editingVehicle&&<Drawer title={`Atualizar Titular da Viatura · ${editingVehicle.plate}`} onClose={()=>{setOpen(false);setEditingVehicle(null);}}>
+      <form onSubmit={handleUpdateOfficer} className="grid gap-3 sm:grid-cols-2">
+        <Field label="Nome do Funcionário Responsável" name="responsibleOfficer" defaultValue={editingVehicle.responsibleOfficer||''}/>
+        <Field label="Cargo / Função Oficial" name="officerRole" defaultValue={editingVehicle.officerRole||''}/>
+        <Field label="Contacto Telefónico" name="officerContact" defaultValue={editingVehicle.officerContact||''}/>
+        <Field label="Direção / Gabinete" name="department" defaultValue={editingVehicle.department||''}/>
+        <Field label="Data do Termo de Afetação" name="assignmentDate" type="date" defaultValue={editingVehicle.assignmentDate||new Date().toISOString().slice(0,10)}/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Guardar e Renovar Termo de Responsabilidade</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['Funcionário Responsável','Cargo / Função','Contacto','Ministério & Direção','Viatura Afeta','Data de Afetação','Termo Oficial','Ações'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(v=><tr key={v.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-semibold text-[#1c3024] whitespace-nowrap">{v.responsibleOfficer}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{v.officerRole||'Titular de Cargo Público'}</td>
+            <td className="px-3 py-3 text-xs font-mono whitespace-nowrap">{v.officerContact||'—'}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-semibold">{v.institutionAcronym||'GOV'}</span>
+              <span className="block text-[11px] text-[#737a70]">{v.department||'Serviços Gerais'}</span>
+            </td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-mono font-bold text-[#006B35]">{v.plate}</span>
+              <span className="block text-[11px] text-[#737a70]">{v.make} {v.model} ({v.year})</span>
+            </td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{v.assignmentDate||'—'}</td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value="Assinado / Válido"/></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={()=>setViewingTerm(v)} className="text-xs font-semibold text-[#006B35] hover:underline">Ver Termo</button>
+                <span className="text-[#d5d1c2]">|</span>
+                <button type="button" onClick={()=>{setEditingVehicle(v);setOpen(true);}} className="text-xs font-semibold text-[#737a70] hover:underline">Atualizar</button>
+              </div>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FleetMissionsHistoryPage(){
+  const [vehicles]=useSaved('state-fleet',seedPublicVehicles);
+  const [missions,setMissions]=useSaved('fleet-missions',seedFleetMissions);
+  const [open,setOpen]=useState(false);
+  const [selectedPlate,setSelectedPlate]=useState(vehicles[0]?.plate||'GB-GOV-0101');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+  const [statusFilter,setStatusFilter]=useState('');
+
+  const filtered=useMemo(()=>missions.filter(m=>{
+    const matchSearch=[m.id,m.plate,m.officerName,m.missionPurpose,m.origin,m.destination,m.institution].join(' ').toLowerCase().includes(search.toLowerCase());
+    const matchStatus=!statusFilter||m.status===statusFilter;
+    return matchSearch&&matchStatus;
+  }),[missions,search,statusFilter]);
+
+  const totalKm=missions.reduce((s,m)=>s+(m.totalKm||0),0);
+  const ongoing=missions.filter(m=>m.status==='Em Curso').length;
+
+  async function submitMission(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const plate=String(f.get('plate')||selectedPlate).toUpperCase().trim();
+    const veh=vehicles.find(v=>v.plate===plate);
+    const depKm=Number(f.get('departureKm')||veh?.currentMileage||0);
+    const retKm=Number(f.get('returnKm')||depKm);
+    const diffKm=Math.max(0,retKm-depKm);
+
+    const payload:FleetMission={
+      id:`MIS-2026-${String(Date.now()).slice(-4)}`,
+      plate,
+      institution:String(f.get('institution')||veh?.institution||'Ministério dos Transportes').trim(),
+      officerName:String(f.get('officerName')||veh?.responsibleOfficer||'').trim(),
+      officerBadge:String(f.get('officerBadge')||'').trim(),
+      missionPurpose:String(f.get('missionPurpose')||'Deslocação em serviço oficial').trim(),
+      origin:String(f.get('origin')||'Bissau').trim(),
+      destination:String(f.get('destination')||'').trim(),
+      departureDate:String(f.get('departureDate')||new Date().toISOString().slice(0,10)),
+      departureTime:String(f.get('departureTime')||'08:00'),
+      returnDate:String(f.get('returnDate')||''),
+      returnTime:String(f.get('returnTime')||''),
+      departureKm:depKm,
+      returnKm:retKm,
+      totalKm:diffKm,
+      status:String(f.get('status')||'Em Curso'),
+      notes:String(f.get('notes')||'Ordem de missão autorizada superiormente.').trim(),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<FleetMission>('/fleet-missions',payload);
+      setMissions([res.data,...missions]);
+      setSuccessMsg(`Ordem de missão (${res.data.id}) expedida com sucesso para ${plate}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao registar a ordem de missão.');
+    }
+  }
+
+  async function handleConclude(mission:FleetMission){
+    const retKmStr=window.prompt(`Indique o odómetro de chegada (Km) para concluir a missão ${mission.id}:`,String(mission.departureKm+50));
+    if(!retKmStr)return;
+    const retKm=Number(retKmStr);
+    const totalKm=Math.max(0,retKm-mission.departureKm);
+    const payload={
+      ...mission,
+      returnKm:retKm,
+      totalKm:totalKm,
+      returnDate:new Date().toISOString().slice(0,10),
+      returnTime:'18:00',
+      status:'Concluída',
+    };
+    try{
+      const res=await api.put<FleetMission>(`/fleet-missions/${encodeURIComponent(mission.id)}`,payload);
+      setMissions(rows=>rows.map(m=>m.id===mission.id?res.data:m));
+      setSuccessMsg(`Missão ${mission.id} concluída. Distância percorrida: ${totalKm} km.`);
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao concluir a missão.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão da frota do Estado · Submenu 4" title="Histórico de utilização" description="Registo e controlo de ordens de saída, guias de marcha oficiais, itinerários, condutores e quilómetros percorridos." icon={Gauge}/>
+    <StateFleetSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Total de Missões" value={String(missions.length)} detail="Serviços expedidos" icon={ClipboardList}/>
+      <Stat label="Missões em Curso" value={String(ongoing)} detail="Viaturas em trânsito" icon={Activity}/>
+      <Stat label="Missões Concluídas" value={String(missions.filter(m=>m.status==='Concluída').length)} detail="Regressos registados" icon={Check}/>
+      <Stat label="Distância em Serviço" value={`${totalKm.toLocaleString('pt-PT')} km`} detail="Total percorrido" icon={Gauge}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-3">
+      <div className="flex flex-1 flex-wrap items-center gap-2">
+        <label className="flex min-w-[240px] flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+          <Search size={16} className="text-[#737a70]"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por missão, matrícula, condutor ou destino" className="w-full py-2 text-sm outline-none"/>
+        </label>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className={`w-auto ${inputClass}`}>
+          <option value="">Todos os Estados</option>
+          <option value="Em Curso">Em Curso</option>
+          <option value="Concluída">Concluída</option>
+          <option value="Cancelada">Cancelada</option>
+        </select>
+      </div>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Registar Ordem de Saída / Missão'}</button>
+    </div>
+
+    {open&&<Drawer title="Emissão de Ordem de Saída / Guia de Marcha" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitMission} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Viatura Oficial
+          <select name="plate" value={selectedPlate} onChange={e=>setSelectedPlate(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {vehicles.map(v=><option key={v.id} value={v.plate}>{v.plate} · {v.make} {v.model} ({v.institutionAcronym||'GOV'}) — {v.responsibleOfficer}</option>)}
+          </select>
+        </label>
+        <Field label="Ministério Responsável" name="institution" defaultValue={vehicles.find(v=>v.plate===selectedPlate)?.institution||'Ministério dos Transportes'}/>
+        <Field label="Funcionário / Condutor da Missão" name="officerName" defaultValue={vehicles.find(v=>v.plate===selectedPlate)?.responsibleOfficer||''}/>
+        <Field label="Credencial / N.º de Matrícula do Condutor" name="officerBadge" defaultValue="MTC-COND-01"/>
+        <div className="sm:col-span-2">
+          <Field label="Finalidade / Objetivo da Missão Oficial" name="missionPurpose" defaultValue="Vistoria técnica às infraestruturas de transportes"/>
+        </div>
+        <Field label="Local de Partida (Origem)" name="origin" defaultValue="Bissau (Sede)"/>
+        <Field label="Local de Destino" name="destination" defaultValue="Bafatá / Gabú"/>
+        <Field label="Data de Saída" name="departureDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Hora de Saída" name="departureTime" defaultValue="08:30"/>
+        <Field label="Data Prevista de Retorno" name="returnDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Hora Prevista de Retorno" name="returnTime" defaultValue="18:00"/>
+        <Field label="Odómetro de Partida (Km)" name="departureKm" type="number" defaultValue={String(vehicles.find(v=>v.plate===selectedPlate)?.currentMileage||0)}/>
+        <Field label="Odómetro de Retorno (se concluída)" name="returnKm" type="number" defaultValue={String((vehicles.find(v=>v.plate===selectedPlate)?.currentMileage||0)+80)}/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Estado da Ordem
+          <select name="status" className={`mt-1.5 ${inputClass}`}>
+            <option value="Em Curso">Em Curso (Em Trânsito)</option>
+            <option value="Concluída">Concluída</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Observações e Despacho de Autorização" name="notes" defaultValue="Autorizado pelo Gabinete do Secretário-Geral."/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Emitir Guia de Marcha Oficial</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Missão','Viatura','Ministério / Condutor','Finalidade do Serviço','Itinerário','Partida / Chegada','Km Partida / Fim','Distância','Estado','Ações'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(m=><tr key={m.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold whitespace-nowrap">{m.id}</td>
+            <td className="px-3 py-3 font-mono font-bold text-[#006B35] whitespace-nowrap">{m.plate}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-semibold">{m.officerName}</span>
+              <span className="block text-[11px] text-[#737a70] truncate max-w-xs">{m.institution}</span>
+            </td>
+            <td className="px-3 py-3 text-xs max-w-xs">{m.missionPurpose}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap"><span className="text-[#173d2b] font-semibold">{m.origin}</span> → <b>{m.destination}</b></td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">
+              <div>{m.departureDate} <span className="text-[#737a70]">{m.departureTime}</span></div>
+              {m.returnDate&&<div className="text-[#737a70]">{m.returnDate} {m.returnTime}</div>}
+            </td>
+            <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{m.departureKm.toLocaleString('pt-PT')} / {m.returnKm?m.returnKm.toLocaleString('pt-PT'):'—'} km</td>
+            <td className="px-3 py-3 font-mono font-bold text-xs whitespace-nowrap">{m.totalKm>0?`${m.totalKm.toLocaleString('pt-PT')} km`:'—'}</td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value={m.status}/></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              {m.status==='Em Curso'?<button type="button" onClick={()=>handleConclude(m)} className="text-xs font-semibold text-[#006B35] hover:underline">Concluir Missão</button>:<span className="text-xs text-[#737a70]">Arquivado</span>}
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FleetFuelPage(){
+  const [vehicles]=useSaved('state-fleet',seedPublicVehicles);
+  const [fuelLogs,setFuelLogs]=useSaved('fleet-fuel',seedFleetFuelLogs);
+  const [open,setOpen]=useState(false);
+  const [selectedPlate,setSelectedPlate]=useState(vehicles[0]?.plate||'GB-GOV-0101');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+
+  const filtered=useMemo(()=>fuelLogs.filter(f=>{
+    return [f.id,f.plate,f.driverName,f.station,f.institution,f.voucherNumber||''].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[fuelLogs,search]);
+
+  const totalLiters=fuelLogs.reduce((s,f)=>s+f.liters,0);
+  const totalAmount=fuelLogs.reduce((s,f)=>s+f.totalAmount,0);
+  const avgPrice=totalLiters>0?Math.round(totalAmount/totalLiters):850;
+
+  async function submitFuelLog(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const plate=String(f.get('plate')||selectedPlate).toUpperCase().trim();
+    const veh=vehicles.find(v=>v.plate===plate);
+    const liters=Number(f.get('liters')||50);
+    const unitPrice=Number(f.get('unitPrice')||850);
+    const totalAmount=liters*unitPrice;
+
+    const payload:FleetFuelLog={
+      id:`ABAS-2026-${String(Date.now()).slice(-4)}`,
+      plate,
+      institution:String(f.get('institution')||veh?.institution||'Ministério dos Transportes').trim(),
+      driverName:String(f.get('driverName')||veh?.responsibleOfficer||'').trim(),
+      date:String(f.get('date')||new Date().toISOString().slice(0,10)),
+      station:String(f.get('station')||'Galp Aeroporto Bissau').trim(),
+      fuelType:String(f.get('fuelType')||'Gasóleo'),
+      liters,
+      unitPrice,
+      totalAmount,
+      mileageAtFuel:Number(f.get('mileageAtFuel')||veh?.currentMileage||0),
+      voucherNumber:String(f.get('voucherNumber')||`VOUCH-${String(Date.now()).slice(-6)}`).trim(),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<FleetFuelLog>('/fleet-fuel',payload);
+      setFuelLogs([res.data,...fuelLogs]);
+      setSuccessMsg(`Abastecimento de ${liters}L (${currency(totalAmount)}) registado para ${plate}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao registar o abastecimento.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm('Deseja realmente remover este registo de abastecimento?'))return;
+    try{
+      await api.delete(`/fleet-fuel/${encodeURIComponent(id)}`);
+    }catch{/* ignore */}
+    setFuelLogs(rows=>rows.filter(f=>f.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão da frota do Estado · Submenu 5" title="Consumo de combustível" description="Controlo de requisições de abastecimento, postos credenciados, consumo médio por viatura pública e conferência de vales." icon={Fuel}/>
+    <StateFleetSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Total Combustível" value={`${totalLiters.toLocaleString('pt-PT')} L`} detail="Litros abastecidos" icon={Fuel}/>
+      <Stat label="Despesa em Combustível" value={currency(totalAmount)} detail="Valor global faturado" icon={Coins}/>
+      <Stat label="Preço Médio / Litro" value={`${avgPrice} XOF`} detail="Tarifa de referência" icon={Banknote}/>
+      <Stat label="Vales / Requisitórios" value={String(fuelLogs.length)} detail="Lançamentos registados" icon={FileText}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+        <Search size={16} className="text-[#737a70]"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por vale, matrícula, motorista, posto ou ministério" className="w-full py-2 text-sm outline-none"/>
+      </label>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Lançar Requisitório de Combustível'}</button>
+    </div>
+
+    {open&&<Drawer title="Lançamento de Requisitório / Abastecimento" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitFuelLog} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Viatura Pública
+          <select name="plate" value={selectedPlate} onChange={e=>setSelectedPlate(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {vehicles.map(v=><option key={v.id} value={v.plate}>{v.plate} · {v.make} {v.model} ({v.institutionAcronym||'GOV'})</option>)}
+          </select>
+        </label>
+        <Field label="Ministério" name="institution" defaultValue={vehicles.find(v=>v.plate===selectedPlate)?.institution||'Ministério dos Transportes'}/>
+        <Field label="Motorista / Funcionário Requisitante" name="driverName" defaultValue={vehicles.find(v=>v.plate===selectedPlate)?.responsibleOfficer||''}/>
+        <Field label="Data do Abastecimento" name="date" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Posto Credenciado
+          <select name="station" className={`mt-1.5 ${inputClass}`}>
+            <option value="Galp Aeroporto Bissau">Galp Aeroporto Bissau</option>
+            <option value="Total Bissau Centro">Total Bissau Centro</option>
+            <option value="Star Oil Bafatá">Star Oil Bafatá</option>
+            <option value="Shell Bissau Porto">Shell Bissau Porto</option>
+            <option value="Petrobrás São Domingos">Petrobrás São Domingos</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Tipo de Combustível
+          <select name="fuelType" defaultValue="Gasóleo" className={`mt-1.5 ${inputClass}`}>
+            <option value="Gasóleo">Gasóleo (Diesel)</option>
+            <option value="Gasolina">Gasolina Super</option>
+          </select>
+        </label>
+        <Field label="Litros Abastecidos" name="liters" type="number" defaultValue="65"/>
+        <Field label="Preço por Litro (XOF)" name="unitPrice" type="number" defaultValue="850"/>
+        <Field label="Odómetro no Abastecimento (Km)" name="mileageAtFuel" type="number" defaultValue={String(vehicles.find(v=>v.plate===selectedPlate)?.currentMileage||0)}/>
+        <Field label="N.º do Vale / Fatura" name="voucherNumber" defaultValue={`VOUCH-${vehicles.find(v=>v.plate===selectedPlate)?.institutionAcronym||'GOV'}-0${Math.floor(Math.random()*900+100)}`}/>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Confirmar e Registar Abastecimento</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Vale','Data','Matrícula','Ministério & Condutor','Posto de Abastecimento','Combustível','Litros','Preço / L','Valor Total','Km no Abastecimento','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(f=><tr key={f.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold whitespace-nowrap">{f.voucherNumber||f.id}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{f.date}</td>
+            <td className="px-3 py-3 font-mono font-bold text-[#006B35] whitespace-nowrap">{f.plate}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-semibold">{f.driverName}</span>
+              <span className="block text-[11px] text-[#737a70] truncate max-w-xs">{f.institution}</span>
+            </td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{f.station}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{f.fuelType}</td>
+            <td className="px-3 py-3 font-mono font-bold text-xs whitespace-nowrap">{f.liters} L</td>
+            <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{f.unitPrice} XOF</td>
+            <td className="px-3 py-3 font-mono font-bold text-sm text-[#173d2b] whitespace-nowrap">{currency(f.totalAmount)}</td>
+            <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{(f.mileageAtFuel||0).toLocaleString('pt-PT')} km</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <button type="button" onClick={()=>handleDelete(f.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FleetMaintenancePage(){
+  const [vehicles]=useSaved('state-fleet',seedPublicVehicles);
+  const [maintenances,setMaintenances]=useSaved('fleet-maintenance',seedFleetMaintenances);
+  const [open,setOpen]=useState(false);
+  const [selectedPlate,setSelectedPlate]=useState(vehicles[0]?.plate||'GB-GOV-0101');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+  const [statusFilter,setStatusFilter]=useState('');
+
+  const filtered=useMemo(()=>maintenances.filter(m=>{
+    const matchSearch=[m.id,m.plate,m.maintenanceType,m.garage,m.serviceDescription,m.institution].join(' ').toLowerCase().includes(search.toLowerCase());
+    const matchStatus=!statusFilter||m.status===statusFilter;
+    return matchSearch&&matchStatus;
+  }),[maintenances,search,statusFilter]);
+
+  const totalCost=maintenances.reduce((s,m)=>s+m.totalCost,0);
+  const inWorkshop=maintenances.filter(m=>m.status==='Em Andamento').length;
+
+  async function submitMaintenance(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const plate=String(f.get('plate')||selectedPlate).toUpperCase().trim();
+    const veh=vehicles.find(v=>v.plate===plate);
+    const totalCost=Number(f.get('totalCost')||0);
+
+    const payload:FleetMaintenance={
+      id:`MAN-2026-${String(Date.now()).slice(-4)}`,
+      plate,
+      institution:String(f.get('institution')||veh?.institution||'Ministério dos Transportes').trim(),
+      maintenanceType:String(f.get('maintenanceType')||'Revisão Periódica'),
+      garage:String(f.get('garage')||'Garagem Oficial do Estado').trim(),
+      entryDate:String(f.get('entryDate')||new Date().toISOString().slice(0,10)),
+      completionDate:String(f.get('completionDate')||''),
+      mileageAtService:Number(f.get('mileageAtService')||veh?.currentMileage||0),
+      serviceDescription:String(f.get('serviceDescription')||'Revisão geral preventiva').trim(),
+      partsReplaced:String(f.get('partsReplaced')||'').trim(),
+      totalCost,
+      status:String(f.get('status')||'Em Andamento'),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<FleetMaintenance>('/fleet-maintenance',payload);
+      setMaintenances([res.data,...maintenances]);
+      setSuccessMsg(`Ordem de reparação (${res.data.id}) aberta com sucesso para ${plate}.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao registar ordem de manutenção.');
+    }
+  }
+
+  async function handleCompleteOrder(m:FleetMaintenance){
+    const payload={
+      ...m,
+      completionDate:new Date().toISOString().slice(0,10),
+      status:'Concluída',
+    };
+    try{
+      const res=await api.put<FleetMaintenance>(`/fleet-maintenance/${encodeURIComponent(m.id)}`,payload);
+      setMaintenances(rows=>rows.map(item=>item.id===m.id?res.data:item));
+      setSuccessMsg(`Ordem de reparação ${m.id} marcada como Concluída.`);
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao concluir ordem.');
+    }
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão da frota do Estado · Submenu 6" title="Manutenção e reparações" description="Acompanhamento de ordens de reparação, revisões programadas, oficinas credenciadas, peças aplicadas e custos mecânicos." icon={Wrench}/>
+    <StateFleetSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <Stat label="Viaturas em Oficina" value={String(inWorkshop)} detail="Manutenção em andamento" icon={Wrench}/>
+      <Stat label="Intervenções Concluídas" value={String(maintenances.filter(m=>m.status==='Concluída').length)} detail="Reparações finalizadas" icon={Check}/>
+      <Stat label="Custo Global de Reparações" value={currency(totalCost)} detail="Orçamento de oficinas" icon={Coins}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-3">
+      <div className="flex flex-1 flex-wrap items-center gap-2">
+        <label className="flex min-w-[240px] flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+          <Search size={16} className="text-[#737a70]"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por ordem, matrícula, oficina ou peças" className="w-full py-2 text-sm outline-none"/>
+        </label>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className={`w-auto ${inputClass}`}>
+          <option value="">Todos os Estados</option>
+          <option value="Em Andamento">Em Andamento</option>
+          <option value="Concluída">Concluída</option>
+          <option value="Agendada">Agendada</option>
+        </select>
+      </div>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Abrir Ordem de Manutenção'}</button>
+    </div>
+
+    {open&&<Drawer title="Abertura de Ordem de Manutenção / Reparação" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitMaintenance} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Viatura Pública
+          <select name="plate" value={selectedPlate} onChange={e=>setSelectedPlate(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {vehicles.map(v=><option key={v.id} value={v.plate}>{v.plate} · {v.make} {v.model} ({v.institutionAcronym||'GOV'})</option>)}
+          </select>
+        </label>
+        <Field label="Ministério" name="institution" defaultValue={vehicles.find(v=>v.plate===selectedPlate)?.institution||'Ministério dos Transportes'}/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Tipo de Manutenção
+          <select name="maintenanceType" className={`mt-1.5 ${inputClass}`}>
+            <option value="Revisão Periódica">Revisão Periódica Programada</option>
+            <option value="Manutenção Preventiva">Manutenção Preventiva</option>
+            <option value="Manutenção Corretiva">Manutenção Corretiva</option>
+            <option value="Reparação de Sinistro">Reparação de Sinistro</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Oficina / Garagem
+          <select name="garage" className={`mt-1.5 ${inputClass}`}>
+            <option value="Garagem Oficial do Estado">Garagem Oficial do Estado (Bissau)</option>
+            <option value="Auto Mecânica Central Bissau">Auto Mecânica Central Bissau</option>
+            <option value="Oficina Guineense de Motores">Oficina Guineense de Motores</option>
+            <option value="Garagem Regional de Bafatá">Garagem Regional de Bafatá</option>
+          </select>
+        </label>
+        <Field label="Data de Entrada na Oficina" name="entryDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Data Prevista de Conclusão" name="completionDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Quilometragem no Serviço (Km)" name="mileageAtService" type="number" defaultValue={String(vehicles.find(v=>v.plate===selectedPlate)?.currentMileage||0)}/>
+        <Field label="Custo Estimado / Total (XOF)" name="totalCost" type="number" defaultValue="150000"/>
+        <div className="sm:col-span-2">
+          <Field label="Descrição dos Trabalhos Mecânicos Realizados" name="serviceDescription" defaultValue="Mudança de óleo 5W30, filtros de combustível/óleo e pastilhas de travão."/>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Peças e Materiais Aplicados" name="partsReplaced" defaultValue="Óleo de motor sintético (8L), Filtro de óleo genuíno, Pastilhas dianteiras"/>
+        </div>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Estado da Ordem
+          <select name="status" className={`mt-1.5 ${inputClass}`}>
+            <option value="Em Andamento">Em Andamento (Na Oficina)</option>
+            <option value="Concluída">Concluída (Pronta para Levantamento)</option>
+            <option value="Agendada">Agendada</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Registar Ordem de Serviço Mecânico</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Ordem','Viatura','Ministério','Tipo de Manutenção','Garagem / Oficina','Entrada / Saída','Km Serviço','Serviço Mecânico & Peças','Custo Total','Estado','Ações'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(m=><tr key={m.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold whitespace-nowrap">{m.id}</td>
+            <td className="px-3 py-3 font-mono font-bold text-[#006B35] whitespace-nowrap">{m.plate}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{m.institution}</td>
+            <td className="px-3 py-3 whitespace-nowrap"><span className="border border-[#d5d1c2] bg-[#f8f7f2] px-2 py-0.5 text-xs font-medium">{m.maintenanceType}</span></td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{m.garage}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">
+              <div>Entrada: {m.entryDate}</div>
+              {m.completionDate&&<div className="text-[#737a70]">Conclusão: {m.completionDate}</div>}
+            </td>
+            <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{m.mileageAtService.toLocaleString('pt-PT')} km</td>
+            <td className="px-3 py-3 text-xs max-w-xs">
+              <div className="font-medium text-[#1c3024]">{m.serviceDescription}</div>
+              {m.partsReplaced&&<div className="text-[#737a70] truncate text-[11px]">Peças: {m.partsReplaced}</div>}
+            </td>
+            <td className="px-3 py-3 font-mono font-bold text-sm text-[#173d2b] whitespace-nowrap">{currency(m.totalCost)}</td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value={m.status}/></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              {m.status==='Em Andamento'?<button type="button" onClick={()=>handleCompleteOrder(m)} className="text-xs font-semibold text-[#006B35] hover:underline">Concluir</button>:<span className="text-xs text-[#737a70]">Finalizada</span>}
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function FleetExpensesControlPage(){
+  const [vehicles]=useSaved('state-fleet',seedPublicVehicles);
+  const [fuelLogs]=useSaved('fleet-fuel',seedFleetFuelLogs);
+  const [maintenances]=useSaved('fleet-maintenance',seedFleetMaintenances);
+
+  const fuelTotal=useMemo(()=>fuelLogs.reduce((s,f)=>s+f.totalAmount,0),[fuelLogs]);
+  const maintenanceTotal=useMemo(()=>maintenances.reduce((s,m)=>s+m.totalCost,0),[maintenances]);
+  const grandTotal=fuelTotal+maintenanceTotal;
+  const avgCostPerVehicle=vehicles.length>0?Math.round(grandTotal/vehicles.length):0;
+
+  const expensesByMinistry=useMemo(()=>{
+    const map=new Map<string,{name:string;acronym:string;vehicleCount:number;fuelCost:number;fuelLiters:number;maintCost:number;totalCost:number}>();
+    for(const v of vehicles){
+      const acr=v.institutionAcronym||'GOV';
+      if(!map.has(acr)){
+        map.set(acr,{name:v.institution,acronym:acr,vehicleCount:0,fuelCost:0,fuelLiters:0,maintCost:0,totalCost:0});
+      }
+      map.get(acr)!.vehicleCount+=1;
+    }
+    for(const f of fuelLogs){
+      const v=vehicles.find(item=>item.plate===f.plate);
+      const acr=v?.institutionAcronym||'GOV';
+      if(!map.has(acr)){
+        map.set(acr,{name:f.institution,acronym:acr,vehicleCount:1,fuelCost:0,fuelLiters:0,maintCost:0,totalCost:0});
+      }
+      const entry=map.get(acr)!;
+      entry.fuelCost+=f.totalAmount;
+      entry.fuelLiters+=f.liters;
+      entry.totalCost+=f.totalAmount;
+    }
+    for(const m of maintenances){
+      const v=vehicles.find(item=>item.plate===m.plate);
+      const acr=v?.institutionAcronym||'GOV';
+      if(!map.has(acr)){
+        map.set(acr,{name:m.institution,acronym:acr,vehicleCount:1,fuelCost:0,fuelLiters:0,maintCost:0,totalCost:0});
+      }
+      const entry=map.get(acr)!;
+      entry.maintCost+=m.totalCost;
+      entry.totalCost+=m.totalCost;
+    }
+    return Array.from(map.values()).sort((a,b)=>b.totalCost-a.totalCost);
+  },[vehicles,fuelLogs,maintenances]);
+
+  const expensesByVehicle=useMemo(()=>{
+    return vehicles.map(v=>{
+      const vFuel=fuelLogs.filter(f=>f.plate===v.plate);
+      const vMaint=maintenances.filter(m=>m.plate===v.plate);
+      const fCost=vFuel.reduce((s,f)=>s+f.totalAmount,0);
+      const fLiters=vFuel.reduce((s,f)=>s+f.liters,0);
+      const mCost=vMaint.reduce((s,m)=>s+m.totalCost,0);
+      const total=fCost+mCost;
+      const km=v.currentMileage||1;
+      const costPerKm=total>0?Math.round(total/km):0;
+      return {
+        ...v,
+        fuelCost:fCost,
+        fuelLiters:fLiters,
+        maintCost:mCost,
+        totalCost:total,
+        costPerKm,
+      };
+    }).sort((a,b)=>b.totalCost-a.totalCost);
+  },[vehicles,fuelLogs,maintenances]);
+
+  return <Shell>
+    <Title eyebrow="Gestão da frota do Estado · Submenu 7" title="Controlo de despesas" description="Painel consolidado de gastos operacionais, despesas com combustíveis, manutenção mecânica e eficiência de custos por ministério." icon={Coins}/>
+    <StateFleetSubmenuBar/>
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Despesas Gerais da Frota" value={currency(grandTotal)} detail="Combustível + Manutenção" icon={Coins}/>
+      <Stat label="Despesas de Combustível" value={currency(fuelTotal)} detail={`${fuelLogs.reduce((s,f)=>s+f.liters,0).toLocaleString('pt-PT')} L consumidos`} icon={Fuel}/>
+      <Stat label="Despesas de Manutenção" value={currency(maintenanceTotal)} detail={`${maintenances.length} ordens de reparação`} icon={Wrench}/>
+      <Stat label="Custo Médio / Viatura" value={currency(avgCostPerVehicle)} detail="Custo operacional unitário" icon={Banknote}/>
+    </div>
+
+    <div className="mb-6 flex justify-end">
+      <button onClick={()=>window.print()} className={primaryClass}><Printer size={15}/> Imprimir Relatório Consolidado de Despesas</button>
+    </div>
+
+    <div className="mb-6 border border-[#dcd9cc] bg-white p-5">
+      <h2 className="mb-4 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Consolidação de Despesas por Ministério / Instituição</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>{['Ministério / Instituição','Sigla','Viaturas','Combustível (L)','Gasto Combustível','Gasto Manutenção','Despesa Total','% do Orçamento'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+          </thead>
+          <tbody>
+            {expensesByMinistry.map(row=>{
+              const pct=grandTotal>0?Math.round((row.totalCost/grandTotal)*100):0;
+              return <tr key={row.acronym} className="border-b border-[#f0eee7]">
+                <td className="px-3 py-3 font-semibold text-[#1c3024]">{row.name}</td>
+                <td className="px-3 py-3 font-mono font-bold text-[#006B35]">{row.acronym}</td>
+                <td className="px-3 py-3 font-mono">{row.vehicleCount}</td>
+                <td className="px-3 py-3 font-mono">{row.fuelLiters.toLocaleString('pt-PT')} L</td>
+                <td className="px-3 py-3 font-mono text-[#006B35]">{currency(row.fuelCost)}</td>
+                <td className="px-3 py-3 font-mono text-[#9f1a2b]">{currency(row.maintCost)}</td>
+                <td className="px-3 py-3 font-mono font-bold text-base text-[#173d2b]">{currency(row.totalCost)}</td>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 bg-[#eeede5] h-2">
+                      <div className="bg-[#009E49] h-full" style={{width:`${Math.max(5,pct)}%`}}/>
+                    </div>
+                    <span className="text-xs font-semibold">{pct}%</span>
+                  </div>
+                </td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div className="border border-[#dcd9cc] bg-white p-5">
+      <h2 className="mb-4 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Despesa Operacional Detalhada por Viatura Pública</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>{['Matrícula','Veículo','Ministério','Combustível (Litros / XOF)','Manutenção (XOF)','Custo Total da Viatura','Quilometragem','Custo Médio / Km'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+          </thead>
+          <tbody>
+            {expensesByVehicle.map(v=><tr key={v.id} className="border-b border-[#f0eee7]">
+              <td className="px-3 py-3 font-mono font-bold text-[#006B35] whitespace-nowrap">{v.plate}</td>
+              <td className="px-3 py-3 whitespace-nowrap">{v.make} {v.model} ({v.year})</td>
+              <td className="px-3 py-3 font-semibold">{v.institutionAcronym||'GOV'}</td>
+              <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{v.fuelLiters} L · {currency(v.fuelCost)}</td>
+              <td className="px-3 py-3 font-mono text-xs text-[#9f1a2b] whitespace-nowrap">{currency(v.maintCost)}</td>
+              <td className="px-3 py-3 font-mono font-bold text-sm text-[#173d2b] whitespace-nowrap">{currency(v.totalCost)}</td>
+              <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{(v.currentMileage||0).toLocaleString('pt-PT')} km</td>
+              <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{v.costPerKm} XOF/km</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </Shell>;
+}
+
+function AccidentSubmenuBar(){
+  const {pathname}=useLocation();
+  return <div className="mb-6 flex flex-wrap gap-1.5 border-b border-[#dcd9cc] pb-4">
+    {accidentSubmenus.map(sub=>{
+      const active=pathname===sub.path;
+      return <Link key={sub.path} to={sub.path} className={`border px-3 py-1.5 text-xs font-semibold transition ${active?'border-[#CE1126] bg-[#CE1126] text-white':'border-[#d5d1c2] bg-white text-[#26372b] hover:border-[#CE1126] hover:bg-[#f4f3ed]'}`}>{sub.label}</Link>;
+    })}
+  </div>;
+}
+
+function PoliceReportPrintModal({report,accident,onClose}:{report:AccidentPoliceReport;accident?:Accident;onClose:()=>void}){
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#10251a]/65">
+    <div className="relative w-full max-w-2xl bg-white border-2 border-[#CE1126] shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+      <div className="flex justify-between items-start border-b-2 border-[#d5d1c2] pb-4 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 place-items-center border border-[#CE1126] bg-[#173d2b] text-base font-black text-[#FCD116]">GB</div>
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#836300]">República da Guiné-Bissau</div>
+            <h3 className="font-serif text-lg font-bold text-[#173d2b]">Ministério do Interior · Comissariado-Geral da POP</h3>
+            <div className="text-xs text-[#697168]">{report.policeDepartment} · Departamento de Trânsito</div>
+          </div>
+        </div>
+        <button onClick={onClose} aria-label="Fechar" className="p-1 text-[#737a70] hover:text-[#1c3024]"><X size={20}/></button>
+      </div>
+
+      <div className="mb-4 border-l-4 border-[#CE1126] bg-[#f8f7f2] p-3 text-center">
+        <h4 className="font-serif text-base font-bold text-[#1c3024] uppercase tracking-wide">Boletim Oficial de Participação de Acidente Rodoviário</h4>
+        <div className="font-mono text-xs font-bold text-[#CE1126] mt-0.5">{report.reportNumber}</div>
+      </div>
+
+      <div className="space-y-4 text-xs">
+        <div className="grid grid-cols-2 gap-3 border border-[#dcd9cc] bg-[#f8f7f2] p-4">
+          <div><span className="text-[#737a70] block">Registo de Acidente:</span><b className="font-mono text-sm text-[#006B35]">{report.accidentId}</b></div>
+          <div><span className="text-[#737a70] block">Data do Relatório:</span><b>{report.reportDate}</b></div>
+          <div><span className="text-[#737a70] block">Local da Ocorrência:</span><b>{accident?.road||'Via Pública'}</b></div>
+          <div><span className="text-[#737a70] block">Região / Distrito:</span><b>{accident?.region||'Setor Autónomo de Bissau'}</b></div>
+          <div><span className="text-[#737a70] block">Gravidade Global:</span><Status value={accident?.severity||'Com Danos'}/></div>
+          <div><span className="text-[#737a70] block">Estado do Processo:</span><Status value={report.procedureStatus}/></div>
+        </div>
+
+        <div className="border border-[#dcd9cc] p-4 space-y-3">
+          <div>
+            <span className="text-[#737a70] block font-semibold mb-1">Conclusão Pericial e Dinâmica do Acidente:</span>
+            <p className="text-[#202820] leading-relaxed bg-[#f8f7f2] p-3 border border-[#e9e6dc]">{report.investigationSummary}</p>
+          </div>
+          {report.infractionsFound&&<div>
+            <span className="text-[#737a70] block font-semibold mb-1">Infrações ao Código da Estrada Constatadas:</span>
+            <p className="font-semibold text-[#9f1a2b] bg-[#CE1126]/10 p-2 border border-[#CE1126]/30">{report.infractionsFound}</p>
+          </div>}
+          <div>
+            <span className="text-[#737a70] block font-semibold mb-1">Encaminhamento Legal:</span>
+            <p className="font-medium text-[#173d2b]">{report.legalReferral}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-8 border-t border-[#dcd9cc] pt-6 text-center text-[11px]">
+          <div>
+            <div className="border-b border-[#202820] pb-8"/>
+            <b className="block mt-1">{report.officerName}</b>
+            <span className="text-[#737a70]">Agente / Perito Autuante · {report.officerBadge}</span>
+          </div>
+          <div>
+            <div className="border-b border-[#202820] pb-8"/>
+            <b className="block mt-1">O Comandante da Brigada de Trânsito</b>
+            <span className="text-[#737a70]">Visto e Homologação Oficial</span>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-[#dcd9cc] pt-4">
+          <button onClick={()=>window.print()} className={primaryClass}><Printer size={15}/> Imprimir Boletim de Acidente</button>
+          <button onClick={onClose} className={secondaryClass}>Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+export function AccidentRegistryPage(){
+  const [accidents,setAccidents]=useSaved('accidents',seedAccidents);
+  const [open,setOpen]=useState(false);
+  const [editing,setEditing]=useState<Accident|null>(null);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+  const [regionFilter,setRegionFilter]=useState('');
+  const [severityFilter,setSeverityFilter]=useState('');
+
+  const regions=useMemo(()=>Array.from(new Set(accidents.map(a=>a.region))),[accidents]);
+
+  const filtered=useMemo(()=>accidents.filter(a=>{
+    const matchSearch=[a.id,a.road,a.region,a.type,a.probableCause,a.landmark||''].join(' ').toLowerCase().includes(search.toLowerCase());
+    const matchRegion=!regionFilter||a.region===regionFilter;
+    const matchSeverity=!severityFilter||a.severity===severityFilter;
+    return matchSearch&&matchRegion&&matchSeverity;
+  }),[accidents,search,regionFilter,severityFilter]);
+
+  const totalFatalities=accidents.reduce((s,a)=>s+(a.fatalitiesCount||0),0);
+  const totalInjured=accidents.reduce((s,a)=>s+(a.injuredCount||0),0);
+  const totalVehicles=accidents.reduce((s,a)=>s+(a.vehiclesInvolved||0),0);
+
+  async function submitAccident(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const road=String(f.get('road')||'').trim();
+    if(!road){setError('A via/estrada é obrigatória.');return;}
+
+    const payload:Accident={
+      id:editing?editing.id:`ACID-2026-${String(Date.now()).slice(-4)}`,
+      date:String(f.get('date')||new Date().toISOString().slice(0,10)),
+      time:String(f.get('time')||'12:00'),
+      severity:String(f.get('severity')||'Com Feridos'),
+      type:String(f.get('type')||'Colisão'),
+      region:String(f.get('region')||'Setor Autónomo de Bissau'),
+      road,
+      latitude:Number(f.get('latitude')||11.8632),
+      longitude:Number(f.get('longitude')||-15.5984),
+      landmark:String(f.get('landmark')||'').trim(),
+      weather:String(f.get('weather')||'Bom tempo / Sol'),
+      roadCondition:String(f.get('roadCondition')||'Seco e limpo'),
+      vehiclesInvolved:Number(f.get('vehiclesInvolved')||2),
+      victimsCount:Number(f.get('victimsCount')||0),
+      fatalitiesCount:Number(f.get('fatalitiesCount')||0),
+      injuredCount:Number(f.get('injuredCount')||0),
+      probableCause:String(f.get('probableCause')||'Excesso de velocidade').trim(),
+      description:String(f.get('description')||'').trim(),
+      status:String(f.get('status')||'Em Investigação'),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      if(editing){
+        const res=await api.put<Accident>(`/accidents/${encodeURIComponent(editing.id)}`,payload);
+        setAccidents(rows=>rows.map(a=>a.id===editing.id?res.data:a));
+        setSuccessMsg(`Acidente ${editing.id} atualizado com sucesso.`);
+      }else{
+        const res=await api.post<Accident>('/accidents',payload);
+        setAccidents([res.data,...accidents]);
+        setSuccessMsg(`Acidente ${res.data.id} registado com sucesso.`);
+      }
+      formEl.reset();
+      setEditing(null);
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao registar o acidente.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm(`Deseja realmente remover o registo de acidente ${id}?`))return;
+    try{
+      await api.delete(`/accidents/${encodeURIComponent(id)}`);
+    }catch{/* ignore */}
+    setAccidents(rows=>rows.filter(a=>a.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de acidentes rodoviários · Submenu 1" title="Registo de acidentes" description="Sistema nacional de registo de acidentes de viação, tipologia, gravidade, intervenientes e controlo investigativo da sinistralidade." icon={ShieldAlert}/>
+    <AccidentSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Total de Acidentes" value={String(accidents.length)} detail="Ocorrências registadas" icon={ShieldAlert}/>
+      <Stat label="Vítimas Mortais" value={String(totalFatalities)} detail="Taxa de letalidade" icon={UserX}/>
+      <Stat label="Feridos Registados" value={String(totalInjured)} detail="Assistidos / internados" icon={AlertTriangle}/>
+      <Stat label="Veículos Danificados" value={String(totalVehicles)} detail="Danos materiais apurados" icon={CarFront}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-1 flex-wrap items-center gap-2">
+        <label className="flex min-w-[240px] flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+          <Search size={16} className="text-[#737a70]"/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por n.º, via, região, tipo ou causa" className="w-full py-2 text-sm outline-none"/>
+        </label>
+        <select value={regionFilter} onChange={e=>setRegionFilter(e.target.value)} className={`w-auto ${inputClass}`}>
+          <option value="">Todas as Regiões</option>
+          {regions.map(r=><option key={r} value={r}>{r}</option>)}
+        </select>
+        <select value={severityFilter} onChange={e=>setSeverityFilter(e.target.value)} className={`w-auto ${inputClass}`}>
+          <option value="">Todas as Gravidades</option>
+          <option value="Danos Materiais">Danos Materiais</option>
+          <option value="Com Feridos">Com Feridos</option>
+          <option value="Com Feridos Graves">Com Feridos Graves</option>
+          <option value="Com Vítimas Mortais">Com Vítimas Mortais</option>
+        </select>
+      </div>
+      <button onClick={()=>{setEditing(null);setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Registar Novo Acidente'}</button>
+    </div>
+
+    {open&&<Drawer title={editing?`Editar Acidente · ${editing.id}`:'Registar Acidente de Trânsito'} onClose={()=>{setOpen(false);setEditing(null);}}>
+      <form key={editing?.id||'new'} onSubmit={submitAccident} className="grid gap-3 sm:grid-cols-2">
+        <Field label="Data do Acidente" name="date" type="date" defaultValue={editing?.date||new Date().toISOString().slice(0,10)}/>
+        <Field label="Hora" name="time" defaultValue={editing?.time||'14:30'} placeholder="14:30"/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Gravidade
+          <select name="severity" defaultValue={editing?.severity||'Com Feridos'} className={`mt-1.5 ${inputClass}`}>
+            <option value="Danos Materiais">Danos Materiais (Sem Vítimas)</option>
+            <option value="Com Feridos">Com Feridos Leves</option>
+            <option value="Com Feridos Graves">Com Feridos Graves</option>
+            <option value="Com Vítimas Mortais">Com Vítimas Mortais</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Tipo de Acidente
+          <select name="type" defaultValue={editing?.type||'Colisão Frontal'} className={`mt-1.5 ${inputClass}`}>
+            <option value="Colisão Frontal">Colisão Frontal</option>
+            <option value="Colisão Traseira">Colisão Traseira</option>
+            <option value="Colisão Lateral">Colisão Lateral</option>
+            <option value="Atropelamento">Atropelamento</option>
+            <option value="Atropelamento e Fuga">Atropelamento e Fuga</option>
+            <option value="Capotamento">Capotamento</option>
+            <option value="Despiste">Despiste</option>
+            <option value="Choque com Obstáculo Fixo">Choque com Obstáculo Fixo</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Região / Distrito
+          <select name="region" defaultValue={editing?.region||'Setor Autónomo de Bissau'} className={`mt-1.5 ${inputClass}`}>
+            <option value="Setor Autónomo de Bissau">Setor Autónomo de Bissau</option>
+            <option value="Biombo">Biombo</option>
+            <option value="Bafatá">Bafatá</option>
+            <option value="Gabú">Gabú</option>
+            <option value="Cacheu">Cacheu</option>
+            <option value="Oio">Oio</option>
+            <option value="Quinara">Quinara</option>
+            <option value="Tombali">Tombali</option>
+            <option value="Bolama/Bijagós">Bolama / Bijagós</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Local / Via / Estrada" name="road" defaultValue={editing?.road||''} placeholder="Ex.: Estrada Nacional N1 · Eixo Safim - Bissau"/>
+        </div>
+        <Field label="Ponto de Referência" name="landmark" defaultValue={editing?.landmark||''} placeholder="Próximo à rotunda..."/>
+        <Field label="Causa Provável" name="probableCause" defaultValue={editing?.probableCause||'Excesso de velocidade'}/>
+        <Field label="Latitude GPS" name="latitude" type="number" defaultValue={String(editing?.latitude||11.8632)}/>
+        <Field label="Longitude GPS" name="longitude" type="number" defaultValue={String(editing?.longitude||-15.5984)}/>
+        <Field label="Veículos Envolvidos" name="vehiclesInvolved" type="number" defaultValue={String(editing?.vehiclesInvolved||2)}/>
+        <Field label="Total de Vítimas" name="victimsCount" type="number" defaultValue={String(editing?.victimsCount||0)}/>
+        <Field label="Vítimas Mortais" name="fatalitiesCount" type="number" defaultValue={String(editing?.fatalitiesCount||0)}/>
+        <Field label="Feridos" name="injuredCount" type="number" defaultValue={String(editing?.injuredCount||0)}/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Condições Meteorológicas
+          <select name="weather" defaultValue={editing?.weather||'Bom tempo / Sol'} className={`mt-1.5 ${inputClass}`}>
+            <option value="Bom tempo / Sol">Bom tempo / Sol</option>
+            <option value="Chuva intensa">Chuva intensa</option>
+            <option value="Neblina / Harmatão">Neblina / Harmatão</option>
+            <option value="Noite com iluminação">Noite com iluminação</option>
+            <option value="Noite sem iluminação">Noite sem iluminação</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Estado do Piso
+          <select name="roadCondition" defaultValue={editing?.roadCondition||'Seco e limpo'} className={`mt-1.5 ${inputClass}`}>
+            <option value="Seco e limpo">Seco e limpo</option>
+            <option value="Molhado / Escorregadio">Molhado / Escorregadio</option>
+            <option value="Com buracos / Degradação">Com buracos / Degradação</option>
+            <option value="Terra batida / Pó">Terra batida / Pó</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Estado da Investigação
+          <select name="status" defaultValue={editing?.status||'Em Investigação'} className={`mt-1.5 ${inputClass}`}>
+            <option value="Em Investigação">Em Investigação</option>
+            <option value="Peritagem Concluída">Peritagem Concluída</option>
+            <option value="Remetido a Tribunal">Remetido a Tribunal</option>
+            <option value="Arquivado">Arquivado</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Descrição Sumária das Circunstâncias" name="description" defaultValue={editing?.description||''}/>
+        </div>
+        <div className="sm:col-span-2 flex items-end gap-2 pt-2">
+          <button className={primaryClass}>{editing?'Guardar Alterações':'Registar Acidente'}</button>
+          {editing&&<button type="button" onClick={()=>{setEditing(null);window.dispatchEvent(new Event('sigetran:drawer-close'));}} className={secondaryClass}>Cancelar</button>}
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Acidente','Data & Hora','Gravidade','Tipo','Região & Local da Via','Veículos','Vítimas (Mortos/Feridos)','Causa Provável','Estado','Ações'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(a=><tr key={a.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono font-bold text-[#CE1126] whitespace-nowrap">{a.id}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">
+              <div>{a.date}</div>
+              <span className="text-[#737a70]">{a.time}</span>
+            </td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value={a.severity}/></td>
+            <td className="px-3 py-3 whitespace-nowrap font-medium">{a.type}</td>
+            <td className="px-3 py-3 text-xs max-w-xs">
+              <span className="font-semibold text-[#1c3024] block">{a.road}</span>
+              <span className="text-[#737a70]">{a.region}{a.landmark?` · ${a.landmark}`:''}</span>
+            </td>
+            <td className="px-3 py-3 font-mono text-center">{a.vehiclesInvolved}</td>
+            <td className="px-3 py-3 whitespace-nowrap text-xs font-mono">
+              <span className="text-[#CE1126] font-bold">{a.fatalitiesCount} mortos</span> / <span className="text-[#836300] font-semibold">{a.injuredCount} feridos</span>
+            </td>
+            <td className="px-3 py-3 text-xs text-[#4b5549] max-w-xs truncate">{a.probableCause}</td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value={a.status}/></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={()=>{setEditing(a);setOpen(true);}} className="text-xs font-semibold text-[#006B35] hover:underline">Editar</button>
+                <span className="text-[#d5d1c2]">|</span>
+                <button type="button" onClick={()=>handleDelete(a.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button>
+              </div>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function AccidentVehiclesDriversPage(){
+  const [accidents]=useSaved('accidents',seedAccidents);
+  const [vehiclesDrivers,setVehiclesDrivers]=useSaved('accident-vehicles-drivers',seedAccidentVehiclesDrivers);
+  const [open,setOpen]=useState(false);
+  const [selectedAccident,setSelectedAccident]=useState(accidents[0]?.id||'ACID-2026-0001');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+
+  const filtered=useMemo(()=>vehiclesDrivers.filter(v=>{
+    return [v.id,v.accidentId,v.plate,v.vehicleLabel||'',v.driverName,v.driverLicense||'',v.liability||''].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[vehiclesDrivers,search]);
+
+  async function submitVehicleDriver(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const plate=String(f.get('plate')||'').toUpperCase().trim();
+    const driverName=String(f.get('driverName')||'').trim();
+    if(!plate||!driverName){setError('Matrícula e nome do condutor são obrigatórios.');return;}
+
+    const payload:AccidentVehicleDriver={
+      id:`VCA-2026-${String(Date.now()).slice(-4)}`,
+      accidentId:String(f.get('accidentId')||selectedAccident),
+      plate,
+      vehicleLabel:String(f.get('vehicleLabel')||'').trim(),
+      vehicleCategory:String(f.get('vehicleCategory')||'Ligeiro particular'),
+      insuranceCompany:String(f.get('insuranceCompany')||'Garantia Seguros GB').trim(),
+      insurancePolicy:String(f.get('insurancePolicy')||'').trim(),
+      damageDescription:String(f.get('damageDescription')||'').trim(),
+      driverName,
+      driverDocument:String(f.get('driverDocument')||'').trim(),
+      driverLicense:String(f.get('driverLicense')||'').trim(),
+      driverCategory:String(f.get('driverCategory')||'B').trim(),
+      driverPhone:String(f.get('driverPhone')||'').trim(),
+      alcoholTest:String(f.get('alcoholTest')||'0.00 g/l (Negativo)'),
+      liability:String(f.get('liability')||'Sob Peritagem'),
+      notes:String(f.get('notes')||'').trim(),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<AccidentVehicleDriver>('/accident-vehicles-drivers',payload);
+      setVehiclesDrivers([res.data,...vehiclesDrivers]);
+      setSuccessMsg(`Veículo ${plate} e condutor ${driverName} vinculados ao acidente.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao vincular veículo e condutor.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm('Deseja realmente remover este interveniente do acidente?'))return;
+    try{
+      await api.delete(`/accident-vehicles-drivers/${encodeURIComponent(id)}`);
+    }catch{/* ignore */}
+    setVehiclesDrivers(rows=>rows.filter(v=>v.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de acidentes rodoviários · Submenu 2" title="Veículos e condutores envolvidos" description="Identificação dos veículos intervenientes, seguros, apólices, danos materiais, condutores e testes de alcoolemia." icon={CarFront}/>
+    <AccidentSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <Stat label="Veículos Intervenientes" value={String(vehiclesDrivers.length)} detail="Registados nas ocorrências" icon={CarFront}/>
+      <Stat label="Com Seguro Válido" value={String(vehiclesDrivers.filter(v=>v.insuranceCompany&&v.insuranceCompany!=='Sem seguro válido').length)} detail="Apólices ativas" icon={ShieldCheck}/>
+      <Stat label="Alcoolemia Positiva" value={String(vehiclesDrivers.filter(v=>v.alcoholTest?.includes('Positivo')).length)} detail="Sob efeito de álcool" icon={AlertTriangle}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+        <Search size={16} className="text-[#737a70]"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por matrícula, condutor, acidente ou responsabilidade" className="w-full py-2 text-sm outline-none"/>
+      </label>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Adicionar Veículo / Condutor Envolvido'}</button>
+    </div>
+
+    {open&&<Drawer title="Vincular Veículo e Condutor a Acidente" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitVehicleDriver} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Acidente Associado
+          <select name="accidentId" value={selectedAccident} onChange={e=>setSelectedAccident(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {accidents.map(a=><option key={a.id} value={a.id}>{a.id} · {a.date} ({a.road})</option>)}
+          </select>
+        </label>
+        <Field label="Matrícula do Veículo" name="plate" placeholder="GB-24-BC"/>
+        <Field label="Marca e Modelo" name="vehicleLabel" placeholder="Toyota Hilux (2021)"/>
+        <Field label="Categoria do Veículo" name="vehicleCategory" defaultValue="Ligeiro particular"/>
+        <Field label="Companhia de Seguros" name="insuranceCompany" defaultValue="Garantia Seguros GB"/>
+        <Field label="N.º de Apólice de Seguro" name="insurancePolicy" placeholder="APOL-9812-2026"/>
+        <div className="sm:col-span-2">
+          <Field label="Descrição dos Danos Materiais no Veículo" name="damageDescription" placeholder="Danos na frente, quebra de para-brisas..."/>
+        </div>
+        <Field label="Nome do Condutor" name="driverName" placeholder="Nome completo"/>
+        <Field label="BI / Passaporte do Condutor" name="driverDocument" placeholder="BI 000192837"/>
+        <Field label="N.º da Carta de Condução" name="driverLicense" placeholder="GB-C-10294"/>
+        <Field label="Categoria da Carta" name="driverCategory" defaultValue="B"/>
+        <Field label="Contacto Telefónico" name="driverPhone" placeholder="+245 955 "/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Teste de Alcoolemia (TAS)
+          <select name="alcoholTest" className={`mt-1.5 ${inputClass}`}>
+            <option value="0.00 g/l (Negativo)">0.00 g/l (Negativo)</option>
+            <option value="0.65 g/l (Positivo - Contraordenação Grave)">0.65 g/l (Positivo - Grave)</option>
+            <option value="1.20 g/l (Positivo - Crime)">1.20 g/l (Positivo - Crime)</option>
+            <option value="Recusou o teste">Recusou o teste</option>
+            <option value="Não realizado">Não realizado</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Responsabilidade Apurada
+          <select name="liability" className={`mt-1.5 ${inputClass}`}>
+            <option value="Sob Peritagem">Sob Peritagem / Investigação</option>
+            <option value="Lesado / Terceiro">Lesado / Terceiro</option>
+            <option value="Presumível causador">Presumível causador</option>
+            <option value="Culpa concorrente">Culpa concorrente</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Observações e Declarações" name="notes"/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Registar Interveniente no Acidente</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Registo','Acidente','Veículo & Matrícula','Seguro / Apólice','Danos Materiais','Condutor','Carta de Condução','Alcoolemia','Responsabilidade','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(v=><tr key={v.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold whitespace-nowrap">{v.id}</td>
+            <td className="px-3 py-3 font-mono font-semibold text-[#006B35] whitespace-nowrap">{v.accidentId}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-mono font-bold text-[#1c3024]">{v.plate}</span>
+              <span className="block text-[11px] text-[#737a70]">{v.vehicleLabel||v.vehicleCategory}</span>
+            </td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">
+              <span className="font-semibold">{v.insuranceCompany||'Sem seguro'}</span>
+              {v.insurancePolicy&&<span className="block text-[10px] text-[#737a70] font-mono">{v.insurancePolicy}</span>}
+            </td>
+            <td className="px-3 py-3 text-xs max-w-xs">{v.damageDescription||'Sem danos registados'}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-semibold">{v.driverName}</span>
+              <span className="block text-[11px] text-[#737a70]">{v.driverPhone||v.driverDocument}</span>
+            </td>
+            <td className="px-3 py-3 text-xs font-mono whitespace-nowrap">{v.driverLicense||'Não habilitado'} <span className="text-[#737a70]">({v.driverCategory})</span></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className={`inline-block px-2 py-0.5 text-[11px] font-semibold border ${v.alcoholTest?.includes('Negativo')?'border-[#009E49]/30 bg-[#009E49]/10 text-[#006B35]':'border-[#CE1126]/30 bg-[#CE1126]/10 text-[#9f1a2b]'}`}>
+                {v.alcoholTest||'0.00 g/l'}
+              </span>
+            </td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value={v.liability||'Sob Peritagem'}/></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <button type="button" onClick={()=>handleDelete(v.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function AccidentVictimsPage(){
+  const [accidents]=useSaved('accidents',seedAccidents);
+  const [victims,setVictims]=useSaved('accident-victims',seedAccidentVictims);
+  const [open,setOpen]=useState(false);
+  const [selectedAccident,setSelectedAccident]=useState(accidents[0]?.id||'ACID-2026-0001');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+
+  const filtered=useMemo(()=>victims.filter(v=>{
+    return [v.id,v.accidentId,v.name,v.hospital,v.injurySeverity,v.condition].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[victims,search]);
+
+  const fatalities=victims.filter(v=>v.injurySeverity==='Óbito no Local'||v.injurySeverity.includes('Óbito')).length;
+  const severe=victims.filter(v=>v.injurySeverity.includes('Graves')).length;
+  const minor=victims.filter(v=>v.injurySeverity.includes('Leves')).length;
+
+  async function submitVictim(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const name=String(f.get('name')||'').trim();
+    if(!name){setError('O nome da vítima é obrigatório.');return;}
+
+    const payload:AccidentVictim={
+      id:`VIT-2026-${String(Date.now()).slice(-4)}`,
+      accidentId:String(f.get('accidentId')||selectedAccident),
+      name,
+      document:String(f.get('document')||'').trim(),
+      age:Number(f.get('age')||30),
+      gender:String(f.get('gender')||'Masculino'),
+      condition:String(f.get('condition')||'Passageiro'),
+      associatedPlate:String(f.get('associatedPlate')||'').toUpperCase().trim(),
+      injurySeverity:String(f.get('injurySeverity')||'Ferimentos Leves'),
+      hospital:String(f.get('hospital')||'Hospital Nacional Simão Mendes').trim(),
+      emergencyContact:String(f.get('emergencyContact')||'').trim(),
+      medicalNotes:String(f.get('medicalNotes')||'').trim(),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<AccidentVictim>('/accident-victims',payload);
+      setVictims([res.data,...victims]);
+      setSuccessMsg(`Vítima ${name} registada com sucesso.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao registar a vítima.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm('Deseja realmente remover o registo desta vítima?'))return;
+    try{
+      await api.delete(`/accident-victims/${encodeURIComponent(id)}`);
+    }catch{/* ignore */}
+    setVictims(rows=>rows.filter(v=>v.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de acidentes rodoviários · Submenu 3" title="Identificação de vítimas" description="Registo e acompanhamento das vítimas de sinistros, gravidade das lesões corporais, internamentos hospitalares e óbitos." icon={UserX}/>
+    <AccidentSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Total de Vítimas" value={String(victims.length)} detail="Pessoas envolvidas" icon={Users}/>
+      <Stat label="Vítimas Mortais" value={String(fatalities)} detail="Óbitos declarados" icon={UserX}/>
+      <Stat label="Ferimentos Graves" value={String(severe)} detail="Internamentos com risco" icon={AlertTriangle}/>
+      <Stat label="Ferimentos Leves" value={String(minor)} detail="Altas concedidas" icon={Check}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+        <Search size={16} className="text-[#737a70]"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por nome, hospital, gravidade ou acidente" className="w-full py-2 text-sm outline-none"/>
+      </label>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Identificar Nova Vítima'}</button>
+    </div>
+
+    {open&&<Drawer title="Identificação e Ficha Clínica da Vítima" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitVictim} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Acidente Associado
+          <select name="accidentId" value={selectedAccident} onChange={e=>setSelectedAccident(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {accidents.map(a=><option key={a.id} value={a.id}>{a.id} · {a.date} ({a.road})</option>)}
+          </select>
+        </label>
+        <Field label="Nome Completo da Vítima" name="name" placeholder="Nome da vítima"/>
+        <Field label="BI / N.º de Identificação" name="document" placeholder="BI 000492811"/>
+        <Field label="Idade" name="age" type="number" defaultValue="30"/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Género / Sexo
+          <select name="gender" className={`mt-1.5 ${inputClass}`}>
+            <option value="Masculino">Masculino</option>
+            <option value="Feminino">Feminino</option>
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Condição no Acidente
+          <select name="condition" className={`mt-1.5 ${inputClass}`}>
+            <option value="Passageiro">Passageiro</option>
+            <option value="Condutor">Condutor</option>
+            <option value="Peão / Pedestre">Peão / Pedestre</option>
+            <option value="Ciclista">Ciclista</option>
+          </select>
+        </label>
+        <Field label="Matrícula do Veículo Vinculado (se aplicável)" name="associatedPlate" placeholder="GB-24-BC"/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Gravidade da Lesão
+          <select name="injurySeverity" className={`mt-1.5 ${inputClass}`}>
+            <option value="Ferimentos Leves">Ferimentos Leves</option>
+            <option value="Ferimentos Graves">Ferimentos Graves</option>
+            <option value="Ferimentos Graves com Risco de Vida">Ferimentos Graves com Risco de Vida</option>
+            <option value="Óbito no Local">Óbito no Local</option>
+            <option value="Óbito a Caminho do Hospital">Óbito a Caminho do Hospital</option>
+          </select>
+        </label>
+        <Field label="Hospital ou Destino de Socorro" name="hospital" defaultValue="Hospital Nacional Simão Mendes"/>
+        <div className="sm:col-span-2">
+          <Field label="Contacto de Familiar / Emergência" name="emergencyContact" placeholder="+245 966 000 000 (Grau de parentesco)"/>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Observações Médicas e Diagnóstico Sumário" name="medicalNotes" placeholder="Traumatismos, fraturas ou alta clínica..."/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Guardar Ficha da Vítima</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Vítima','Acidente','Nome da Vítima','Idade / Sexo','Condição','Veículo','Gravidade','Unidade de Socorro','Contacto de Emergência','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(v=><tr key={v.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold whitespace-nowrap">{v.id}</td>
+            <td className="px-3 py-3 font-mono font-semibold text-[#006B35] whitespace-nowrap">{v.accidentId}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-semibold text-[#1c3024]">{v.name}</span>
+              {v.document&&<span className="block text-[11px] text-[#737a70]">{v.document}</span>}
+            </td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{v.age} anos · {v.gender}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap font-medium">{v.condition}</td>
+            <td className="px-3 py-3 font-mono text-xs whitespace-nowrap text-[#006B35]">{v.associatedPlate||'—'}</td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value={v.injurySeverity}/></td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{v.hospital}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap font-mono">{v.emergencyContact||'—'}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <button type="button" onClick={()=>handleDelete(v.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function AccidentLocationsPage(){
+  const [accidents]=useSaved('accidents',seedAccidents);
+  const [selectedAccident,setSelectedAccident]=useState<Accident|null>(accidents[0]||null);
+  const [regionFilter,setRegionFilter]=useState('');
+
+  const regions=useMemo(()=>Array.from(new Set(accidents.map(a=>a.region))),[accidents]);
+
+  const filtered=useMemo(()=>accidents.filter(a=>{
+    return !regionFilter||a.region===regionFilter;
+  }),[accidents,regionFilter]);
+
+  return <Shell>
+    <Title eyebrow="Gestão de acidentes rodoviários · Submenu 4" title="Localização geográfica" description="Mapeamento georreferenciado (GIS), coordenadas GPS dos sinistros, pontos críticos e trechos de elevada perigosidade." icon={MapPin}/>
+    <AccidentSubmenuBar/>
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Locais Georreferenciados" value={String(accidents.length)} detail="Coordenadas GPS validadas" icon={MapPin}/>
+      <Stat label="Regiões Monitorizadas" value={String(regions.length)} detail="Cobertura territorial" icon={Building2}/>
+      <Stat label="Pontos Negros Críticos" value="4" detail="Trechos prioritários de intervenção" icon={AlertOctagon}/>
+      <Stat label="Acidentes Noturnos" value={String(accidents.filter(a=>a.weather.includes('Noite')).length)} detail="Vias sem iluminação" icon={AlertTriangle}/>
+    </div>
+
+    <div className="mb-6 grid gap-6 lg:grid-cols-3">
+      <div className="lg:col-span-2 border border-[#dcd9cc] bg-white p-5">
+        <div className="flex justify-between items-center mb-4 border-b border-[#e9e6dc] pb-3">
+          <div>
+            <h2 className="font-serif text-lg font-bold text-[#1c3024]">Visualizador de Coordenadas Geográficas (GIS)</h2>
+            <p className="text-xs text-[#737a70]">Cartografia e posicionamento dos pontos de sinistralidade viária na Guiné-Bissau</p>
+          </div>
+          <select value={regionFilter} onChange={e=>setRegionFilter(e.target.value)} className={`w-auto text-xs ${inputClass}`}>
+            <option value="">Todas as Regiões</option>
+            {regions.map(r=><option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+
+        {/* Visual Map Simulation Container */}
+        <div className="relative h-80 w-full overflow-hidden border-2 border-[#173d2b] bg-[#12281d] rounded p-4 text-white">
+          <div className="absolute inset-0 opacity-15" style={{backgroundImage:'radial-gradient(#009E49 1px, transparent 1px)',backgroundSize:'24px 24px'}}/>
+          <div className="absolute top-3 left-3 bg-[#173d2b]/80 border border-[#FCD116]/40 px-2.5 py-1 text-[11px] font-mono text-[#FCD116]">
+            GPS WGS84 · Guiné-Bissau (11.8°N, 15.6°W)
+          </div>
+          <div className="relative h-full w-full flex items-center justify-center">
+            {filtered.map((acc,idx)=>{
+              const isSelected=selectedAccident?.id===acc.id;
+              // Map approximate visual offsets for display
+              const leftPercent = 30 + ((acc.longitude + 15.65) * 180) + (idx * 12);
+              const topPercent = 35 + ((12.3 - acc.latitude) * 70) + (idx * 8);
+              return <button
+                key={acc.id}
+                onClick={()=>setSelectedAccident(acc)}
+                title={`${acc.id} - ${acc.road}`}
+                style={{left:`${Math.min(85,Math.max(15,leftPercent))}%`,top:`${Math.min(80,Math.max(20,topPercent))}%`}}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center p-2 rounded-full transition shadow-lg ${isSelected?'bg-[#CE1126] scale-125 ring-4 ring-[#FCD116]':'bg-[#009E49] hover:bg-[#CE1126]'}`}
+              >
+                <MapPin size={18} className="text-white"/>
+                <span className="absolute -bottom-5 whitespace-nowrap bg-black/80 px-1.5 py-0.5 text-[9px] font-mono font-bold text-white rounded">
+                  {acc.id}
+                </span>
+              </button>;
+            })}
+          </div>
+        </div>
+
+        {selectedAccident&&<div className="mt-4 border border-[#e9e6dc] bg-[#f8f7f2] p-4 text-xs">
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="font-mono text-xs font-bold text-[#CE1126]">{selectedAccident.id}</span>
+              <h3 className="font-bold text-sm text-[#1c3024] mt-0.5">{selectedAccident.road}</h3>
+              <p className="text-[#737a70]">{selectedAccident.region}{selectedAccident.landmark?` · ${selectedAccident.landmark}`:''}</p>
+            </div>
+            <Status value={selectedAccident.severity}/>
+          </div>
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-[#dcd9cc] pt-2 font-mono">
+            <div>Latitude: <b>{selectedAccident.latitude.toFixed(4)}°N</b></div>
+            <div>Longitude: <b>{selectedAccident.longitude.toFixed(4)}°W</b></div>
+            <div>Piso: <b>{selectedAccident.roadCondition}</b></div>
+            <div>Clima: <b>{selectedAccident.weather}</b></div>
+          </div>
+        </div>}
+      </div>
+
+      <div className="space-y-4">
+        <div className="border border-[#dcd9cc] bg-white p-5">
+          <h3 className="font-serif text-base font-bold text-[#1c3024] mb-3 border-b border-[#e9e6dc] pb-2">Pontos Negros Rodoviários Críticos</h3>
+          <div className="space-y-3 text-xs">
+            <div className="border-l-4 border-[#CE1126] bg-[#f8f7f2] p-3">
+              <b className="text-[#1c3024] block">Safim · Estrada Nacional N1 (km 12-15)</b>
+              <span className="text-[#737a70]">Região de Biombo · Elevado índice de atropelamentos noturnos por ausência de iluminação.</span>
+            </div>
+            <div className="border-l-4 border-[#CE1126] bg-[#f8f7f2] p-3">
+              <b className="text-[#1c3024] block">Av. Combatentes · Eixo Aeroporto Osvaldo Vieira</b>
+              <span className="text-[#737a70]">Setor Autónomo de Bissau · Colisões frontais por excesso de velocidade na reta principal.</span>
+            </div>
+            <div className="border-l-4 border-[#FCD116] bg-[#f8f7f2] p-3">
+              <b className="text-[#1c3024] block">Ponte sobre o Rio Geba · Entrada de Bafatá</b>
+              <span className="text-[#737a70]">Região de Bafatá · Colisões por alcance causadas pela degradação do pavimento.</span>
+            </div>
+            <div className="border-l-4 border-[#FCD116] bg-[#f8f7f2] p-3">
+              <b className="text-[#1c3024] block">Curva do Rio Campossa · Estrada Gabú - Pirada</b>
+              <span className="text-[#737a70]">Região de Gabú · Despistes e capotamentos com piso escorregadio na época das chuvas.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Shell>;
+}
+
+export function AccidentEvidencePage(){
+  const [accidents]=useSaved('accidents',seedAccidents);
+  const [evidenceList,setEvidenceList]=useSaved('accident-evidence',seedAccidentEvidence);
+  const [open,setOpen]=useState(false);
+  const [selectedAccident,setSelectedAccident]=useState(accidents[0]?.id||'ACID-2026-0001');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+
+  const filtered=useMemo(()=>evidenceList.filter(e=>{
+    return [e.id,e.accidentId,e.title,e.evidenceType,e.description||''].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[evidenceList,search]);
+
+  async function submitEvidence(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const title=String(f.get('title')||'').trim();
+    if(!title){setError('O título da fotografia/documento é obrigatório.');return;}
+
+    const payload:AccidentEvidence={
+      id:`FOTO-2026-${String(Date.now()).slice(-4)}`,
+      accidentId:String(f.get('accidentId')||selectedAccident),
+      evidenceType:String(f.get('evidenceType')||'Fotografia do Local'),
+      title,
+      fileUrl:String(f.get('fileUrl')||'/media/acidentes/evidencia.jpg').trim(),
+      description:String(f.get('description')||'').trim(),
+      registeredBy:String(f.get('registeredBy')||'Perito da Brigada BNT').trim(),
+      registrationDate:String(f.get('registrationDate')||new Date().toISOString().slice(0,10)),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<AccidentEvidence>('/accident-evidence',payload);
+      setEvidenceList([res.data,...evidenceList]);
+      setSuccessMsg(`Prova/Fotografia "${title}" anexada ao acidente com sucesso.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao anexar a prova fotográfica.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm('Deseja realmente remover esta evidência/fotografia?'))return;
+    try{
+      await api.delete(`/accident-evidence/${encodeURIComponent(id)}`);
+    }catch{/* ignore */}
+    setEvidenceList(rows=>rows.filter(e=>e.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de acidentes rodoviários · Submenu 5" title="Fotografias e documentos" description="Repositório pericial de provas fotográficas, croquis da via, esquemas topográficos e documentos probatórios de sinistros." icon={Camera}/>
+    <AccidentSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <Stat label="Total de Provas Fotográficas" value={String(evidenceList.length)} detail="Anexos arquivados" icon={Camera}/>
+      <Stat label="Croquis e Plantas Periciais" value={String(evidenceList.filter(e=>e.evidenceType.includes('Croqui')).length)} detail="Esquemas topográficos" icon={FileText}/>
+      <Stat label="Acidentes com Registo Técnico" value={String(new Set(evidenceList.map(e=>e.accidentId)).size)} detail="Cobertura pericial" icon={ShieldCheck}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+        <Search size={16} className="text-[#737a70]"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por título, tipo, acidente ou descrição" className="w-full py-2 text-sm outline-none"/>
+      </label>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Anexar Fotografia ou Croqui'}</button>
+    </div>
+
+    {open&&<Drawer title="Anexar Prova Fotográfica ou Documento" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitEvidence} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Acidente Vinculado
+          <select name="accidentId" value={selectedAccident} onChange={e=>setSelectedAccident(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {accidents.map(a=><option key={a.id} value={a.id}>{a.id} · {a.date} ({a.road})</option>)}
+          </select>
+        </label>
+        <label className="block text-xs font-semibold text-[#4b5549]">Tipo de Anexo / Prova
+          <select name="evidenceType" className={`mt-1.5 ${inputClass}`}>
+            <option value="Fotografia do Local">Fotografia do Local</option>
+            <option value="Fotografia do Ponto de Impacto">Fotografia do Ponto de Impacto</option>
+            <option value="Fotografia dos Danos Veiculares">Fotografia dos Danos Veiculares</option>
+            <option value="Croqui / Esquema da Via">Croqui / Esquema da Via</option>
+            <option value="Ficha Médica / Boletim de Socorro">Ficha Médica / Boletim de Socorro</option>
+            <option value="Certidão de Óbito">Certidão de Óbito</option>
+          </select>
+        </label>
+        <Field label="Data do Registo" name="registrationDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <div className="sm:col-span-2">
+          <Field label="Título / Identificação do Ficheiro" name="title" placeholder="Ex.: Vista panorâmica da colisão frontal"/>
+        </div>
+        <Field label="Caminho / URL da Imagem" name="fileUrl" defaultValue="/media/acidentes/foto_evidencia.jpg"/>
+        <Field label="Perito / Autor do Registo" name="registeredBy" defaultValue="Perito da Brigada BNT"/>
+        <div className="sm:col-span-2">
+          <Field label="Descrição e Detalhes Periciais Observados" name="description" placeholder="Marcas de travagem, deformação dos eixos..."/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Guardar e Anexar Prova</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {filtered.map(ev=><div key={ev.id} className="border border-[#dcd9cc] bg-white p-4 flex flex-col justify-between">
+        <div>
+          <div className="flex justify-between items-start mb-2">
+            <span className="border border-[#CE1126]/30 bg-[#CE1126]/10 px-2 py-0.5 text-[10px] font-bold text-[#9f1a2b]">{ev.evidenceType}</span>
+            <span className="font-mono text-xs font-bold text-[#006B35]">{ev.accidentId}</span>
+          </div>
+          <div className="h-32 w-full bg-[#f4f3ed] border border-[#e9e6dc] grid place-items-center mb-3">
+            <Camera size={36} className="text-[#9fb7a4]"/>
+          </div>
+          <h3 className="font-bold text-sm text-[#1c3024] leading-snug">{ev.title}</h3>
+          <p className="mt-2 text-xs text-[#697168] line-clamp-2">{ev.description||'Sem descrição complementar.'}</p>
+        </div>
+        <div className="mt-4 pt-3 border-t border-[#f0eee7] flex justify-between items-center text-xs">
+          <span className="text-[#737a70]">{ev.registrationDate}</span>
+          <button type="button" onClick={()=>handleDelete(ev.id)} className="text-[#9f1a2b] font-semibold hover:underline">Remover</button>
+        </div>
+      </div>)}
+    </div>
+  </Shell>;
+}
+
+export function AccidentPoliceReportsPage(){
+  const [accidents]=useSaved('accidents',seedAccidents);
+  const [reports,setReports]=useSaved('accident-police-reports',seedAccidentPoliceReports);
+  const [open,setOpen]=useState(false);
+  const [selectedAccident,setSelectedAccident]=useState(accidents[0]?.id||'ACID-2026-0001');
+  const [viewingReport,setViewingReport]=useState<AccidentPoliceReport|null>(null);
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+
+  const filtered=useMemo(()=>reports.filter(r=>{
+    return [r.id,r.reportNumber,r.accidentId,r.officerName,r.investigationSummary].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[reports,search]);
+
+  async function submitReport(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const summary=String(f.get('investigationSummary')||'').trim();
+    if(!summary){setError('A conclusão pericial é obrigatória.');return;}
+
+    const payload:AccidentPoliceReport={
+      id:`BO-POL-2026-${String(Date.now()).slice(-4)}`,
+      accidentId:String(f.get('accidentId')||selectedAccident),
+      reportNumber:String(f.get('reportNumber')||`BO/BNT/2026/${String(Date.now()).slice(-4)}`).trim(),
+      policeDepartment:String(f.get('policeDepartment')||'Brigada Nacional de Trânsito (BNT)').trim(),
+      officerName:String(f.get('officerName')||'Subcomissário Malam Bacai').trim(),
+      officerBadge:String(f.get('officerBadge')||'AG-GB-0104').trim(),
+      reportDate:String(f.get('reportDate')||new Date().toISOString().slice(0,10)),
+      investigationSummary:summary,
+      infractionsFound:String(f.get('infractionsFound')||'').trim(),
+      legalReferral:String(f.get('legalReferral')||'Remetido ao Ministério Público').trim(),
+      procedureStatus:String(f.get('procedureStatus')||'Concluído'),
+      notes:String(f.get('notes')||'').trim(),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<AccidentPoliceReport>('/accident-police-reports',payload);
+      setReports([res.data,...reports]);
+      setSuccessMsg(`Boletim de ocorrência policial ${res.data.reportNumber} lavrado com sucesso.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao emitir o relatório policial.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm('Deseja realmente remover este relatório policial?'))return;
+    try{
+      await api.delete(`/accident-police-reports/${encodeURIComponent(id)}`);
+    }catch{/* ignore */}
+    setReports(rows=>rows.filter(r=>r.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de acidentes rodoviários · Submenu 6" title="Relatórios policiais" description="Emissão de boletins de ocorrência (BO), pareceres periciais de acidentologia rodoviária e encaminhamento judicial ao Ministério Público." icon={FileText}/>
+    <AccidentSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <Stat label="Boletins de Ocorrência" value={String(reports.length)} detail="Participações policiais" icon={FileText}/>
+      <Stat label="Remetidos a Tribunal" value={String(reports.filter(r=>r.legalReferral.includes('Ministério Público')||r.legalReferral.includes('Tribunal')).length)} detail="Processos judiciais" icon={ShieldCheck}/>
+      <Stat label="Peritagens Concluídas" value={String(reports.filter(r=>r.procedureStatus==='Concluído').length)} detail="Autos homologados" icon={Check}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+        <Search size={16} className="text-[#737a70]"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por n.º de boletim, agente, acidente ou conclusão" className="w-full py-2 text-sm outline-none"/>
+      </label>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Lavrar Boletim de Ocorrência'}</button>
+    </div>
+
+    {viewingReport&&<PoliceReportPrintModal report={viewingReport} accident={accidents.find(a=>a.id===viewingReport.accidentId)} onClose={()=>setViewingReport(null)}/>}
+
+    {open&&<Drawer title="Lavrar Boletim Oficial de Ocorrência de Acidente" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitReport} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Acidente Objeto da Peritagem
+          <select name="accidentId" value={selectedAccident} onChange={e=>setSelectedAccident(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {accidents.map(a=><option key={a.id} value={a.id}>{a.id} · {a.date} ({a.road})</option>)}
+          </select>
+        </label>
+        <Field label="N.º do Boletim de Ocorrência (BO)" name="reportNumber" defaultValue={`BO/BNT/2026/0${Math.floor(Math.random()*900+100)}`}/>
+        <Field label="Órgão Policial / Unidade" name="policeDepartment" defaultValue="Brigada Nacional de Trânsito (BNT)"/>
+        <Field label="Agente / Perito Autuante" name="officerName" defaultValue="Subcomissário Malam Bacai"/>
+        <Field label="N.º de Crachá / Matrícula Policial" name="officerBadge" defaultValue="AG-GB-0104"/>
+        <Field label="Data da Conclusão do Relatório" name="reportDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <label className="block text-xs font-semibold text-[#4b5549]">Estado do Procedimento
+          <select name="procedureStatus" className={`mt-1.5 ${inputClass}`}>
+            <option value="Concluído">Concluído</option>
+            <option value="Em Tramitação">Em Tramitação</option>
+          </select>
+        </label>
+        <div className="sm:col-span-2">
+          <Field label="Conclusão Pericial e Dinâmica do Acidente" name="investigationSummary" placeholder="Descrição técnica das trajetórias, infrações e causas diretas..."/>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Infrações Constatadas ao Código da Estrada" name="infractionsFound" defaultValue="Art. 38.º (Ultrapassagem indevida) e Art. 24.º (Excesso de velocidade)"/>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Encaminhamento Legal / Destino dos Autos" name="legalReferral" defaultValue="Remetido ao Ministério Público / Tribunal Regional de Bissau"/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Emitir e Homologar Boletim</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Boletim (BO)','Acidente','Corporação Policial','Agente / Perito','Data','Conclusão Pericial','Infrações Constatadas','Encaminhamento','Estado','Ações'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(r=><tr key={r.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold text-[#CE1126] whitespace-nowrap">{r.reportNumber}</td>
+            <td className="px-3 py-3 font-mono font-semibold text-[#006B35] whitespace-nowrap">{r.accidentId}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{r.policeDepartment}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <span className="font-semibold text-[#1c3024]">{r.officerName}</span>
+              <span className="block text-[11px] text-[#737a70]">{r.officerBadge}</span>
+            </td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{r.reportDate}</td>
+            <td className="px-3 py-3 text-xs max-w-xs">{r.investigationSummary}</td>
+            <td className="px-3 py-3 text-xs text-[#9f1a2b] max-w-xs">{r.infractionsFound||'—'}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap font-medium text-[#173d2b]">{r.legalReferral}</td>
+            <td className="px-3 py-3 whitespace-nowrap"><Status value={r.procedureStatus}/></td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={()=>setViewingReport(r)} className="text-xs font-semibold text-[#006B35] hover:underline">Ver / Imprimir</button>
+                <span className="text-[#d5d1c2]">|</span>
+                <button type="button" onClick={()=>handleDelete(r.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button>
+              </div>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function AccidentWitnessesPage(){
+  const [accidents]=useSaved('accidents',seedAccidents);
+  const [witnesses,setWitnesses]=useSaved('accident-witnesses',seedAccidentWitnesses);
+  const [open,setOpen]=useState(false);
+  const [selectedAccident,setSelectedAccident]=useState(accidents[0]?.id||'ACID-2026-0001');
+  const [error,setError]=useState('');
+  const [successMsg,setSuccessMsg]=useState('');
+  const [search,setSearch]=useState('');
+
+  const filtered=useMemo(()=>witnesses.filter(w=>{
+    return [w.id,w.accidentId,w.name,w.statement||'',w.phone||''].join(' ').toLowerCase().includes(search.toLowerCase());
+  }),[witnesses,search]);
+
+  async function submitWitness(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
+    const name=String(f.get('name')||'').trim();
+    if(!name){setError('O nome da testemunha é obrigatório.');return;}
+
+    const payload:AccidentWitness={
+      id:`TST-2026-${String(Date.now()).slice(-4)}`,
+      accidentId:String(f.get('accidentId')||selectedAccident),
+      name,
+      document:String(f.get('document')||'').trim(),
+      phone:String(f.get('phone')||'').trim(),
+      address:String(f.get('address')||'').trim(),
+      locationAtMoment:String(f.get('locationAtMoment')||'Peão no local').trim(),
+      statement:String(f.get('statement')||'').trim(),
+      statementDate:String(f.get('statementDate')||new Date().toISOString().slice(0,10)),
+    };
+
+    try{
+      setError('');setSuccessMsg('');
+      const res=await api.post<AccidentWitness>('/accident-witnesses',payload);
+      setWitnesses([res.data,...witnesses]);
+      setSuccessMsg(`Depoimento da testemunha ${name} registado com sucesso.`);
+      formEl.reset();
+      window.dispatchEvent(new Event('sigetran:drawer-close'));
+    }catch(err:any){
+      setError(err?.response?.data?.error||'Falha ao registar testemunha.');
+    }
+  }
+
+  async function handleDelete(id:string){
+    if(!window.confirm('Deseja realmente remover esta testemunha?'))return;
+    try{
+      await api.delete(`/accident-witnesses/${encodeURIComponent(id)}`);
+    }catch{/* ignore */}
+    setWitnesses(rows=>rows.filter(w=>w.id!==id));
+  }
+
+  return <Shell>
+    <Title eyebrow="Gestão de acidentes rodoviários · Submenu 7" title="Identificação de testemunhas" description="Depoimentos colhidos de transeuntes, condutores e testemunhas oculares para reconstituição pericial e instrução de processos." icon={Users}/>
+    <AccidentSubmenuBar/>
+
+    {successMsg&&<div className="mb-4 flex items-center justify-between border border-[#009E49]/40 bg-[#009E49]/10 px-4 py-3 text-sm font-medium text-[#006B35]"><span><Check size={16} className="mr-2 inline"/>{successMsg}</span><button type="button" onClick={()=>setSuccessMsg('')} className="text-xs underline">Fechar</button></div>}
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2">
+      <Stat label="Testemunhas Arroladas" value={String(witnesses.length)} detail="Depoimentos recolhidos" icon={Users}/>
+      <Stat label="Acidentes com Testemunho" value={String(new Set(witnesses.map(w=>w.accidentId)).size)} detail="Processos instruídos" icon={ShieldCheck}/>
+    </div>
+
+    <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
+      <label className="flex max-w-md flex-1 items-center gap-2 border border-[#d5d1c2] bg-white px-3">
+        <Search size={16} className="text-[#737a70]"/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Pesquisar por nome, contacto, acidente ou depoimento" className="w-full py-2 text-sm outline-none"/>
+      </label>
+      <button onClick={()=>{setOpen(!open);setError('');}} className={primaryClass}><FilePlus2 size={16}/>{open?'Fechar':'Tomar Depoimento de Testemunha'}</button>
+    </div>
+
+    {open&&<Drawer title="Tomada de Declarações de Testemunha Ocular" onClose={()=>setOpen(false)}>
+      <form onSubmit={submitWitness} className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-[#4b5549] sm:col-span-2">Acidente Objeto do Depoimento
+          <select name="accidentId" value={selectedAccident} onChange={e=>setSelectedAccident(e.target.value)} className={`mt-1.5 ${inputClass}`}>
+            {accidents.map(a=><option key={a.id} value={a.id}>{a.id} · {a.date} ({a.road})</option>)}
+          </select>
+        </label>
+        <Field label="Nome da Testemunha" name="name" placeholder="Nome completo"/>
+        <Field label="BI / Identificação" name="document" placeholder="BI 000881920"/>
+        <Field label="Contacto Telefónico" name="phone" placeholder="+245 955 "/>
+        <Field label="Morada / Residência" name="address" placeholder="Bairro / Cidade"/>
+        <Field label="Data da Declaração" name="statementDate" type="date" defaultValue={new Date().toISOString().slice(0,10)}/>
+        <Field label="Posição no Momento do Acidente" name="locationAtMoment" defaultValue="Peão no passeio"/>
+        <div className="sm:col-span-2">
+          <Field label="Depoimento / Relato dos Factos Observados" name="statement" placeholder="Descreva pormenorizadamente a dinâmica presenciada..."/>
+        </div>
+        <div className="sm:col-span-2 flex items-end pt-2">
+          <button className={primaryClass}>Assentar Declaração Testemunhal</button>
+        </div>
+      </form>
+      {error&&<p role="alert" className="mt-3 text-sm text-[#9f1a2b]">{error}</p>}
+    </Drawer>}
+
+    <div className="overflow-x-auto border border-[#dcd9cc] bg-white p-4">
+      <table className="w-full text-left text-sm">
+        <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+          <tr>{['N.º Testemunha','Acidente','Nome da Testemunha','Contacto / BI','Morada','Posição no Momento','Declaração / Depoimento','Data','Ação'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+        </thead>
+        <tbody>
+          {filtered.map(w=><tr key={w.id} className="border-b border-[#f0eee7]">
+            <td className="px-3 py-3 font-mono text-xs font-bold whitespace-nowrap">{w.id}</td>
+            <td className="px-3 py-3 font-mono font-semibold text-[#006B35] whitespace-nowrap">{w.accidentId}</td>
+            <td className="px-3 py-3 whitespace-nowrap font-semibold text-[#1c3024]">{w.name}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">
+              <div>{w.phone||'Sem telefone'}</div>
+              <span className="text-[#737a70]">{w.document}</span>
+            </td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{w.address||'—'}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap font-medium text-[#173d2b]">{w.locationAtMoment}</td>
+            <td className="px-3 py-3 text-xs max-w-xs">{w.statement}</td>
+            <td className="px-3 py-3 text-xs whitespace-nowrap">{w.statementDate}</td>
+            <td className="px-3 py-3 whitespace-nowrap">
+              <button type="button" onClick={()=>handleDelete(w.id)} className="text-xs font-semibold text-[#9f1a2b] hover:underline">Remover</button>
+            </td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  </Shell>;
+}
+
+export function AccidentStatisticsPage(){
+  const [accidents]=useSaved('accidents',seedAccidents);
+
+  const totalAccidents=accidents.length;
+  const totalFatalities=useMemo(()=>accidents.reduce((s,a)=>s+(a.fatalitiesCount||0),0),[accidents]);
+  const totalInjured=useMemo(()=>accidents.reduce((s,a)=>s+(a.injuredCount||0),0),[accidents]);
+  const totalVehicles=useMemo(()=>accidents.reduce((s,a)=>s+(a.vehiclesInvolved||0),0),[accidents]);
+
+  const regionalStats=useMemo(()=>{
+    const map=new Map<string,{region:string;count:number;fatalities:number;injured:number;vehicles:number}>();
+    for(const a of accidents){
+      const reg=a.region||'Setor Autónomo de Bissau';
+      if(!map.has(reg)){
+        map.set(reg,{region:reg,count:0,fatalities:0,injured:0,vehicles:0});
+      }
+      const entry=map.get(reg)!;
+      entry.count+=1;
+      entry.fatalities+=(a.fatalitiesCount||0);
+      entry.injured+=(a.injuredCount||0);
+      entry.vehicles+=(a.vehiclesInvolved||0);
+    }
+    return Array.from(map.values()).sort((a,b)=>b.count-a.count);
+  },[accidents]);
+
+  const severityStats=useMemo(()=>{
+    const map=new Map<string,number>();
+    for(const a of accidents){
+      map.set(a.severity,(map.get(a.severity)||0)+1);
+    }
+    return Array.from(map.entries()).map(([label,count])=>({label,count}));
+  },[accidents]);
+
+  const causeStats=useMemo(()=>{
+    const map=new Map<string,number>();
+    for(const a of accidents){
+      map.set(a.probableCause,(map.get(a.probableCause)||0)+1);
+    }
+    return Array.from(map.entries()).map(([cause,count])=>({cause,count})).sort((a,b)=>b.count-a.count);
+  },[accidents]);
+
+  return <Shell>
+    <Title eyebrow="Gestão de acidentes rodoviários · Submenu 8" title="Estatísticas de acidentes por região" description="Sala de situação nacional de acidentologia rodoviária, indicadores de mortalidade, sinistralidade regional e causas determinantes." icon={FileBarChart2}/>
+    <AccidentSubmenuBar/>
+
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Stat label="Total de Sinistros" value={String(totalAccidents)} detail="Ocorrências nacionais" icon={ShieldAlert}/>
+      <Stat label="Vítimas Mortais" value={String(totalFatalities)} detail="Taxa de fatalidade" icon={UserX}/>
+      <Stat label="Total de Feridos" value={String(totalInjured)} detail="Feridos graves e ligeiros" icon={AlertTriangle}/>
+      <Stat label="Veículos Sinistrados" value={String(totalVehicles)} detail="Danos materiais reportados" icon={CarFront}/>
+    </div>
+
+    <div className="mb-6 flex justify-end">
+      <button onClick={()=>window.print()} className={primaryClass}><Printer size={15}/> Imprimir Relatório Estatístico Nacional</button>
+    </div>
+
+    <div className="mb-6 border border-[#dcd9cc] bg-white p-5">
+      <h2 className="mb-4 border-b border-[#e9e6dc] pb-3 font-serif text-lg font-bold text-[#1c3024]">Distribuição e Gravidade dos Acidentes por Região da Guiné-Bissau</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b text-[10px] uppercase tracking-wider text-[#737a70]">
+            <tr>{['Região / Distrito','Total Sinistros','Vítimas Mortais','Feridos','Veículos Envolvidos','% Sinistralidade'].map(x=><th key={x} className="whitespace-nowrap px-3 py-3">{x}</th>)}</tr>
+          </thead>
+          <tbody>
+            {regionalStats.map(r=>{
+              const pct=totalAccidents>0?Math.round((r.count/totalAccidents)*100):0;
+              return <tr key={r.region} className="border-b border-[#f0eee7]">
+                <td className="px-3 py-3 font-semibold text-[#1c3024]">{r.region}</td>
+                <td className="px-3 py-3 font-mono font-bold text-sm text-[#006B35]">{r.count}</td>
+                <td className="px-3 py-3 font-mono text-xs text-[#CE1126] font-bold">{r.fatalities}</td>
+                <td className="px-3 py-3 font-mono text-xs text-[#836300] font-semibold">{r.injured}</td>
+                <td className="px-3 py-3 font-mono text-xs">{r.vehicles}</td>
+                <td className="px-3 py-3 whitespace-nowrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 bg-[#eeede5] h-2">
+                      <div className="bg-[#CE1126] h-full" style={{width:`${Math.max(8,pct)}%`}}/>
+                    </div>
+                    <span className="text-xs font-semibold">{pct}%</span>
+                  </div>
+                </td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div className="grid gap-6 md:grid-cols-2">
+      <div className="border border-[#dcd9cc] bg-white p-5">
+        <h3 className="font-serif text-base font-bold text-[#1c3024] mb-3 border-b border-[#e9e6dc] pb-2">Distribuição por Gravidade do Sinistro</h3>
+        <div className="space-y-3">
+          {severityStats.map(s=><div key={s.label} className="flex justify-between items-center text-xs border-b border-[#f4f3ed] pb-2">
+            <Status value={s.label}/>
+            <span className="font-mono font-bold text-sm text-[#1c3024]">{s.count} ({totalAccidents>0?Math.round((s.count/totalAccidents)*100):0}%)</span>
+          </div>)}
+        </div>
+      </div>
+
+      <div className="border border-[#dcd9cc] bg-white p-5">
+        <h3 className="font-serif text-base font-bold text-[#1c3024] mb-3 border-b border-[#e9e6dc] pb-2">Principais Causas Prováveis Identificadas</h3>
+        <div className="space-y-3">
+          {causeStats.map(c=><div key={c.cause} className="text-xs">
+            <div className="flex justify-between mb-1">
+              <span className="font-medium text-[#1c3024]">{c.cause}</span>
+              <b className="font-mono">{c.count}</b>
+            </div>
+            <div className="w-full bg-[#eeede5] h-1.5">
+              <div className="bg-[#009E49] h-full" style={{width:`${Math.max(10,Math.round((c.count/totalAccidents)*100))}%`}}/>
+            </div>
+          </div>)}
+        </div>
+      </div>
     </div>
   </Shell>;
 }
